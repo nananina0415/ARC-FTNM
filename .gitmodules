@@ -1,0 +1,3 @@
+[submodule "apps/doom/puredoom"]
+	path = apps/doom/puredoom
+	url = https://github.com/Daivuk/PureDOOM.git
