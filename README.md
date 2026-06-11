@@ -1,4 +1,4 @@
-# ARC-FTNM: From Archetype to Factum
+# ARC-FTNM: A RISC Computer For The New Millennium
 
 > FPGA로 구현하는 MMIX 컴퓨터
 
@@ -18,4 +18,3 @@ MMIX CPU 구현부터 주변장치, 시스템 소프트웨어, UI 디자인, 앱
   2. 귀하는 본인의 기여물에 대해 Apache License 2.0에 명시된 **특허 허여(Patent Grant)** 조항을 준수하며, 사용자들에게 관련 특허 권한을 부여하는 것에 동의합니다.
 
   이러한 조항은 프로젝트의 무결성을 유지하고 모든 사용자와 기여자를 법적으로 보호하기 위함입니다.
-
