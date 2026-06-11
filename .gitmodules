@@ -1,3 +1,6 @@
 [submodule "apps/doom/puredoom"]
 	path = apps/doom/puredoom
 	url = https://github.com/Daivuk/PureDOOM.git
+[submodule "toolchains/gcc-modified"]
+	path = toolchains/gcc-modified
+	url = https://github.com/gcc-mirror/gcc.git
