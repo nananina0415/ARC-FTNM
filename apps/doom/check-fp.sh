@@ -26,13 +26,14 @@ echo ""
 if command -v "$OBJDUMP" &>/dev/null; then
     echo "[objdump 방식] $OBJDUMP 사용"
     DISASM=$("$OBJDUMP" -d "$TARGET" 2>/dev/null)
-    HITS=$(echo "$DISASM" | grep -iE "^\s+[0-9a-f]+:.*($FP_MNEMONICS)" || true)
+    # 니모닉 컬럼만 검사 (offset:\thexbytes \t<mnemonic> 형식)
+    HITS=$(echo "$DISASM" | grep -P "^\s+[0-9a-f]+:\t[0-9a-f]+ \t($FP_MNEMONICS)(\s|$)" || true)
     if [ -z "$HITS" ]; then
         echo "결과: FP 명령어 없음. 정수 연산만 사용 확인."
     else
         echo "경고: FP 명령어 발견!"
         echo "$HITS"
-        FP_COUNT=$(echo "$HITS" | wc -l)
+        FP_COUNT=$(echo "$HITS" | grep -c .)
         echo ""
         echo "총 $FP_COUNT 개 FP 명령어"
     fi
