@@ -21224,12 +21224,16 @@ fixed_t FixedDiv(fixed_t a, fixed_t b)
 
 fixed_t FixedDiv2(fixed_t a, fixed_t b)
 {
-    double c;
+    long long c;
 
-    c = ((double)a) / ((double)b) * FRACUNIT;
-
-    if (c >= 2147483648.0 || c < -2147483648.0)
+    if (b == 0)
         I_Error("Error: FixedDiv: divide by zero");
+
+    c = ((long long)a << FRACBITS) / b;
+
+    if (c >= 2147483648LL || c < -2147483648LL)
+        I_Error("Error: FixedDiv: overflow");
+
     return (fixed_t)c;
 }
 #define SAVESTRINGSIZE 24
