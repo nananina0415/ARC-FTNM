@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SUBTREE_PREFIX="apps/doom/PureDOOM"
-UPSTREAM_URL="https://github.com/Daivuk/PureDOOM.git"
+UPSTREAM_URL="https://github.com/nananina0415/PureDOOM-NoFloat.git"
 UPSTREAM_BRANCH="${1:-master}"
 SYNC_BRANCH="original-puredoom"
 
