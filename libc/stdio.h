@@ -4,12 +4,20 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#define EOF     (-1)
+#define EOF      (-1)
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-typedef struct mmix_file FILE;
+typedef struct {
+    int handle;
+    int used;
+    int eof;
+} FILE;
+
+extern FILE* const stdin;
+extern FILE* const stdout;
+extern FILE* const stderr;
 
 FILE*         fopen(const char* path, const char* mode);
 int           fclose(FILE* stream);

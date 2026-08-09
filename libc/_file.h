@@ -13,17 +13,16 @@
 typedef struct {
     FIL  fil;   // FatFs 파일 객체
     int  used;  // 슬롯 사용 중 여부
-} file_slot_t;
+} MMIX_FILE;
 
-extern file_slot_t file_table[MAX_FILES];
+extern MMIX_FILE file_table[MAX_FILES];
 
 // trap.c에서 TRAP 디스패치 후 호출하는 함수들
-// slot: mmixware 핸들 번호 (Z 바이트)
-int  file_open (int slot, const char* path, const char* mode);
-int  file_close(int slot);
-long file_read (int slot, void* buf, long size, long count);
-long file_write(int slot, const void* buf, long size, long count);
-int  file_seek (int slot, long offset, int whence);
-long file_tell (int slot);
+int  file_open (int handle, const char* path, const char* mode);
+int  file_close(int handle);
+long file_read (int handle, void* buf, long size, long count);
+long file_write(int handle, const void* buf, long size, long count);
+int  file_seek (int handle, long offset, int whence);
+long file_tell (int handle);
 
 #endif
