@@ -1,7 +1,7 @@
-#ifndef _FILE_H
-#define _FILE_H
+#ifndef _FS_H
+#define _FS_H
 
-#include "fatfs/ff.h"
+#include "../third_party/fatfs/ff.h"
 
 // mmixware 핸들 번호 기준 (0=stdin, 1=stdout, 2=stderr, 3~= 일반 파일)
 #define FD_STDIN   0

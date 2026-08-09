@@ -1,0 +1,7 @@
+#ifndef _PROC_H
+#define _PROC_H
+
+// DDR3 클리어 후 지정 경로의 앱을 BIOS를 통해 로드·실행. 성공 시 반환하지 않음.
+long proc_execve(const char* path);
+
+#endif

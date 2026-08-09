@@ -1,5 +1,5 @@
 #include "stdio.h"
-#include "_trap.h"
+#include "../src/syscall.h"
 #include "_print.h"
 #include <stdarg.h>
 #include <stddef.h>

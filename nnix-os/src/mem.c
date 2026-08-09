@@ -1,4 +1,4 @@
-#include "_memory.h"
+#include "mem.h"
 
 static int heap_initialized = 0;
 

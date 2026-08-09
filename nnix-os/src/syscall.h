@@ -1,5 +1,5 @@
-#ifndef _TRAP_H
-#define _TRAP_H
+#ifndef _SYSCALL_H
+#define _SYSCALL_H
 
 // 시스템콜 번호 — 정수 (트랩 핸들러 switch 디스패치용)
 #define SC_HALT_I    0
@@ -13,6 +13,7 @@
 #define SC_FPUTWS_I  8
 #define SC_FSEEK_I   9
 #define SC_FTELL_I  10
+#define SC_EXECVE_I 11
 
 // 시스템콜 번호 — 어셈블리 즉값 문자열 (TRAP 명령어 Y 바이트 자리)
 #define SC_HALT    "0"
@@ -21,7 +22,8 @@
 #define SC_FREAD   "3"
 #define SC_FWRITE  "6"
 #define SC_FSEEK   "9"
-#define SC_FTELL  "10"
+#define SC_FTELL   "10"
+#define SC_EXECVE  "11"
 
 // TRAP Z 바이트 옵션 — Fopen 모드
 #define SCO_FOPEN_R   "0"

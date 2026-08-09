@@ -1,7 +1,8 @@
 // 메모리 관련 공통 함수/변수
 
-#ifndef _MEMORY_H
-#define _MEMORY_H
+#ifndef _MEM_H
+#define _MEM_H
+
 
 #include <stdint.h>
 

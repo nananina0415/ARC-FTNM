@@ -1,6 +1,6 @@
 // FPGA 전용 — trap.c의 TRAP 핸들러에서 호출
-#include "_file.h"
-#include "stdio.h"
+#include "fs.h"
+#include "../libc/stdio.h"
 
 MMIX_FILE file_table[MAX_FILES];
 

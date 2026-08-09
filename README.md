@@ -7,6 +7,38 @@ ARC-FTNM은 MMIX를 구현하지만, 스펙을 온전히 따르지는 않습니�
 추후에는 mmix 사양과 더 일치해지겠지만 그럼에도 의도적인 차이가 있을 수 있습니다.
 따라서 MMIXware에서 동작하는 앱이 ARC-FTNM에서 동작하지 않을 수 있습니다.
 
+## 디렉터리 구조
+
+```
+ARC-FTNM/
+├── apps/
+│   └── doom/              — DOOM 포팅
+│       └── PureDOOM/      — 외부 라이브러리 (GPL v2)
+├── drivers/
+│   └── PA100T-EDU/        — 보드별 드라이버 및 MMIO 맵
+├── mmix-fpga/
+│   └── bios/              — BRAM에 올라가는 BIOS
+├── nnix-os/
+│   ├── libc/              — 앱이 링크하는 C 런타임 API
+│   │   ├── crt0.s         — 공통 스타트업 (스택·BSS·main 호출)
+│   │   ├── stdio.h/c      — 파일·프린트 API (TRAP 호출 래퍼)
+│   │   ├── stdlib.h/c
+│   │   ├── string.h/c
+│   │   ├── _print.h/c     — 포맷 이터레이터 (printf 내부)
+│   │   └── sys/
+│   ├── src/               — OS 전용 구현
+│   │   ├── crt1.s         — OS 스타트업 (rT 설정)
+│   │   ├── syscall.h      — 시스템콜 번호 정의
+│   │   ├── trap.s/c       — 트랩 핸들러 및 디스패처
+│   │   ├── device.h       — MMIO 맵 구조체 및 장치 열거형
+│   │   ├── fs.h/c         — 파일 핸들 관리
+│   │   ├── mem.h/c        — 메모리 관리
+│   │   └── main.c
+│   └── third_party/
+│       └── fatfs/         — FatFs (1-clause BSD)
+└── mmix-gcc/              — MMIX 크로스 컴파일러 툴체인
+```
+
 ## 🤝 Contributing & Licensing Policy ⚖️
 
 아크팬텀(ARC-FTNM)은 오픈 소스 기여를 통해 완성됩니다. 
@@ -28,10 +60,11 @@ MMIX CPU 구현부터 주변장치, 시스템 소프트웨어, UI 디자인, 앱
   ```
   ARC-FTNM/
   ├── apps/
-  │   └── doom/          — GPL v2  (DOOM 포팅 코드)
-  │   └── PureDOOM/      — GPL v2  (외부 라이브러리)
-  └── libc/
-      └── fatfs/         — 1-clause BSD  (외부 라이브러리)
+  │   └── doom/
+  │       └── PureDOOM/          — GPL v2  (외부 라이브러리)
+  └── nnix-os/
+      └── third_party/
+          └── fatfs/             — 1-clause BSD  (외부 라이브러리)
   ```
 
   각 디렉토리 내 `LICENSE` 파일을 참조하세요.
