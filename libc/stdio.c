@@ -1,5 +1,7 @@
 #include "stdio.h"
 #include "_trap.h"
+#include "_print.h"
+#include <stdarg.h>
 #include <stddef.h>
 
 static FILE _pool[16] = {
@@ -218,3 +220,70 @@ int feof(FILE* f) {
 }
 
 #endif  // MMIX_SIM / FPGA
+
+// =============================================================================
+// SIM/FPGA 공통 — print functions
+// =============================================================================
+
+// 포맷은 fmt_iter_t로, 스트림 출력은 여기서 fwrite() → TRAP
+int vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) {
+    fmt_iter_t it;
+    fmt_init(&it, fmt, ap);
+    size_t i = 0;
+    char ch[4]; int nb;
+    while ((nb = fmt_next(&it, ch)) > 0) {
+        if (i + (size_t)nb + 1 > n) break;
+        for (int j = 0; j < nb; j++) buf[i++] = ch[j];
+    }
+    if (n > 0) buf[i] = '\0';
+    return (int)i;
+}
+
+int sprintf(char* buf, const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    fmt_iter_t it;
+    fmt_init(&it, fmt, ap);
+    int i = 0;
+    char ch[4]; int nb;
+    while ((nb = fmt_next(&it, ch)) > 0)
+        for (int j = 0; j < nb; j++) buf[i++] = ch[j];
+    buf[i] = '\0';
+    va_end(ap);
+    return i;
+}
+
+// FWRITE 트랩 핸들러에서 0,1,2는 표준 입출력으로 취급
+int vfprintf(FILE* stream, const char* fmt, va_list ap) {
+    fmt_iter_t it;
+    fmt_init(&it, fmt, ap);
+    char tmp[64];
+    int total = 0, ti = 0;
+    char ch[4]; int nb;
+    while ((nb = fmt_next(&it, ch)) > 0) {
+        if (ti + nb > (int)sizeof(tmp)) {
+            fwrite(tmp, 1, (size_t)ti, stream);
+            total += ti; ti = 0;
+        }
+        for (int j = 0; j < nb; j++)
+            tmp[ti++] = ch[j];
+    }
+    if (ti > 0) { fwrite(tmp, 1, (size_t)ti, stream); total += ti; }
+    return total;
+}
+
+int fprintf(FILE* stream, const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int r = vfprintf(stream, fmt, ap);
+    va_end(ap);
+    return r;
+}
+
+int printf(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int r = vfprintf(stdout, fmt, ap);
+    va_end(ap);
+    return r;
+}

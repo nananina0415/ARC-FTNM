@@ -29,6 +29,7 @@ int           feof(FILE* stream);
 
 int           printf(const char* fmt, ...);
 int           fprintf(FILE* stream, const char* fmt, ...);
+int           vfprintf(FILE* stream, const char* fmt, va_list ap);
 int           sprintf(char* buf, const char* fmt, ...);
 int           vsnprintf(char* buf, size_t n, const char* fmt, va_list ap);
 
