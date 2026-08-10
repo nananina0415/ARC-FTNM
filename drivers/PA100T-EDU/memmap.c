@@ -1,4 +1,4 @@
-#include "../../nnix-os/src/device.h"
+#include "../../nnix-os/src/device/types.h"
 
 // PA100T-EDU 보드 MMIO 맵 (2^48 기준 4KB 블록 단위)
 const mmio_entry_t BOARD_MEMMAP[] = {
@@ -13,5 +13,7 @@ const mmio_entry_t BOARD_MEMMAP[] = {
     { 32,  1, DEV_GPIO     },  // 블록 32     : LED/KEY/DIP스위치
     { 33,  1, DEV_SEG7     },  // 블록 33     : 4자리 7세그먼트 x2
     { 34,  1, DEV_TIMER    },  // 블록 34
+    { 35,  4, DEV_AUDIO    },  // 블록 35~38  : PCM 오디오 (MMIO/DMA 버퍼)
+    { 39,  1, DEV_USB      },  // 블록 39     : USB HID 컨트롤러
     {  0,  0, DEV_NONE     },
 };

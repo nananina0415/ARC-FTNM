@@ -1,6 +1,6 @@
 #include "syscall.h"
 #include "../libc/stdio.h"
-#include "device.h"
+#include "device/types.h"
 #include "proc.h"
 
 // 커널 스택 (trap.s가 $254로 가리킴)

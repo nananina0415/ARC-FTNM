@@ -1,5 +1,5 @@
 #include "proc.h"
-#include "device.h"
+#include "device/types.h"
 #include "../third_party/fatfs/ff.h"
 
 long proc_execve(const char* path) {
