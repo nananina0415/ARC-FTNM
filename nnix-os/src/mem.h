@@ -15,10 +15,13 @@ typedef struct {
 
 // 메모리 관리 영역 전체의 시작 주소 (노드 풀 + 헤더 + 힙 모두 포함)
 // 내부 오프셋은 고정이고 이 베이스만 빌드 타겟에 따라 달라짐
-// - 시뮬 (-DMMIX_SIM): MMIX pool segment 시작
+// - 시뮬 (-DMMIX_SIM): MMIX pool segment 시작. 런타임 변수로 선언해
+//   컴파일러가 pool segment 상수를 GREG에 올리지 않도록 함.
+//   MMIX GCC는 G=253 (g[253..255]만 전역)이라 g[254](스택포인터)와 충돌 방지 필수.
 // - raw binary: 링커가 BSS 끝 직후를 _mem_start로 정의
 #ifdef MMIX_SIM
-#  define MEM_BASE ((uintptr_t)0x8000000000000000ULL)
+extern uintptr_t _mem_base;
+#  define MEM_BASE (_mem_base)
 #else
 extern char _mem_start[];
 #  define MEM_BASE ((uintptr_t)_mem_start)

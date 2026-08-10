@@ -1,30 +1,22 @@
-        .global _start
-        .extern main
-        .extern __bss_start
-        .extern __bss_end
-        .extern __stack_top
+	.global _start
 
-_start:
-        // 스택 포인터 초기화 (링커 스크립트 정의 심볼)
-        GETA    $254, __stack_top
+	! Pool Segment dummy GREG: 링커가 이 GREG을 g[254]에 할당하게 하여
+	! DATA GREG($253)이 g[253]에 정착하도록 강제. G=253이 되어야
+	! crt0의 SETH $254(스택포인터 설정)가 g[253](DATA GREG)을 건드리지 않음.
+	GREG	#4000000000000000
 
-        // BSS 구역 0으로 클리어 (8바이트 단위)
-        GETA    $0, __bss_start
-        GETA    $1, __bss_end
-        CMPU    $2, $0, $1
-        BNN     $2, 2f          // __bss_start >= __bss_end 이면 스킵
-        SET     $3, 0
-1:
-        STOU    $3, $0, 0
-        ADD     $0, $0, 8
-        CMPU    $2, $0, $1
-        BN      $2, 1b
-2:
-        // main(0, NULL) 호출
-        SET     $0, 0
-        SET     $1, 0
-        PUSHJ   $2, main
+	.text
+_start	IS @
+	! C 스택 포인터 초기화
+	! Pool Segment(0x4000_0000_0000_0000) 에서 256KB 위를 스택 탑으로 사용
+	SETH	$254,#4000
+	INCML	$254,4
 
-        // main 반환 후 정지
-        SET     $255, $2
-        TRAP    0, 0, 0
+	! main(argc=0, argv=NULL)
+	SET	$0,0
+	SET	$1,0
+	PUSHJ	$2,main
+
+	! 종료
+	SET	$255,$2
+	TRAP	0,0,0

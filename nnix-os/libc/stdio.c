@@ -25,25 +25,25 @@ FILE* const stderr = &_pool[2];
 //   1-인자(Fclose/Ftell): Z = handle만
 
 // "+r"(r255): r255를 입출력 레지스터로 지정. TRAP 전 $255에 넣고 후에 꺼냄.
-// 없으면 GCC가 TRAP 결과를 최적화로 버릴 수 있음.
+// "memory": TRAP이 $255가 가리키는 메모리를 읽으므로 GCC가 struct 초기화 store를 생략하지 못하게 함.
 #define SIM_TRAP(ystr, h) \
     switch (h) { \
-    case  0: __asm__ volatile("TRAP 0," ystr ",0"  : "+r"(r255)); break; \
-    case  1: __asm__ volatile("TRAP 0," ystr ",1"  : "+r"(r255)); break; \
-    case  2: __asm__ volatile("TRAP 0," ystr ",2"  : "+r"(r255)); break; \
-    case  3: __asm__ volatile("TRAP 0," ystr ",3"  : "+r"(r255)); break; \
-    case  4: __asm__ volatile("TRAP 0," ystr ",4"  : "+r"(r255)); break; \
-    case  5: __asm__ volatile("TRAP 0," ystr ",5"  : "+r"(r255)); break; \
-    case  6: __asm__ volatile("TRAP 0," ystr ",6"  : "+r"(r255)); break; \
-    case  7: __asm__ volatile("TRAP 0," ystr ",7"  : "+r"(r255)); break; \
-    case  8: __asm__ volatile("TRAP 0," ystr ",8"  : "+r"(r255)); break; \
-    case  9: __asm__ volatile("TRAP 0," ystr ",9"  : "+r"(r255)); break; \
-    case 10: __asm__ volatile("TRAP 0," ystr ",10" : "+r"(r255)); break; \
-    case 11: __asm__ volatile("TRAP 0," ystr ",11" : "+r"(r255)); break; \
-    case 12: __asm__ volatile("TRAP 0," ystr ",12" : "+r"(r255)); break; \
-    case 13: __asm__ volatile("TRAP 0," ystr ",13" : "+r"(r255)); break; \
-    case 14: __asm__ volatile("TRAP 0," ystr ",14" : "+r"(r255)); break; \
-    case 15: __asm__ volatile("TRAP 0," ystr ",15" : "+r"(r255)); break; \
+    case  0: __asm__ volatile("TRAP 0," ystr ",0"  : "+r"(r255) : : "memory"); break; \
+    case  1: __asm__ volatile("TRAP 0," ystr ",1"  : "+r"(r255) : : "memory"); break; \
+    case  2: __asm__ volatile("TRAP 0," ystr ",2"  : "+r"(r255) : : "memory"); break; \
+    case  3: __asm__ volatile("TRAP 0," ystr ",3"  : "+r"(r255) : : "memory"); break; \
+    case  4: __asm__ volatile("TRAP 0," ystr ",4"  : "+r"(r255) : : "memory"); break; \
+    case  5: __asm__ volatile("TRAP 0," ystr ",5"  : "+r"(r255) : : "memory"); break; \
+    case  6: __asm__ volatile("TRAP 0," ystr ",6"  : "+r"(r255) : : "memory"); break; \
+    case  7: __asm__ volatile("TRAP 0," ystr ",7"  : "+r"(r255) : : "memory"); break; \
+    case  8: __asm__ volatile("TRAP 0," ystr ",8"  : "+r"(r255) : : "memory"); break; \
+    case  9: __asm__ volatile("TRAP 0," ystr ",9"  : "+r"(r255) : : "memory"); break; \
+    case 10: __asm__ volatile("TRAP 0," ystr ",10" : "+r"(r255) : : "memory"); break; \
+    case 11: __asm__ volatile("TRAP 0," ystr ",11" : "+r"(r255) : : "memory"); break; \
+    case 12: __asm__ volatile("TRAP 0," ystr ",12" : "+r"(r255) : : "memory"); break; \
+    case 13: __asm__ volatile("TRAP 0," ystr ",13" : "+r"(r255) : : "memory"); break; \
+    case 14: __asm__ volatile("TRAP 0," ystr ",14" : "+r"(r255) : : "memory"); break; \
+    case 15: __asm__ volatile("TRAP 0," ystr ",15" : "+r"(r255) : : "memory"); break; \
     }
 
 FILE* fopen(const char* path, const char* mode) {
@@ -51,7 +51,17 @@ FILE* fopen(const char* path, const char* mode) {
     for (i = 3; i < 16; i++)
         if (!_pool[i].used) break;
     if (i == 16) return (FILE*)0;
-    struct { long path; long mode; } a = { (long)path, (long)mode };
+    // mmixware mode: 0=r 1=w 2=rb 3=wb 4=w+b
+    long mcode;
+    if      (mode[0]=='r' && mode[1]=='b') mcode = 2;
+    else if (mode[0]=='b' && mode[1]=='r') mcode = 2;
+    else if (mode[0]=='w' && mode[1]=='b') mcode = 3;
+    else if (mode[0]=='b' && mode[1]=='w') mcode = 3;
+    else if (mode[0]=='w' && mode[1]=='+') mcode = 4;
+    else if (mode[0]=='r')                 mcode = 0;
+    else if (mode[0]=='w')                 mcode = 1;
+    else                                   mcode = 2;
+    struct { long path; long mode; } a = { (long)path, mcode };
     register long r255 __asm__("$255") = (long)&a;
     SIM_TRAP(SC_FOPEN, i)
     if (r255 != 0) return (FILE*)0;

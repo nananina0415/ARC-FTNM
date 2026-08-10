@@ -1,3 +1,5 @@
+# 본 문서는 PureDOOM의 리드미를 번역한 것입니다.
+
 ![](PureDOOM/images/PureDOOM.png)
 
 # Pure DOOM (한국어 번역)

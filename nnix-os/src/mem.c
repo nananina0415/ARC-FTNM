@@ -1,5 +1,12 @@
 #include "mem.h"
 
+#ifdef MMIX_SIM
+/* Pool Segment(0x4000...) 내 heap metadata 시작 주소.
+ * 컴파일 타임 상수 대신 런타임 변수로 선언: MMIX GCC가 이 주소를 GREG에 올리면
+ * G=253 환경에서 g[254](스택포인터)와 충돌하기 때문. */
+uintptr_t _mem_base = (uintptr_t)0x4000000002000000ULL;
+#endif
+
 static int heap_initialized = 0;
 
 void heap_init(void) {
