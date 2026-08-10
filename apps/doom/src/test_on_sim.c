@@ -30,8 +30,8 @@ static char* cb_getenv(const char* var) {
 static void save_ppm(const unsigned char* rgb) {
     FILE* f = fopen("frame.ppm", "w");
     if (!f) { printf("frame.ppm open failed\n"); return; }
-    fprintf(f, "P6\n320 200\n255\n");
-    fwrite(rgb, 1, 320 * 200 * 3, f);
+    fprintf(f, "P6\n%d %d\n255\n", DOOM_OUT_WIDTH, DOOM_OUT_HEIGHT);
+    fwrite(rgb, 1, DOOM_OUT_WIDTH * DOOM_OUT_HEIGHT * 3, f);
     fclose(f);
     printf("frame.ppm saved\n");
 }

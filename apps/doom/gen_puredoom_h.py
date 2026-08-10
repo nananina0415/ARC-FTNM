@@ -10,6 +10,7 @@ import sys
 
 
 DOOM_SRC   = "PureDOOM/src/DOOM"
+OUR_SRC    = "src"               # 우리 수정본 우선 탐색 경로
 PATCH_FILE = "src/patch_puredoom.h"
 DOOM_OUT   = sys.argv[1] if len(sys.argv) > 1 else "src/PureDOOM.h"
 
@@ -19,8 +20,18 @@ done_files = []
 final:str = ""
 
 
+def resolve(filename):
+    """src/ 에 동명 파일이 있으면 그것을, 없으면 원본 경로를 반환."""
+    override = os.path.join(OUR_SRC, os.path.basename(filename))
+    if os.path.exists(override):
+        print("Override: " + os.path.basename(filename))
+        return override
+    return filename
+
+
 class File:
     def __init__(self, filename) -> None:
+        filename = resolve(filename)
         with open(filename, "r") as file:
             self.content = file.read()
 
@@ -66,7 +77,7 @@ for code in codes:
     code_files.append(File(code))
 
 # DOOM.h를 맨 앞에 배치 (공개 API 헤더)
-with open(DOOM_SRC + "/DOOM.h", "r") as header:
+with open(resolve(DOOM_SRC + "/DOOM.h"), "r") as header:
     final += header.read()
 print("Concat: DOOM.h")
 done_files.append("DOOM.h")

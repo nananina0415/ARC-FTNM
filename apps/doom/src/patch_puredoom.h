@@ -21,3 +21,9 @@ static inline short doom_le16(unsigned short x)
 #define LONG(x)  doom_le32((unsigned int)(x))
 #define SHORT(x) doom_le16((unsigned short)(x))
 #endif /* __BIG_ENDIAN__ */
+
+/* 출력 해상도: DOOM 내부 렌더 (SCREENWIDTH×SCREENHEIGHT = 320×200)를
+ * 이 크기로 스케일업해서 HDMI DMA 버퍼에 출력한다.
+ * src/DOOM.c의 doom_get_framebuffer()가 이 값을 사용한다. */
+#define DOOM_OUT_WIDTH  640
+#define DOOM_OUT_HEIGHT 480
