@@ -147,7 +147,7 @@ int feof(FILE* f) {
 // "+r"(r255): r255를 입출력 레지스터로 지정. TRAP 전 $255에 넣고 후에 꺼냄.
 // 없으면 GCC가 TRAP 결과를 최적화로 버릴 수 있음.
 #define FPGA_TRAP(ystr, zstr) \
-    __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255))
+    __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
 
 FILE* fopen(const char* path, const char* mode) {
     int i;
