@@ -1,1 +1,10 @@
-// 부트로더가 부팅시 찾는 nnix.os 단일 실행 파일로 컴파일 됨
+#include "../third_party/fatfs/ff.h"
+#include "proc.h"
+
+int main(void)
+{
+    static FATFS fs;
+    f_mount(&fs, "", 1);   /* 드라이브 0 마운트 (disk_initialize → sd_card_init) */
+    proc_execve("doom.mmix");
+    for (;;);
+}

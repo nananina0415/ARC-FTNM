@@ -9,4 +9,5 @@ set(CMAKE_C_COMPILER mmix-gcc)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -nostdlib")
 
 # 3. 하위 앱 폴더들을 빌드 대상에 포함시킵니다.
+add_subdirectory(nnix-os)
 add_subdirectory(apps/doom)
