@@ -11,8 +11,8 @@
 // HDMI 초기화 (MMIO/DMA 버퍼 설정 포함)
 extern void hdmi_init(void);
 
-// RGB 프레임버퍼를 화면에 출력
+// RGB 프레임버퍼를 화면에 출력. 성공 0, 미지원 -1
 // buf: RGB888, width×height 픽셀
-extern void hdmi_present(const uint8_t* buf, int width, int height);
+extern int hdmi_present(const uint8_t* buf, int width, int height);
 
 #endif

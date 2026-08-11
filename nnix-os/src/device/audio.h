@@ -14,8 +14,8 @@
 // 오디오 초기화 (MMIO/DMA 버퍼 설정 포함)
 extern void audio_init(void);
 
-// PCM 샘플을 오디오 출력 버퍼에 씀
+// PCM 샘플을 오디오 출력 버퍼에 씀. 성공 0, 미지원 -1
 // buf: 16비트 스테레오 인터리브, len: 바이트 수
-extern void audio_write(const int16_t* buf, int len);
+extern int audio_write(const int16_t* buf, int len);
 
 #endif

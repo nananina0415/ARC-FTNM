@@ -1,6 +1,12 @@
 #include "syscall.h"
 #include "../libc/stdio.h"
 #include "device/types.h"
+#include "device/timer.h"
+#include "device/opl.h"
+#include "device/hdmi.h"
+#include "device/lcd.h"
+#include "device/audio.h"
+#include "device/usb.h"
 #include "proc.h"
 
 // 커널 스택 (trap.s가 $254로 가리킴)
@@ -87,6 +93,47 @@ static long _trap_ftell(int h) {
     return (long)f_tell(&_fil[h]);
 }
 
+static long _trap_gettime(struct { int sec; int usec; }* a) {
+    timer_get(&a->sec, &a->usec);
+    return 0;
+}
+
+/* opt: SCO_VIDEO_DEFAULT=0, SCO_VIDEO_HDMI=1, SCO_VIDEO_LCD=2
+ * DEFAULT는 HDMI → LCD 순서로 시도. 드라이버가 -1 반환 시 다음 대안으로 넘어감. */
+static long _trap_video_present(int dev, const void* buf) {
+    int r;
+    switch (dev) {
+    case 0:
+        r = hdmi_present((const uint8_t*)buf, HDMI_WIDTH, HDMI_HEIGHT);
+        if (r == 0) return 0;
+        return (long)lcd_present((const uint8_t*)buf, LCD_WIDTH, LCD_HEIGHT);
+    case 1: return (long)hdmi_present((const uint8_t*)buf, HDMI_WIDTH, HDMI_HEIGHT);
+    case 2: return (long)lcd_present((const uint8_t*)buf, LCD_WIDTH, LCD_HEIGHT);
+    default: return -1;
+    }
+}
+
+static long _trap_audio_write(struct { long buf; long len; }* a) {
+    return (long)audio_write((const int16_t*)a->buf, (int)a->len);
+}
+
+/* opt: SCO_INPUT_DEFAULT=0, SCO_INPUT_USB=1 */
+static long _trap_input_poll(int dev) {
+    switch (dev) {
+    case 0:
+    case 1: return (long)usb_poll();
+    default: return -1;
+    }
+}
+
+static long _trap_input_joystick(int dev, joystick_t* out) {
+    switch (dev) {
+    case 0:
+    case 1: return (long)usb_joystick(out);
+    default: return -1;
+    }
+}
+
 long trap_dispatch(long sc, long opt, long r255) {
     switch (sc) {
     case SC_HALT_I:
@@ -105,6 +152,19 @@ long trap_dispatch(long sc, long opt, long r255) {
         return _trap_ftell((int)r255);
     case SC_EXECVE_I:
         return proc_execve((const char*)r255);
+    case SC_GETTIME_I:
+        return _trap_gettime((void*)r255);
+    case SC_VIDEO_PRESENT_I:
+        return _trap_video_present((int)opt, (const void*)r255);
+    case SC_AUDIO_WRITE_I:
+        return _trap_audio_write((void*)r255);
+    case SC_INPUT_POLL_I:
+        return _trap_input_poll((int)opt);
+    case SC_INPUT_JOYSTICK_I:
+        return _trap_input_joystick((int)opt, (joystick_t*)r255);
+    case SC_OPL_WRITE_I:
+        /* r255 = doom_tick_midi() 반환값: (reg << 8) | data */
+        return (long)opl_write((unsigned int)(r255 >> 8), (unsigned int)(r255 & 0xFF));
     default:
         return -1;
     }

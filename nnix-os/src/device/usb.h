@@ -14,10 +14,10 @@ typedef struct {
 // USB HID 컨트롤러 초기화
 extern void usb_init(void);
 
-// USB HID 패킷 처리 (메인 루프 또는 인터럽트에서 호출)
-extern void usb_poll(void);
+// USB HID 패킷 처리. 성공 0, 미지원 -1
+extern int usb_poll(void);
 
-// 현재 조이스틱 상태 반환
-extern joystick_t usb_joystick(void);
+// 현재 조이스틱 상태를 out에 채움. 성공 0, 미지원 -1
+extern int usb_joystick(joystick_t* out);
 
 #endif
