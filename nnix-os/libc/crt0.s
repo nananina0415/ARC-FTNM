@@ -12,9 +12,9 @@ _start	IS @
 	SETH	$254,#4000
 	INCML	$254,4
 
-	! main(argc=0, argv=NULL)
-	SET	$0,0
-	SET	$1,0
+	! $255 = _execve_t* { cluster@0, argc@8, argv@16 }
+	LDTS	$0,$255,8	! argc (int, signed 32-bit)
+	LDO	$1,$255,16	! argv (char**)
 	PUSHJ	$2,main
 
 	! 종료
