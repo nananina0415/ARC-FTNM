@@ -799,7 +799,38 @@ void D_DoomMain(void)
 
     FindResponseFile();
 
-    IdentifyVersion();
+    {
+        int p = M_CheckParm("-iwad");
+        if (p && p < myargc - 1)
+        {
+            char* iwad = myargv[p + 1];
+            void* f = doom_open(iwad, "rb");
+            if (!f)
+                I_Error("W_Init: IWAD not found: %s", iwad);
+            doom_close(f);
+            const char* name = iwad;
+            const char* s    = iwad;
+            while (*s) { if (*s == '/' || *s == '\\') name = s + 1; s++; }
+            if (doom_strcasecmp(name, "doom2.wad")     == 0 ||
+                doom_strcasecmp(name, "doom2f.wad")    == 0 ||
+                doom_strcasecmp(name, "plutonia.wad")  == 0 ||
+                doom_strcasecmp(name, "tnt.wad")       == 0 ||
+                doom_strcasecmp(name, "freedoom2.wad") == 0)
+                gamemode = commercial;
+            else if (doom_strcasecmp(name, "doomu.wad")    == 0 ||
+                     doom_strcasecmp(name, "freedoom1.wad") == 0)
+                gamemode = retail;
+            else if (doom_strcasecmp(name, "doom.wad") == 0)
+                gamemode = registered;
+            else
+                gamemode = shareware;
+            D_AddFile(iwad);
+        }
+        else
+        {
+            IdentifyVersion();
+        }
+    }
 
     modifiedgame = false;
 
