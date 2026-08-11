@@ -2,6 +2,7 @@
 #include "PureDOOM.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "device/hdmi.h"
 
 static int g_exit = 0;
 static int g_sec  = 0;
@@ -27,15 +28,6 @@ static char* cb_getenv(const char* var) {
     return (void*)0;
 }
 
-static void save_ppm(const unsigned char* rgb) {
-    FILE* f = fopen("frame.ppm", "w");
-    if (!f) { printf("frame.ppm open failed\n"); return; }
-    fprintf(f, "P6\n%d %d\n255\n", DOOM_OUT_WIDTH, DOOM_OUT_HEIGHT);
-    fwrite(rgb, 1, DOOM_OUT_WIDTH * DOOM_OUT_HEIGHT * 3, f);
-    fclose(f);
-    printf("frame.ppm saved\n");
-}
-
 int main(void) {
     doom_set_print(cb_print);
     doom_set_malloc(cb_malloc, cb_free);
@@ -52,6 +44,6 @@ int main(void) {
     for (int i = 0; i < 50 && !g_exit; i++)
         doom_force_update();
 
-    save_ppm(doom_get_framebuffer(3));
+    hdmi_present(doom_get_framebuffer(3), DOOM_OUT_WIDTH, DOOM_OUT_HEIGHT);
     return 0;
 }

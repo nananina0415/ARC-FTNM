@@ -4,3 +4,6 @@
 [submodule "mmix-fpga/third_party/gtaylormb_opl3_fpga"]
 	path = mmix-fpga/third_party/gtaylormb_opl3_fpga
 	url = https://github.com/gtaylormb/opl3_fpga
+[submodule "mmix-fpga/third_party/m1nl_usb_hid_host"]
+	path = mmix-fpga/third_party/m1nl_usb_hid_host
+	url = https://github.com/m1nl/usb_hid_host

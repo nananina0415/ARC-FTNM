@@ -6,6 +6,12 @@
 #include "PureDOOM.h"
 
 #include <string.h>
+#include "syscall.h"
+#include "device/audio.h"
+#include "device/usb.h"
+
+#define FPGA_TRAP(ystr, zstr) \
+    __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
 
 /* getenv: libc getenv()는 항상 NULL 반환.
  * HOME이 NULL이면 doomrc 읽기 실패 → I_Error → g_exit=1. "."로 오버라이드. */
@@ -21,29 +27,46 @@ static void cb_gettime(int* sec, int* usec) {
     *usec = 0;
 }
 
-/* 사운드: 11025Hz, 512샘플, 16비트, 스테레오 (버퍼 2048바이트).
- * FPGA 오디오 DMA 인터럽트 또는 폴링에서 호출. */
-void audio_fill(int16_t* stream, int len)
+/* 사운드 이펙트: DOOM 내부 믹서 버퍼를 FPGA 오디오 믹서 DMA로 전달 */
+static void do_audio(void)
 {
-    int16_t* buf = doom_get_sound_buffer(len);
-    memcpy(stream, buf, len);
-    /* TODO: stream → FPGA 오디오 출력 */
+    int16_t* buf = doom_get_sound_buffer(AUDIO_BUF_BYTES);
+    struct { long buf; long len; } a = { (long)buf, AUDIO_BUF_BYTES };
+    register long r255 __asm__("$255") = (long)&a;
+    FPGA_TRAP(SC_AUDIO_WRITE, "0");
 }
 
-/* 음악: 140Hz(DOOM_MIDI_RATE) 타이머에서 호출. */
-void music_tick(void)
+/* 음악: doom_tick_midi() 반환값 (reg<<8)|data 를 FPGA OPL3로 전달.
+ * 140Hz 기준이나 게임 루프(35Hz)에서 드레인하므로 한 번에 여러 이벤트 처리. */
+static void do_music(void)
 {
     uint32_t msg;
-    while ((msg = doom_tick_midi()))
-        /* TODO: FPGA MIDI/OPL 출력 */ (void)msg;
+    while ((msg = doom_tick_midi())) {
+        register long r255 __asm__("$255") = (long)msg;
+        FPGA_TRAP(SC_OPL_WRITE, "0");
+    }
 }
+
+#define KEY(cond, key) \
+    do { if (cond) doom_key_down(key); else doom_key_up(key); } while(0)
 
 static void doom_input(void)
 {
-    /* TODO: FPGA 조이스틱/버튼 읽기 → DOOM 이벤트 변환 */
-    /* doom_key_down(key);    doom_key_up(key);    */
-    /* doom_button_down(btn); doom_button_up(btn); */
-    /* doom_mouse_move(dx, dy);                    */
+    joystick_t js;
+    if (usb_joystick(&js) != 0) return;
+
+    int b4 = (js.buttons >> 3) & 1;
+
+    KEY(js.axis_x < 0 && !b4, DOOM_KEY_LEFT_ARROW);
+    KEY(js.axis_x > 0 && !b4, DOOM_KEY_RIGHT_ARROW);
+    KEY(js.axis_x < 0 &&  b4, DOOM_KEY_A);
+    KEY(js.axis_x > 0 &&  b4, DOOM_KEY_D);
+    KEY(js.axis_y < 0,        DOOM_KEY_UP_ARROW);
+    KEY(js.axis_y > 0,        DOOM_KEY_DOWN_ARROW);
+    KEY((js.buttons >> 0) & 1, DOOM_KEY_CTRL);
+    KEY((js.buttons >> 1) & 1, DOOM_KEY_SPACE);
+    KEY((js.buttons >> 2) & 1, DOOM_KEY_SHIFT);
+    KEY((js.buttons >> 4) & 1, DOOM_KEY_ESCAPE);
 }
 
 int main(void)
@@ -51,12 +74,9 @@ int main(void)
     doom_set_getenv(cb_getenv);
     doom_set_gettime(cb_gettime);
 
-    /* 기본 키 바인딩을 현대적 방식으로 변경 */
-    doom_set_default_int("key_up",          DOOM_KEY_W);
-    doom_set_default_int("key_down",        DOOM_KEY_S);
+    /* 조이스틱용 키 바인딩: 이동/회전은 화살표 기본값 유지, 스트레이프만 A/D로 설정 */
     doom_set_default_int("key_strafeleft",  DOOM_KEY_A);
     doom_set_default_int("key_straferight", DOOM_KEY_D);
-    doom_set_default_int("key_use",         DOOM_KEY_E);
     doom_set_default_int("mouse_move",      0);
 
     char* argv[] = { "doom", "-iwad", "doom1.wad" };
@@ -66,9 +86,10 @@ int main(void)
     {
         doom_input();
         doom_update();
-        uint8_t* fb = doom_get_framebuffer(3 /* RGB */);
-        /* TODO: fb(320×200×3) → FPGA 디스플레이 출력 */
-        (void)fb;
+        do_audio();
+        do_music();
+        register long r255 __asm__("$255") = (long)doom_get_framebuffer(3 /* RGB */);
+        FPGA_TRAP(SC_VIDEO_PRESENT, SCO_VIDEO_HDMI);
     }
 
     return 0;

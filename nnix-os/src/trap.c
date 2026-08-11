@@ -117,15 +117,6 @@ static long _trap_audio_write(struct { long buf; long len; }* a) {
     return (long)audio_write((const int16_t*)a->buf, (int)a->len);
 }
 
-/* opt: SCO_INPUT_DEFAULT=0, SCO_INPUT_USB=1 */
-static long _trap_input_poll(int dev) {
-    switch (dev) {
-    case 0:
-    case 1: return (long)usb_poll();
-    default: return -1;
-    }
-}
-
 static long _trap_input_joystick(int dev, joystick_t* out) {
     switch (dev) {
     case 0:
@@ -158,8 +149,6 @@ long trap_dispatch(long sc, long opt, long r255) {
         return _trap_video_present((int)opt, (const void*)r255);
     case SC_AUDIO_WRITE_I:
         return _trap_audio_write((void*)r255);
-    case SC_INPUT_POLL_I:
-        return _trap_input_poll((int)opt);
     case SC_INPUT_JOYSTICK_I:
         return _trap_input_joystick((int)opt, (joystick_t*)r255);
     case SC_OPL_WRITE_I:

@@ -3,8 +3,10 @@ project(mmix_doom C ASM)
 
 option(MMIX_SIM "mmixware 시뮬레이터용 빌드" OFF)
 
-set(LIBC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/libc)
-set(SRC_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/src)
+set(LIBC_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/libc)
+set(SRC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/src)
+set(DRIVER_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/PA100T-EDU)
+set(FPGA_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/fpga)
 
 # 커스텀 libc 소스 목록
 set(LIBC_SOURCES
@@ -17,10 +19,18 @@ set(LIBC_SOURCES
 )
 
 # 시뮬레이터 빌드는 test_on_sim.c, FPGA 빌드는 main.c 사용
+# 두 빌드 모두 보드 드라이버 video.c 포함 (MMIX_SIM 분기로 PPM↔MMIO 분리)
 if(MMIX_SIM)
-    set(DOOM_SOURCES src/test_on_sim.c)
+    set(DOOM_SOURCES src/test_on_sim.c ${DRIVER_DIR}/video.c)
 else()
-    set(DOOM_SOURCES src/main.c)
+    set(DOOM_SOURCES
+        src/main.c
+        ${DRIVER_DIR}/video.c
+        ${DRIVER_DIR}/memmap.c
+        ${DRIVER_DIR}/usb.c
+        ${FPGA_DRIVER_DIR}/memmap.c
+        ${FPGA_DRIVER_DIR}/audio.c
+    )
 endif()
 
 add_executable(doom ${DOOM_SOURCES} ${LIBC_SOURCES})
