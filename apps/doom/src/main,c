@@ -84,7 +84,9 @@ int main(int argc, char** argv)
     while (1)
     {
         doom_input();
+
         doom_update();
+        
         do_audio();
         do_music();
         register long r255 __asm__("$255") = (long)doom_get_framebuffer(3 /* RGB */);
