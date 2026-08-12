@@ -11,14 +11,18 @@ ARC-FTNM은 MMIX를 구현하지만, 스펙을 온전히 따르지는 않습니�
 
 ```
 ARC-FTNM/
+├── tools/
+│   └── gen_license_notice.py      — 빌드 단위별 NOTICE 파일 자동 생성
 ├── apps/
 │   └── doom/                      — DOOM 포팅 (GPL v2)
 │       ├── src/
-│       │   ├── main,c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
+│       │   ├── main.c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
 │       │   ├── patch_puredoom.h   — MMIX 빅엔디언 버그 패치
 │       │   └── test_on_sim.c      — 시뮬레이터 빌드 진입점
 │       ├── toolchain/mmix.cmake   — MMIX 크로스 컴파일 툴체인 설정
 │       ├── gen_puredoom_h.py      — PureDOOM.h 패치 생성 스크립트
+│       ├── notice-map.json        — 라이선스 고지 매핑
+│       ├── link.ld                — RAW 바이너리 링커 스크립트
 │       └── PureDOOM/              — 외부 라이브러리 (GPL v2)
 ├── drivers/
 │   ├── fpga/                      — FPGA 공통 드라이버 (보드 독립)
@@ -34,23 +38,28 @@ ARC-FTNM/
 │   ├── video/                     — HDMI·LCD 비디오 출력
 │   ├── audio/                     — OPL3 인터페이스·PCM 믹서
 │   ├── timer/                     — 하드웨어 타이머
-│   ├── bios/                      — BRAM에 올라가는 BIOS
+│   ├── rom/                       — BIOS+부트로더
 │   └── third_party/
 │       ├── gtaylormb_opl3_fpga/   — OPL3 FM 합성기 RTL (LGPL v3)
 │       ├── hdl-util_hdmi/         — HDMI 인코더 RTL (MIT / Apache-2.0)
 │       └── m1nl_usb_hid_host/     — USB HID 호스트 RTL, FS+LS (Apache-2.0)
 └── nnix-os/
+    ├── link.ld                    — 로우 바이너리 링커 스크립트
+    ├── notice-map.json            — 라이선스 고지 매핑
+    ├── res/
+    │   └── unifont-17.0.05.bdf    — GNU Unifont (SIL OFL v1.1)
+    ├── tools/
+    │   └── gen_font.py            — unifont.h 빌드 타임 생성 스크립트
     ├── libc/                      — 앱이 링크하는 C 런타임 API
-    │   ├── crt0.s                 — 공통 스타트업 (스택·BSS·main 호출)
-    │   ├── stdio.h/c              — 파일·프린트 API (TRAP 호출 래퍼)
+    │   ├── crt0.s                 — 공통 스타트업 (BSS 초기화·스택 설정·main 호출)
+    │   ├── stdio.h/c
     │   ├── stdlib.h/c
     │   ├── string.h/c
     │   ├── unistd.h/c
     │   ├── _print.h/c             — 포맷 이터레이터 (printf 내부)
     │   └── sys/time.h
-    ├── src/                       — OS 전용 구현
-    │   ├── crt1.s                 — OS 스타트업 (rT 설정)
-    │   ├── syscall.h              — 시스템콜 번호 정의
+    ├── src/
+    │   ├── crt1.s                 — OS 스타트업 (rT 설정 후 _start 호출)
     │   ├── trap.s/c               — 트랩 핸들러 및 디스패처
     │   ├── device/                — 장치 인터페이스 헤더
     │   │   ├── types.h            — MMIO 맵 구조체·장치 열거형
@@ -66,11 +75,10 @@ ARC-FTNM/
     │   │   ├── qspi.h             — QSPI 플래시
     │   │   ├── seg7.h             — 7세그먼트 디스플레이
     │   │   └── bios_rom.h         — BIOS ROM 접근
-    │   ├── fs.h/c                 — 파일시스템, 파일 핸들 관리 등
+    │   ├── fs.h/c                 — 파일시스템, 파일 핸들 관리
     │   ├── mem.h/c                — 메모리 관리
-    │   ├── proc.h/c               — 프로세스 관리(프로세스 치환)
-    │   └── main.c
-    ├── bootloader/
+    │   ├── proc.h/c               — 앱 실행 ($255=exe클러스터, $254=링크클러스터)
+    │   └── main.c                 — 부팅 메뉴 TUI
     └── third_party/
         └── fatfs/                 — FatFs (1-clause BSD)
 ```
@@ -110,6 +118,8 @@ MMIX CPU 구현부터 주변장치, 시스템 소프트웨어, UI 디자인, 앱
   │       ├── hdl-util_hdmi/            — MIT / Apache-2.0  (외부 라이브러리)
   │       └── m1nl_usb_hid_host/        — Apache-2.0  (외부 라이브러리)
   └── nnix-os/
+      ├── res/
+      │   └── unifont-17.0.05.bdf       — SIL OFL v1.1  (외부 라이브러리)
       └── third_party/
           └── fatfs/                    — 1-clause BSD  (외부 라이브러리)
   ```
