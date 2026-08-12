@@ -1,6 +1,6 @@
 	.global _os_start
 
-	.text
+	.section .text.crt1
 _os_start	IS @
 	! rT = trap_handler 설정 후 공통 _start로 점프
 	GETA	$0,trap_handler

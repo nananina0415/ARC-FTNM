@@ -229,37 +229,37 @@ static void adjust_scroll(void)
 /* ── .link.app 파싱 및 실행 ──────────────────────────────────── */
 static void exec_link(app_entry_t* e)
 {
+    /* 링크파일 클러스터 번호 취득 */
     FIL  fil;
-    UINT br;
     if (f_open(&fil, e->filename, FA_READ) != FR_OK) return;
+    long link_cluster = (long)fil.obj.sclust;
+    /* 링크파일 첫 줄 = 실행파일 이름 */
+    UINT br;
     f_read(&fil, link_buf, LINK_CONTENT - 1, &br);
     f_close(&fil);
     link_buf[br] = '\0';
-
-    /* 토크나이즈: 공백 기준으로 분리해 link_argv[] 구성 */
     char* p = link_buf;
-    int argc = 0;
+    while (*p == ' ' || *p == '\t') p++;
+    char* exe = p;
+    while (*p && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') p++;
+    if (*p) *p = '\0';
+    if (exe[0] == '\0') return;
 
-    while (*p && argc < MAX_ARGC) {
-        // 앞 공백 지우고
-        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
-        if (!*p) break;
-        // 단어 넣고
-        link_argv[argc++] = p;
-        // 뒷 공백 지우고
-        while (*p && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') p++;
-        // 끊어준다
-        if (*p) *p++ = '\0';
-    }
-    if (argc == 0) return;
+    /* 실행파일 클러스터 번호 취득 */
+    if (f_open(&fil, exe, FA_READ) != FR_OK) return;
+    long exe_cluster = (long)fil.obj.sclust;
+    f_close(&fil);
 
-    proc_execve(link_argv[0], argc, link_argv);
+    proc_execve(exe_cluster, link_cluster);
 }
 
 static void exec_app(app_entry_t* e)
 {
-    link_argv[0] = e->filename;
-    proc_execve(e->filename, 1, link_argv);
+    FIL fil;
+    if (f_open(&fil, e->filename, FA_READ) != FR_OK) return;
+    long exe_cluster = (long)fil.obj.sclust;
+    f_close(&fil);
+    proc_execve(exe_cluster, 0);
 }
 
 /* ── 진입점 ─────────────────────────────────────────────────── */

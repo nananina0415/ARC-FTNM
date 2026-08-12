@@ -74,6 +74,6 @@ target_link_options(doom PRIVATE -nostdlib)
 if(NOT MMIX_SIM)
     # FPGA 빌드: 링커 스크립트로 메모리 레이아웃 지정
     target_link_options(doom PRIVATE
-        -T ${CMAKE_CURRENT_SOURCE_DIR}/fpga.ld
+        -T ${CMAKE_CURRENT_SOURCE_DIR}/link.ld
     )
 endif()

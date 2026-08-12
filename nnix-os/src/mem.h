@@ -18,13 +18,13 @@ typedef struct {
 // - 시뮬 (-DMMIX_SIM): MMIX pool segment 시작. 런타임 변수로 선언해
 //   컴파일러가 pool segment 상수를 GREG에 올리지 않도록 함.
 //   MMIX GCC는 G=253 (g[253..255]만 전역)이라 g[254](스택포인터)와 충돌 방지 필수.
-// - raw binary: 링커가 BSS 끝 직후를 _mem_start로 정의
+// - raw binary: 링커가 BSS 끝 직후를 _heap_start로 정의
 #ifdef MMIX_SIM
 extern uintptr_t _mem_base;
 #  define MEM_BASE (_mem_base)
 #else
-extern char _mem_start[];
-#  define MEM_BASE ((uintptr_t)_mem_start)
+extern char _heap_start[];
+#  define MEM_BASE ((uintptr_t)_heap_start)
 #endif
 
 #define NODE_SIZE  16                          // 노드 하나의 크기 (바이트)

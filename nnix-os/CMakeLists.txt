@@ -66,5 +66,5 @@ target_compile_options(nnix_os PRIVATE
 )
 target_link_options(nnix_os PRIVATE
     -nostdlib
-    -T ${CMAKE_CURRENT_SOURCE_DIR}/fpga.ld
+    -T ${CMAKE_CURRENT_SOURCE_DIR}/link.ld
 )
