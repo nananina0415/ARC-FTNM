@@ -3,6 +3,14 @@ project(mmix_doom C ASM)
 
 option(MMIX_SIM "mmixware 시뮬레이터용 빌드" OFF)
 
+add_custom_target(notice_doom ALL
+    COMMAND python3
+        "${CMAKE_SOURCE_DIR}/tools/gen_license_notice.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/notice-map.json"
+        "${CMAKE_CURRENT_BINARY_DIR}/NOTICE"
+    COMMENT "Generating NOTICE for doom"
+)
+
 set(LIBC_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/libc)
 set(SRC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/src)
 set(DRIVER_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/PA100T-EDU)

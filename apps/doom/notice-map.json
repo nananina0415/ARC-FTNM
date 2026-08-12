@@ -1,0 +1,12 @@
+{
+  "unit": "doom",
+  "components": [
+    {
+      "name"     : "PureDOOM (nananina0415/PureDOOM-NoFloat fork)",
+      "copyright": "Copyright (C) 1993-1996 id Software, Inc.\nPureDOOM port Copyright (C) David St-Louis (Daivuk)",
+      "license"  : "GPL-2.0",
+      "source"   : "https://github.com/nananina0415/ARC-FTNM",
+      "notes"    : "Source available at apps/doom/PureDOOM/ in the repository."
+    }
+  ]
+}

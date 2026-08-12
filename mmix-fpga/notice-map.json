@@ -1,0 +1,25 @@
+{
+  "unit": "mmix-fpga",
+  "components": [
+    {
+      "name"        : "opl3_fpga",
+      "copyright"   : "Copyright (C) Robson Cozendey <robson@cozendey.com>\nCopyright (C) 2010-2013 carbon14 and opl3\nCopyright (C) 2012 Steffen Ohrendorf <steffen.ohrendorf@gmx.de>\nFPGA port by gtaylormb",
+      "license"     : "LGPL-3.0",
+      "license_file": "mmix-fpga/third_party/gtaylormb_opl3_fpga/COPYING.LESSER",
+      "source"      : "https://github.com/gtaylormb/opl3_fpga"
+    },
+    {
+      "name"        : "hdl-util/hdmi",
+      "copyright"   : "Copyright (C) 2019 Sameer Puri",
+      "license"     : "MIT",
+      "license_file": "mmix-fpga/third_party/hdl-util_hdmi/LICENSE-MIT",
+      "source"      : "https://github.com/hdl-util/hdmi"
+    },
+    {
+      "name"     : "usb_hid_host",
+      "copyright": "Copyright (C) 2023 nand2mario",
+      "license"  : "Apache-2.0",
+      "source"   : "https://github.com/nand2mario/usb_hid_host"
+    }
+  ]
+}

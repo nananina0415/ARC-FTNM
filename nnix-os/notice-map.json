@@ -1,0 +1,18 @@
+{
+  "unit": "nnix-os",
+  "components": [
+    {
+      "name"     : "Unifont 17.0.05",
+      "copyright": "Copyright (C) 1998-2026 Roman Czyborra, Paul Hardy, Qianqian Fang,\n    Andrew Miller, Johnnie Weaver, David Corbett, Ælla Chiana Moskopp,\n    Rebecca Bettencourt, Minseo Lee, Ho-Seok Ee, et al.",
+      "license"  : "SIL-OFL-1.1",
+      "source"   : "https://unifoundry.com/unifont/",
+      "notes"    : "Embedded as bitmap glyph data (unifont.h, generated at build time)."
+    },
+    {
+      "name"     : "FatFs",
+      "copyright": "Copyright (C) ChaN, all rights reserved.",
+      "license"  : "BSD-1",
+      "source"   : "http://elm-chan.org/fsw/ff/"
+    }
+  ]
+}
