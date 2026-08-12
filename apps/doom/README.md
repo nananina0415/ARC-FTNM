@@ -8,14 +8,22 @@ ARC-FTNM FPGA 컴퓨터에서 DOOM을 실행하는 포팅.
 ```
 apps/doom/
 ├── src/
-│   ├── main,c             — FPGA 빌드 진입점
+│   ├── main,c             — FPGA 빌드 진입점 (HAL 콜백 구현)
 │   ├── test_on_sim.c      — mmixware 시뮬레이터 빌드 진입점
+│   ├── test_stdio.c       — libc stdio 동작 검증용 독립 테스트
 │   ├── DOOM.c             — PureDOOM 오버라이드 (게임 루프 진입 변경)
 │   └── patch_puredoom.h   — MMIX 빅엔디언 버그 패치 (m_swap.h 직후 삽입)
 ├── PureDOOM/              — PureDOOM 서브모듈 (GPL v2)
 │                            원본인 Daivuk/PureDOOM에서 부동소수점 코드를 제거한 nananina0415/PureDOOM-NoFloat 사용
 │                            추후 한글화 및 다국어 지원을 위한 해상도 업스케일링 예정
+├── PureDOOM_kr.md         — PureDOOM 리드미 한국어 번역
+├── freedoom-0.13.0/       — Freedoom WAD 패키지 (BSD 3-Clause)
+│   ├── freedoom1.wad      — Phase 1 (Doom 1 호환, 36레벨)
+│   └── freedoom2.wad      — Phase 2 (Doom 2 호환, 32레벨)
+├── check-fp.sh            — MMIX 바이너리에서 부동소수점 명령어 검출
 ├── gen_puredoom_h.py      — PureDOOM.h 재생성 스크립트 (패치 삽입)
+├── notice-map.json        — 라이선스 고지 매핑
+├── LICENSE                — GPL v2
 ├── toolchain/mmix.cmake   — MMIX 크로스 컴파일 툴체인 설정
 └── CMakeLists.txt
 ```

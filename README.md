@@ -16,11 +16,14 @@ ARC-FTNM/
 ├── apps/
 │   └── doom/                      — DOOM 포팅 (GPL v2)
 │       ├── src/
-│       │   ├── main.c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
+│       │   ├── main,c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
 │       │   ├── patch_puredoom.h   — MMIX 빅엔디언 버그 패치
-│       │   └── test_on_sim.c      — 시뮬레이터 빌드 진입점
+│       │   ├── test_on_sim.c      — 시뮬레이터 빌드 진입점
+│       │   └── test_stdio.c       — libc stdio 검증 테스트
+│       ├── freedoom-0.13.0/       — Freedoom WAD 데이터 (BSD 3-Clause)
 │       ├── toolchain/mmix.cmake   — MMIX 크로스 컴파일 툴체인 설정
 │       ├── gen_puredoom_h.py      — PureDOOM.h 패치 생성 스크립트
+│       ├── check-fp.sh            — 부동소수점 명령어 검출 스크립트
 │       ├── notice-map.json        — 라이선스 고지 매핑
 │       ├── link.ld                — RAW 바이너리 링커 스크립트
 │       └── PureDOOM/              — 외부 라이브러리 (GPL v2)
@@ -111,7 +114,8 @@ MMIX CPU 구현부터 주변장치, 시스템 소프트웨어, UI 디자인, 앱
   ARC-FTNM/
   ├── apps/
   │   └── doom/                         — GPL v2  (PureDOOM과 결합으로 전염)
-  │       └── PureDOOM/                 — GPL v2  (외부 라이브러리)
+  │       ├── PureDOOM/                 — GPL v2  (외부 라이브러리)
+  │       └── freedoom-0.13.0/          — BSD 3-Clause  (외부 리소스)
   ├── mmix-fpga/
   │   └── third_party/
   │       ├── gtaylormb_opl3_fpga/      — LGPL v3  (외부 라이브러리)
