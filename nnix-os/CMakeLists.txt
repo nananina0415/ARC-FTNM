@@ -1,6 +1,26 @@
 cmake_minimum_required(VERSION 3.15)
 project(nnix_os C ASM)
 
+add_custom_target(notice_nnix_os ALL
+    COMMAND python3
+        "${CMAKE_SOURCE_DIR}/tools/gen_license_notice.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/notice-map.json"
+        "${CMAKE_CURRENT_BINARY_DIR}/NOTICE"
+    COMMENT "Generating NOTICE for nnix-os"
+)
+
+add_custom_command(
+    OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/unifont.h
+    COMMAND python3
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_font.py"
+        "${CMAKE_CURRENT_BINARY_DIR}/unifont.h"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/res/unifont-17.0.05.bdf
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_font.py
+    COMMENT "Generating unifont.h"
+)
+add_custom_target(unifont_h DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/unifont.h)
+
 set(FATFS_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fatfs)
 set(DRIVER_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/PA100T-EDU)
 set(FPGA_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/fpga)
@@ -32,10 +52,12 @@ set(OS_SOURCES
 )
 
 add_executable(nnix_os ${OS_SOURCES})
+add_dependencies(nnix_os unifont_h)
 
 target_include_directories(nnix_os PRIVATE
     src
-    ${FATFS_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     ${CMAKE_CURRENT_SOURCE_DIR}/../drivers
 )
 
