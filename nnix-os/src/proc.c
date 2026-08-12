@@ -1,6 +1,6 @@
 #include "proc.h"
 #include "device/types.h"
-#include "../third_party/fatfs/ff.h"
+#include "fatfs/ff.h"
 
 /* BIOS와 앱이 공유하는 전달 구조체.
  * BIOS: cluster를 읽어 바이너리 로드 후 $255 보존 채 앱으로 점프.

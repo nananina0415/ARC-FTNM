@@ -14,7 +14,7 @@ static long _kstack[512];
 long* const _kstack_top = _kstack + 512;
 
 // FatFs 파일 핸들 테이블 (handle 0,1,2 = stdin/stdout/stderr → UART)
-#include "../third_party/fatfs/ff.h"
+#include "fatfs/ff.h"
 static FIL _fil[16];
 static int _fil_used[16];
 

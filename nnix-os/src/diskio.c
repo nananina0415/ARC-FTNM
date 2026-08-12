@@ -1,5 +1,5 @@
-#include "../third_party/fatfs/ff.h"
-#include "../third_party/fatfs/diskio.h"
+#include "fatfs/ff.h"
+#include "fatfs/diskio.h"
 #include "../../drivers/PA100T-EDU/sd_card.h"
 
 /* 드라이브 0 = MicroSD (PA100T-EDU SPI) */
