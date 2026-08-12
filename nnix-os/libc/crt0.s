@@ -30,9 +30,14 @@ _bss_done	IS @
 	GETA	$0,_ram_size
 	STOU	$11,$0,0
 
-	! main 호출 (인자 파싱은 추후 _args_init에서)
-	SET	$0,0
-	SET	$1,0
+	! 링크파일에서 argc/argv 파싱 (_crt_argc/_crt_argv에 결과 저장)
+	PUSHJ	$0,_args_init
+
+	! main(argc, argv) 호출
+	GETA	$3,_crt_argc
+	LDOU	$0,$3,0
+	GETA	$3,_crt_argv
+	LDOU	$1,$3,0
 	PUSHJ	$2,main
 
 	SET	$255,$2

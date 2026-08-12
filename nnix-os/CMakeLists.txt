@@ -27,6 +27,13 @@ set(FPGA_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/fpga)
 
 set(OS_SOURCES
     src/crt1.s
+    libc/crt0.s
+    libc/args.c
+    libc/_print.c
+    libc/stdio.c
+    libc/stdlib.c
+    libc/string.c
+    libc/unistd.c
     src/main.c
     src/trap.s
     src/trap.c
@@ -56,6 +63,7 @@ add_dependencies(nnix_os unifont_h)
 
 target_include_directories(nnix_os PRIVATE
     src
+    libc
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     ${CMAKE_CURRENT_SOURCE_DIR}/../drivers

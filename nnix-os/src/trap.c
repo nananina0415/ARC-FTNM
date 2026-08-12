@@ -1,5 +1,6 @@
 #include "syscall.h"
-#include "../libc/stdio.h"
+#include "fs.h"
+#include "proc.h"
 #include "device/types.h"
 #include "device/timer.h"
 #include "device/opl.h"
@@ -7,16 +8,7 @@
 #include "device/lcd.h"
 #include "device/audio.h"
 #include "device/usb.h"
-#include "proc.h"
-
-// 커널 스택 (trap.s가 $254로 가리킴)
-static long _kstack[512];
-long* const _kstack_top = _kstack + 512;
-
-// FatFs 파일 핸들 테이블 (handle 0,1,2 = stdin/stdout/stderr → UART)
 #include "fatfs/ff.h"
-static FIL _fil[16];
-static int _fil_used[16];
 
 // UART 출력 (DEV_UART MMIO 레지스터 직접 접근)
 static void _uart_write(const char* buf, long len) {
@@ -28,69 +20,29 @@ static void _uart_write(const char* buf, long len) {
 }
 
 static long _trap_fopen(long opt, const char* path) {
-    int i;
-    for (i = 3; i < 16; i++)
-        if (!_fil_used[i]) break;
-    if (i == 16) return -1;
-    BYTE mode;
-    switch (opt) {
-    case 0: mode = FA_READ;                        break; // "r"
-    case 1: mode = FA_WRITE | FA_CREATE_ALWAYS;    break; // "w"
-    case 2: mode = FA_WRITE | FA_OPEN_APPEND;      break; // "a"
-    case 3: mode = FA_READ | FA_WRITE;             break; // "r+"
-    case 4: mode = FA_READ | FA_WRITE | FA_CREATE_ALWAYS; break; // "w+"
-    case 5: mode = FA_READ | FA_WRITE | FA_OPEN_APPEND;   break; // "a+"
-    default: return -1;
-    }
-    if (f_open(&_fil[i], path, mode) != FR_OK) return -1;
-    _fil_used[i] = 1;
-    return i;
-}
-
-static long _trap_fclose(int h) {
-    if (h < 3 || h >= 16 || !_fil_used[h]) return -1;
-    FRESULT r = f_close(&_fil[h]);
-    _fil_used[h] = 0;
-    return (r == FR_OK) ? 0 : -1;
+    int h;
+    for (h = FD_STDERR + 1; h < MAX_FILES; h++)
+        if (!file_table[h].used) break;
+    if (h == MAX_FILES) return -1;
+    static const char* const modes[] = {"r", "w", "a", "r+", "w+", "a+"};
+    if (opt < 0 || opt > 5) return -1;
+    return file_open(h, path, modes[opt]) == 0 ? h : -1;
 }
 
 static long _trap_fread(struct { long buf; long total; long handle; }* a) {
-    int h = (int)a->handle;
-    if (h < 3 || h >= 16 || !_fil_used[h]) return -1;
-    UINT nr;
-    if (f_read(&_fil[h], (void*)a->buf, (UINT)a->total, &nr) != FR_OK) return -1;
-    return (long)nr;
+    return file_read((int)a->handle, (void*)a->buf, 1, a->total);
 }
 
 static long _trap_fwrite(struct { long buf; long total; long handle; }* a) {
-    int h = (int)a->handle;
-    if (h == 1 || h == 2) {
-        // stdout / stderr → UART
+    if (a->handle == FD_STDOUT || a->handle == FD_STDERR) {
         _uart_write((const char*)a->buf, a->total);
         return a->total;
     }
-    if (h < 3 || h >= 16 || !_fil_used[h]) return -1;
-    UINT nw;
-    if (f_write(&_fil[h], (const void*)a->buf, (UINT)a->total, &nw) != FR_OK) return -1;
-    return (long)nw;
+    return file_write((int)a->handle, (const void*)a->buf, 1, a->total);
 }
 
 static long _trap_fseek(struct { long handle; long offset; }* a, int whence) {
-    int h = (int)a->handle;
-    if (h < 3 || h >= 16 || !_fil_used[h]) return -1;
-    FSIZE_t pos;
-    switch (whence) {
-    case 0: pos = (FSIZE_t)a->offset; break;
-    case 1: pos = f_tell(&_fil[h]) + (FSIZE_t)a->offset; break;
-    case 2: pos = f_size(&_fil[h]) + (FSIZE_t)a->offset; break;
-    default: return -1;
-    }
-    return (f_lseek(&_fil[h], pos) == FR_OK) ? 0 : -1;
-}
-
-static long _trap_ftell(int h) {
-    if (h < 3 || h >= 16 || !_fil_used[h]) return -1;
-    return (long)f_tell(&_fil[h]);
+    return file_seek((int)a->handle, a->offset, whence);
 }
 
 static long _trap_gettime(struct { int sec; int usec; }* a) {
@@ -132,7 +84,7 @@ long trap_dispatch(long sc, long opt, long r255) {
     case SC_FOPEN_I:
         return _trap_fopen(opt, (const char*)r255);
     case SC_FCLOSE_I:
-        return _trap_fclose((int)r255);
+        return file_close((int)r255);
     case SC_FREAD_I:
         return _trap_fread((void*)r255);
     case SC_FWRITE_I:
@@ -140,9 +92,14 @@ long trap_dispatch(long sc, long opt, long r255) {
     case SC_FSEEK_I:
         return _trap_fseek((void*)r255, (int)opt);
     case SC_FTELL_I:
-        return _trap_ftell((int)r255);
-    case SC_EXECVE_I:
-        return proc_execve((const char*)r255);
+        return file_tell((int)r255);
+    case SC_EXECVE_I: {
+        FIL fil;
+        if (f_open(&fil, (const char*)r255, FA_READ) != FR_OK) return -1;
+        long exe_cluster = (long)fil.obj.sclust;
+        f_close(&fil);
+        return proc_execve(exe_cluster, 0);
+    }
     case SC_GETTIME_I:
         return _trap_gettime((void*)r255);
     case SC_VIDEO_PRESENT_I:
@@ -151,6 +108,27 @@ long trap_dispatch(long sc, long opt, long r255) {
         return _trap_audio_write((void*)r255);
     case SC_INPUT_JOYSTICK_I:
         return _trap_input_joystick((int)opt, (joystick_t*)r255);
+    case SC_LINK_READ_I: {
+        struct { long buf; long size; long cluster; }* a = (void*)r255;
+        DIR dir;
+        FILINFO fi;
+        if (f_opendir(&dir, "/") != FR_OK) return -1;
+        FIL fil;
+        int found = 0;
+        while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0] != '\0') {
+            if (fi.fattrib & AM_DIR) continue;
+            if (f_open(&fil, fi.fname, FA_READ) != FR_OK) continue;
+            long cl = (long)fil.obj.sclust;
+            if (cl == a->cluster) { found = 1; break; }
+            f_close(&fil);
+        }
+        f_closedir(&dir);
+        if (!found) return -1;
+        UINT br = 0;
+        f_read(&fil, (void*)a->buf, (UINT)a->size, &br);
+        f_close(&fil);
+        return (long)br;
+    }
     case SC_OPL_WRITE_I:
         /* r255 = doom_tick_midi() 반환값: (reg << 8) | data */
         return (long)opl_write((unsigned int)(r255 >> 8), (unsigned int)(r255 & 0xFF));

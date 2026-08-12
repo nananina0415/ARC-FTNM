@@ -27,11 +27,15 @@ extern char _heap_start[];
 #  define MEM_BASE ((uintptr_t)_heap_start)
 #endif
 
+// crt0.s에서 $253(BIOS 전달 RAM 크기)을 저장하는 BSS 전역 변수
+extern long _ram_size;
+
 #define NODE_SIZE  16                          // 노드 하나의 크기 (바이트)
 #define NODE_BASE  (MEM_BASE)                  // 노드 풀 시작. node[i] = NODE_BASE + i*NODE_SIZE
 #define HEAP_BASE  (MEM_BASE + 0x100000)       // 실제 할당이 일어나는 힙 시작 주소
 #define NULL_IDX   0u                          // 노드 없음을 나타내는 인덱스
-#define HEAP_SIZE  ((uint32_t)0x20000000)      // 힙 크기 (512MB)
+// 힙 크기 = (RAM 끝 - HEAP_BASE) / 2  →  나머지 절반은 스택
+#define HEAP_SIZE  ((uint32_t)(((long)_ram_size - (long)HEAP_BASE) / 2))
 #define MAX_NODES  65535u                      // 최대 노드 수 (인덱스 1~65535)
 
 // MEM_BASE 기준 헤더 오프셋

@@ -18,7 +18,8 @@
 #define SC_VIDEO_PRESENT_I  13
 #define SC_AUDIO_WRITE_I    14
 #define SC_INPUT_JOYSTICK_I 15
-#define SC_OPL_WRITE_I      17
+#define SC_OPL_WRITE_I      16
+#define SC_LINK_READ_I      17
 
 // 시스템콜 번호 — 어셈블리 즉값 문자열 (TRAP 명령어 Y 바이트 자리)
 #define SC_HALT             "0"
@@ -38,6 +39,7 @@
 #define SC_AUDIO_WRITE      "14"
 #define SC_INPUT_JOYSTICK   "15"
 #define SC_OPL_WRITE        "16"
+#define SC_LINK_READ        "17"
 
 // TRAP Z 바이트 옵션 — Fopen 모드
 #define SCO_FOPEN_R   "0"
