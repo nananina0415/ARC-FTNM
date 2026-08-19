@@ -20,7 +20,13 @@ build/
 build_*/
 build-*/
 
-# 3. 개발 도구 및 OS 특성 파일
+# 3. mmix-fpga Vivado 생성물
+# ------------------------------------------
+mmix-fpga/vivado/
+mmix-fpga/build/
+mmix-fpga/.surfer/
+
+# 4. 개발 도구 및 OS 특성 파일
 # ------------------------------------------
 # 윈도우 시스템 파일 및 에디터 설정
 .VSCode/
