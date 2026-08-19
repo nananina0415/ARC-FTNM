@@ -62,7 +62,7 @@ CMake 빌드 시 자동으로 실행되며, 출력은 빌드 디렉토리에 생
 ### PureDOOM 서브모듈 수정 사항
 
 원본 [Daivuk/PureDOOM](https://github.com/Daivuk/PureDOOM)에서 포크한  
-`ananina0415/PureDOOM-NoFloat` 서브모듈에는 아래 변경이 적용되어 있다:
+`nananina0415/PureDOOM-NoFloat`에는 아래 변경이 적용되어 있다:
 
 - **부동소수점 제거**: MMIX 코어에 FPU가 없으므로 float 연산 제거
 - **`-iwad` 지원**: `D_DoomMain()`에서 `-iwad <파일>` 인자를 처리.  
@@ -100,14 +100,14 @@ HDMI DMA 출력: 640×480 (`DOOM_OUT_WIDTH` / `DOOM_OUT_HEIGHT`)
 
 스케일업은 `src/DOOM.c`의 `doom_get_framebuffer()`에서 처리한다.
 
-추후에는 PureDOM-NoFloat 측에서 지원할 예정
+추후에는 PureDOOM-NoFloat 측에서 지원할 예정
 
 ### HAL 콜백 (`src/main,c`)
 
 | 콜백 | 구현 방식 |
 |---|---|
 | `getenv` | `HOME` → `"."` 고정 (doomrc 미존재 시 I_Error 방지) |
-| `gettime` | TODO: FPGA 하드웨어 타이머 레지스터 읽기 |
+| `gettime` | `SC_GETTIME`(12) syscall → `timer_get()` → FPGA 하드웨어 타이머 |
 | 파일 I/O | `DOOM_IMPLEMENT_FILE_IO`: FatFs + SD 카드 SPI (nnix-os syscall) |
 | malloc | `DOOM_IMPLEMENT_MALLOC`: nnix-os 힙 할당기 |
 
