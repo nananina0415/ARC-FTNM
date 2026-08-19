@@ -16,10 +16,11 @@
       "source"      : "https://github.com/hdl-util/hdmi"
     },
     {
-      "name"     : "usb_hid_host",
-      "copyright": "Copyright (C) 2023 nand2mario",
-      "license"  : "Apache-2.0",
-      "source"   : "https://github.com/nand2mario/usb_hid_host"
+      "name"        : "usb_hid_host",
+      "copyright"   : "Copyright (C) 2023 nand2mario\nRedesign Copyright (C) 2026 m1nl",
+      "license"     : "Apache-2.0",
+      "license_file": "mmix-fpga/third_party/m1nl_usb_hid_host/LICENSE",
+      "source"      : "https://github.com/nand2mario/usb_hid_host"
     }
   ]
 }

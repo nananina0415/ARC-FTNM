@@ -38,13 +38,20 @@ ARC-FTNM/
 │       ├── memmap.c               — 보드 MMIO 맵 테이블
 │       ├── video.c                — HDMI·LCD 프레임버퍼 출력
 │       └── sd_card.h              — SD 카드 SPI 인터페이스
-├── mmix-fpga/                     — FPGA RTL (Verilog/VHDL)
-│   ├── cpu/                       — MMIX CPU 코어
-│   ├── mem/                       — 메모리 컨트롤러 (DDR3)
-│   ├── video/                     — HDMI·LCD 비디오 출력
-│   ├── audio/                     — OPL3 인터페이스·PCM 믹서
-│   ├── timer/                     — 하드웨어 타이머
-│   ├── rom/                       — BIOS+부트로더
+├── mmix-fpga/                     — FPGA RTL (Spade HDL)
+│   ├── swim.toml                  — Spade 프로젝트 설정
+│   ├── build.sh                   — 빌드 자동화 (swim → Vivado, 업로드 포함)
+│   ├── build.tcl                  — Vivado 배치 스크립트 (합성/구현/비트스트림)
+│   ├── board.tcl                  — 보드 종속 설정 (파트번호, JTAG 장치명)
+│   ├── constraints.xdc            — 핀 배치 제약
+│   ├── src/
+│   │   ├── main.spade             — Spade 최상위 진입점
+│   │   ├── cpu/                   — MMIX CPU 코어
+│   │   ├── mem/                   — 메모리 컨트롤러(DDR3) 및 MMU, IOMMU
+│   │   ├── video/                 — HDMI 비디오 출력
+│   │   ├── audio/                 — OPL3 인터페이스·PCM 믹서
+│   │   ├── timer/                 — 하드웨어 타이머
+│   │   └── rom/                   — BIOS+부트로더
 │   └── third_party/
 │       ├── gtaylormb_opl3_fpga/   — OPL3 FM 합성기 RTL (LGPL v3)
 │       ├── hdl-util_hdmi/         — HDMI 인코더 RTL (MIT / Apache-2.0)
