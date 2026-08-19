@@ -10,6 +10,35 @@ ARC-FTNM은 MMIX를 구현하지만, 스펙을 온전히 따르지는 않습니�
 
 따라서 MMIXware에서 동작하는 앱이 ARC-FTNM에서 동작하지 않을 수 있습니다.
 
+## 빌드 가이드라인
+
+### MMIX 소프트웨어 (nnix-os / apps)
+
+MMIX 크로스컴파일러(`mmix-gcc`)가 필요하다.
+
+자세한 빌드방법은 각 앱 폴더의 리드미 참고.
+
+nnix-os는 파일명을 nnix.os로 하여 SD카드 루트에 두어야 부트로더가 인식한다.
+
+### FPGA 비트스트림 (mmix-fpga)
+
+[Spade HDL](https://spade-lang.org) swim과 Xilinx Vivado가 필요하다.
+
+```sh
+# 합성 + 구현 + 비트스트림
+mmix-fpga/build.sh [보드명]
+
+# 합성 + 구현 + 비트스트림 + 보드 업로드 (JTAG)
+mmix-fpga/build.sh [보드명] upload
+```
+
+`board/` 아래에 보드가 하나뿐이면 보드명 생략 가능. 앞부분만 입력해도 유일하게 특정되면 자동 선택된다.
+
+보드별 설정은 `mmix-fpga/board/<보드명>/` 안에서만 관리한다:
+- `board.tcl` — 파트번호, JTAG 장치명, XDC 경로
+- `pins.xdc` — 핀 배치, 타이밍, 비트스트림 설정
+
+
 ## 디렉터리 구조
 
 ```
@@ -42,8 +71,10 @@ ARC-FTNM/
 │   ├── swim.toml                  — Spade 프로젝트 설정
 │   ├── build.sh                   — 빌드 자동화 (swim → Vivado, 업로드 포함)
 │   ├── build.tcl                  — Vivado 배치 스크립트 (합성/구현/비트스트림)
-│   ├── board.tcl                  — 보드 종속 설정 (파트번호, JTAG 장치명)
-│   ├── constraints.xdc            — 핀 배치 제약
+│   ├── board/                     — 빌드에 필요한 보드와 칩에 종속적인 설정들
+│   │   └── PA100T-EDU/
+│   │       ├── board.tcl          — 보드 종속 설정 (파트번호, JTAG 장치명, XDC 경로)
+│   │       └── pins.xdc           — 핀 배치 제약
 │   ├── src/
 │   │   ├── main.spade             — Spade 최상위 진입점
 │   │   ├── cpu/                   — MMIX CPU 코어

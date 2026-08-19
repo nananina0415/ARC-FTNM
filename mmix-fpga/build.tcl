@@ -4,19 +4,28 @@
 #   vivado -mode batch -source build.tcl -tclargs upload (+ 보드 프로그래밍)
 
 set SCRIPT_DIR [file dirname [file normalize [info script]]]
-source "$SCRIPT_DIR/board.tcl"
+
+# 인자 파싱: argv[0]=보드명, argv[1]=upload 여부
+if {[llength $argv] < 1 || [lindex $argv 0] eq ""} {
+    error "보드명을 지정하세요. 예: -tclargs PA100T-EDU"
+}
+set BOARD [lindex $argv 0]
+set do_upload 0
+if {[llength $argv] > 1 && [lindex $argv 1] eq "upload"} {
+    set do_upload 1
+}
+
+set BOARD_DIR "$SCRIPT_DIR/board/$BOARD"
+if {![file exists "$BOARD_DIR/board.tcl"]} {
+    error "board/$BOARD/board.tcl 을 찾을 수 없습니다"
+}
+source "$BOARD_DIR/board.tcl"
 
 set PROJECT_DIR "$SCRIPT_DIR/vivado/mmix_fpga"
 set PROJECT_NAME "mmix_fpga"
 set SV_FILE "$SCRIPT_DIR/build/spade.sv"
-set XDC_FILE "$SCRIPT_DIR/constraints.xdc"
+# XDC_FILE은 board.tcl에서 정의됨
 set BIT_FILE "$PROJECT_DIR/${PROJECT_NAME}.runs/impl_1/top.bit"
-
-# 인자 파싱
-set do_upload 0
-if {[llength $argv] > 0 && [lindex $argv 0] eq "upload"} {
-    set do_upload 1
-}
 
 # 프로젝트 생성 또는 열기
 if {![file exists "$PROJECT_DIR/${PROJECT_NAME}.xpr"]} {
