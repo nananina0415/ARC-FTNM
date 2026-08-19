@@ -616,7 +616,7 @@ const unsigned char* doom_get_framebuffer(int channels)
     extern doom_boolean automapactive;
     extern int crosshair;
 
-    // Draw crosshair
+    // 조준선 그리기
     if (crosshair && 
         !menuactive &&
         gamestate == GS_LEVEL &&

@@ -4,7 +4,7 @@
 
 MMIX_FILE file_table[MAX_FILES];
 
-// Mode string → FatFs open flags
+// 모드 문자열 → FatFs 오픈 플래그 변환
 static BYTE mode_flags(const char* mode) {
     int plus = 0;
     const char* p = mode;

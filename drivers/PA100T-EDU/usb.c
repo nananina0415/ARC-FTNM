@@ -34,7 +34,7 @@ int usb_joystick(joystick_t* out) {
     if (!_usb) usb_init();
     if (!_usb) return -1;
 
-    if ((_usb->status & 3) != 3) return -1;  /* typ != gamepad */
+    if ((_usb->status & 3) != 3) return -1;  /* 장치 타입이 게임패드가 아님 */
 
     uint64_t ax = _usb->axes;
     uint64_t bt = _usb->buttons;
