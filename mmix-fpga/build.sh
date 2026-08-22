@@ -67,20 +67,19 @@ else
     fi
 fi
 
-# swim PATH 로드
-source ~/.cargo/env
-
-# 1. Spade → SystemVerilog
-echo "[build] swim build..."
+# 1. Chisel → SystemVerilog
+echo "[build] sbt run..."
 cd "$SCRIPT_DIR"
-swim build
+sbt run
 
 # upload 전 JTAG 연결 확인: 로컬 USB 먼저, 없으면 VirtualHere
 if [ "$DO_UPLOAD" = "upload" ]; then
-    if lsusb 2>/dev/null | grep -qi "digilent"; then
-        : # 로컬 USB에서 발견
-    elif pgrep -x vhclient > /dev/null 2>&1; then
-        : # VirtualHere로 연결
+    if lsusb 2>/dev/null | grep -qiE "digilent|0403:601[04]"; then
+        : # 로컬 USB에서 Digilent 또는 FTDI JTAG 발견
+    elif pgrep -xE "vhclient|vhuit64|vhuit32" > /dev/null 2>&1; then
+        : # VirtualHere 클라이언트로 연결
+    elif pgrep -a "vhci" > /dev/null 2>&1; then
+        : # USB/IP vhci 커널 활성
     else
         echo "[error] JTAG 장치를 찾을 수 없습니다 (로컬 USB 또는 VirtualHere 필요)"
         exit 1
@@ -89,8 +88,10 @@ fi
 
 # 2. Vivado: 합성 + 구현 + 비트스트림 (upload 인자 있으면 보드 업로드까지)
 echo "[build] vivado..."
-"$VIVADO" -mode batch -source "$SCRIPT_DIR/build.tcl" -tclargs "$BOARD" "$DO_UPLOAD" \
-    -log "$SCRIPT_DIR/vivado/vivado.log" \
-    -journal "$SCRIPT_DIR/vivado/vivado.jou"
+"$VIVADO" -mode batch \
+    -log     "$SCRIPT_DIR/vivado/vivado.log" \
+    -journal "$SCRIPT_DIR/vivado/vivado.jou" \
+    -source  "$SCRIPT_DIR/build.tcl" \
+    -tclargs "$BOARD" "$DO_UPLOAD"
 
 echo "[build] done."

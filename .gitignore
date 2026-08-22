@@ -20,11 +20,16 @@ build/
 build_*/
 build-*/
 
-# 3. mmix-fpga Vivado 생성물
+# 3. mmix-fpga Vivado/Chisel 생성물
 # ------------------------------------------
 mmix-fpga/vivado/
 mmix-fpga/build/
 mmix-fpga/.surfer/
+mmix-fpga/target/
+mmix-fpga/project/target/
+mmix-fpga/.Xil/
+mmix-fpga/vivado.jou
+mmix-fpga/vivado.log
 
 # 4. 개발 도구 및 OS 특성 파일
 # ------------------------------------------
@@ -37,3 +42,4 @@ mmix-fpga/.surfer/
 *.sln
 *.vcxproj
 Thumbs.db
+.Xil/

@@ -23,28 +23,31 @@ source "$BOARD_DIR/board.tcl"
 
 set PROJECT_DIR "$SCRIPT_DIR/vivado/mmix_fpga"
 set PROJECT_NAME "mmix_fpga"
-set SV_FILE "$SCRIPT_DIR/build/spade.sv"
+set SV_FILE   "$SCRIPT_DIR/build/MMIX.sv"
 # XDC_FILE은 board.tcl에서 정의됨
-set BIT_FILE "$PROJECT_DIR/${PROJECT_NAME}.runs/impl_1/top.bit"
+set BIT_FILE "$PROJECT_DIR/${PROJECT_NAME}.runs/impl_1/MMIX.bit"
 
-# 프로젝트 생성 또는 열기
+# 프로젝트 생성 또는 열기 (이미 열려있으면 먼저 닫기)
+catch {close_project}
 if {![file exists "$PROJECT_DIR/${PROJECT_NAME}.xpr"]} {
     create_project $PROJECT_NAME $PROJECT_DIR -part $PART
 }
 open_project "$PROJECT_DIR/${PROJECT_NAME}.xpr"
 
-# 소스 갱신: import_files는 파일을 프로젝트 .srcs/ 안으로 복사
+# 소스 갱신: 기존 파일 제거 후 재임포트
 if {[llength [get_files -quiet *.sv]] > 0} {
     remove_files -fileset sources_1 [get_files *.sv]
 }
-import_files -fileset sources_1 $SV_FILE
+import_files -force -fileset sources_1 $SV_FILE
+set_property top MMIX [get_filesets sources_1]
 
 if {[llength [get_files -quiet *.xdc]] > 0} {
     remove_files -fileset constrs_1 [get_files *.xdc]
 }
-import_files -fileset constrs_1 $XDC_FILE
+import_files -force -fileset constrs_1 $XDC_FILE
 
 # 합성
+reset_run synth_1
 launch_runs synth_1 -jobs 8
 wait_on_run synth_1
 if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
@@ -52,6 +55,7 @@ if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
 }
 
 # 구현 + 비트스트림
+reset_run impl_1
 launch_runs impl_1 -to_step write_bitstream -jobs 8
 wait_on_run impl_1
 if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
@@ -70,8 +74,9 @@ if {$do_upload} {
     }
     open_hw_target [lindex $targets 0]
     set_property PARAM.FREQUENCY 1000000 [lindex $targets 0]
-    set_property PROGRAM.BITSTREAM $BIT_FILE [get_hw_devices $HW_DEVICE]
-    program_hw_devices [get_hw_devices $HW_DEVICE]
+    set hw_dev [get_hw_devices $HW_DEVICE]
+    create_hw_bitstream -hw_device $hw_dev $BIT_FILE
+    program_hw_devices $hw_dev
     close_hw_manager
     puts "업로드 완료"
 }
