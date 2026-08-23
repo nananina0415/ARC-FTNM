@@ -136,7 +136,8 @@ class Decoder extends Module
     io.addsub.bits.z     := z
   }
 
-  switch(op) {
+  switch(op)
+  {
     is(0x00.U) { jumpOut(TRAP) }       // TRAP
     is(                               // 0x01~0x17: 부동소수점 관련 (미구현)
       0x01.U, 0x02.U, 0x03.U, 0x04.U, 0x05.U, 0x06.U, 0x07.U,
