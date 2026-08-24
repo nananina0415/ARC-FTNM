@@ -23,7 +23,7 @@ class CompoReg[T <: Data](gen: T) extends Module {
  * val CR = compoRegFactory(pause = done)
  * val y_buf = CR(gen = UInt(64.W), write = ..., d = ...)
  */
-object compoRegFactory {
+object CompoRegFactory {
   def apply(pause: Bool) = new {
     def apply[T <: Data](gen: T, write: Bool, d: T) = {
       val m = Module(new CompoReg(gen))
