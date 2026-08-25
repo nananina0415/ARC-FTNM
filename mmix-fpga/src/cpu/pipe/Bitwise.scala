@@ -41,41 +41,44 @@ case class BitwiseResult() extends Bundle {
   val res  = UInt(64.W)
 }
 
-class Bitwise extends Module {
-  val io = IO(new Bundle {
-    val op     = Input(BitwiseOp())
-    val pause  = Input(Bool())           // 외부 일시정지: 1이면 컴포넌트 전체 홀드
+/** 인출 단계가 연산 단계로 넘기는 값 — 레지스터버스에서 실제로 받아온 Y/Z. */
+case class BitwiseFetchResult() extends Bundle {
+  val flag = UInt(4.W)
+  val x    = UInt(8.W)
+  val y    = UInt(64.W)
+  val z    = UInt(64.W)
+}
 
-    val regY   = RegReadPort()  // Y 레지스터 읽기
-    val regZ   = RegReadPort()  // Z 레지스터 읽기 (즉치 시 미사용)
+/** 인출 단계 — 레지스터버스에 Y/Z를 요청해서 받아온다. */
+class BitwiseFetch(flag: UInt, x: UInt, y: UInt, z: UInt, bus: RegBus, regPort: RegReadPort) {
+  private val isImm = flag(0)
 
-    val result = Output(BitwiseResult())
-  })
+  bus.x.addr    := 0.U
+  regPort.x.set := false.B
+  bus.y.addr    := y
+  regPort.y.set := true.B
+  bus.z.addr    := z
+  regPort.z.set := !isImm
 
-  io.regY.addr := io.op.y
-  io.regZ.addr := io.op.z
+  val res = Wire(BitwiseFetchResult())
+  res.flag := flag
+  res.x    := x
+  res.y    := bus.y.data
+  res.z    := Mux(isImm, z.pad(64), bus.z.data)
+}
 
-  val isImm = io.op.flag(0)
+/** 연산 단계 — 인출이 끝난 값으로 실제 비트 연산을 수행한다. */
+class BitwiseExec(f: BitwiseFetchResult) {
+  private val logic = Module(new LogicUnit())
+  logic.io.a := f.y
+  logic.io.b := f.z
 
-  val CompoReg = CompoRegFactory(pause = io.pause)
-
-  val y_buf = CompoReg(gen = UInt(64.W), write = true.B, d = io.regY.data)
-  val z_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = Mux(isImm, io.op.z.pad(64), io.regZ.data)
-  )
-
-  val logic = Module(new LogicUnit())
-  logic.io.a := y_buf.q
-  logic.io.b := z_buf.q
-
-  val notZ   = WireDefault(false.B)
-  val notRes = WireDefault(false.B)
-  val opSel  = WireDefault(0.U(2.W))  // 0=OR, 1=AND, 2=XOR
+  private val notZ   = WireDefault(false.B)
+  private val notRes = WireDefault(false.B)
+  private val opSel  = WireDefault(0.U(2.W))  // 0=OR, 1=AND, 2=XOR
 
   // op 플래그 파싱 — flag[3:1]이 (OR/AND/XOR, notZ/notRes)를 함께 결정, flag[0]은 즉치 여부
-  switch(io.op.flag(3, 1)) {
+  switch(f.flag(3, 1)) {
     is("b100".U) { opSel := 0.U }                       // OR
     is("b101".U) { opSel := 0.U; notZ   := true.B }      // ORN
     is("b110".U) { opSel := 1.U }                        // AND
@@ -90,6 +93,37 @@ class Bitwise extends Module {
   logic.io.notB   := notZ
   logic.io.notRes := notRes
 
-  io.result.dest := io.op.x
-  io.result.res  := logic.io.res
+  val res = Wire(BitwiseResult())
+  res.dest := f.x
+  res.res  := logic.io.res
+}
+
+class Bitwise(regReadPortFactory: RegReadPortFactory) extends Module {
+  val io = IO(new Bundle {
+    val op     = Input(BitwiseOp())
+    val pause  = Input(Bool())           // 외부 일시정지: 1이면 컴포넌트 전체 홀드
+
+    val reg    = new RegBus
+
+    val result = Output(BitwiseResult())
+  })
+
+  val pauseFactory = new PauseFactory
+  pauseFactory.include(io.pause)
+
+  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
+  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
+  val pauseWire = Wire(Bool())
+  val regPort = regReadPortFactory(io.reg, pauseWire)
+  pauseFactory.include(!regPort.ack)
+
+  val CompoReg = CompoRegFactory(pauseFactory)
+  pauseWire := pauseFactory.pause
+
+  val fetch = new BitwiseFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort)
+
+  val fetchBuf = CompoReg(gen = BitwiseFetchResult(), write = regPort.ack, d = fetch.res)
+
+  // ── 연산 단계: 인출이 끝난 값으로 실제 비트 연산을 수행 ──
+  io.result := new BitwiseExec(fetchBuf.q).res
 }

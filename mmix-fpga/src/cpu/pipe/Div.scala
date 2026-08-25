@@ -32,77 +32,123 @@ case class DivResult() extends Bundle {
   val divCheck  = Bool()      // 제수가 0 (부호없는 DIVU는 항상 false)
 }
 
-class Div extends Module {
+/** 인출 단계가 연산 단계로 넘기는 값 — 레지스터버스에서 실제로 받아온 Y/Z와 rD. */
+case class DivFetchResult() extends Bundle {
+  val uFlag = Bool()
+  val x     = UInt(8.W)
+  val y     = UInt(64.W)
+  val z     = UInt(64.W)
+  val rD    = UInt(64.W)  // 전용선이라 버스 왕복 없이 그대로 실어옴
+}
+
+/** 인출 단계 — 레지스터버스에 Y/Z를 요청해서 받아온다. rD는 전용선이지만 그쪽도 자기만의
+ * 작은 중재기를 거치므로 똑같이 요청-대기해야 한다 — 다만 rD는 부호없는 DIVU에서만
+ * 쓰이므로(부호있는 DIV는 아예 안 봄) 그때만 요청한다.
+ */
+class DivFetch(
+  flag: UInt, x: UInt, y: UInt, z: UInt,
+  bus: RegBus, regPort: RegReadPort,
+  rD: RegD_R, rDPort: SpecialRegReadPort
+) {
+  private val zImm      = flag(0)
+  private val isUnsigned = flag(1)
+
+  bus.x.addr    := 0.U
+  regPort.x.set := false.B
+  bus.y.addr    := y
+  regPort.y.set := true.B
+  bus.z.addr    := z
+  regPort.z.set := !zImm
+
+  rDPort.reqReg.set := isUnsigned
+
+  val res = Wire(DivFetchResult())
+  res.uFlag := isUnsigned
+  res.x     := x
+  res.y     := bus.y.data
+  res.z     := Mux(zImm, z.pad(64), bus.z.data)
+  res.rD    := rD.data
+}
+
+/** 연산 단계 — 인출이 끝난 값으로 실제 나눗셈을 수행한다. */
+class DivExec(f: DivFetchResult) {
+  private val I64_MIN = "h8000000000000000".U(64.W)
+
+  // ── 부호있는 DIV — 절삭 나눗셈을 구한 뒤 floor로 보정 ──
+  private val zIsZero    = f.z === 0.U
+  private val minDivNeg1 = (f.y === I64_MIN) && (f.z.asSInt === -1.S)
+
+  private val ySInt = f.y.asSInt
+  private val zSInt = f.z.asSInt
+  private val safeZ = Mux(zIsZero, 1.S(64.W), zSInt)  // 실제 0으로 나누는 하드웨어 동작을 피하기 위한 안전값
+
+  private val tq = ySInt / safeZ  // 절삭 몫
+  private val tr = ySInt % safeZ  // 절삭 나머지
+
+  private val needAdjust = (tr =/= 0.S) && ((tr < 0.S) =/= (zSInt < 0.S))
+  private val floorQ = Mux(needAdjust, tq - 1.S, tq)
+  private val floorR = Mux(needAdjust, tr + zSInt, tr)
+
+  private val divRes = MuxCase(floorQ.asUInt(63, 0), Seq(
+    zIsZero    -> 0.U,
+    minDivNeg1 -> I64_MIN
+  ))
+  private val divRem = MuxCase(floorR.asUInt(63, 0), Seq(
+    zIsZero    -> f.y,
+    minDivNeg1 -> 0.U
+  ))
+  private val divOvf      = minDivNeg1
+  private val divCheckSig = zIsZero
+
+  // ── 부호없는 DIVU — rD:Y를 128비트 피제수로 취급 ──
+  private val dividend = Cat(f.rD, f.y)          // 128비트
+  private val safeZPad = Mux(zIsZero, 1.U(128.W), f.z.pad(128))
+  private val bigQ     = dividend / safeZPad
+  private val bigR     = dividend % safeZPad
+  private val rdGeZ    = f.rD >= f.z             // rD>=Z(제수 0 포함)면 몫이 64비트에 안 들어감
+
+  private val divuRes = Mux(rdGeZ, f.rD, bigQ(63, 0))
+  private val divuRem = Mux(rdGeZ, f.y, bigR(63, 0))
+
+  val res = Wire(DivResult())
+  res.dest      := f.x
+  res.res       := Mux(f.uFlag, divuRes, divRes)
+  res.remainder := Mux(f.uFlag, divuRem, divRem)
+  res.ovf       := !f.uFlag && divOvf
+  res.divCheck  := !f.uFlag && divCheckSig
+}
+
+class Div(regReadPortFactory: RegReadPortFactory, specialRegReadPortFactory: SpecialRegReadPortFactory) extends Module {
   val io = IO(new Bundle {
     val op     = Input(DivOp())
     val pause  = Input(Bool())
 
-    val regY   = RegReadPort()
-    val regZ   = RegReadPort()
+    val reg    = new RegBus
     val rD     = RegD_R()  // DIVU가 128비트 피제수(rD:Y)를 만들 때 쓰는 특수 레지스터, 전용 읽기 포트
 
     val result = Output(DivResult())
   })
 
-  io.regY.addr := io.op.y
-  io.regZ.addr := io.op.z
+  val pauseFactory = new PauseFactory
+  pauseFactory.include(io.pause)
 
-  val isUnsigned = io.op.flag(1)
-  val isImm      = io.op.flag(0)
+  // regPort/rDPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 이 포트들의 ack
+  // 자신도 들어가서 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가
+  // 확정된 뒤에 채운다. 두 포트 다 같은 pauseWire를 봐야 서로의 대기 상태 때문에
+  // 재무장되는 것도 막힌다(예: rD 기다리는 동안 Y가 먼저 도착해도 Y가 재요청 안 함).
+  val pauseWire = Wire(Bool())
+  val regPort = regReadPortFactory(io.reg, pauseWire)
+  val rDPort  = specialRegReadPortFactory(io.rD.ack, io.rD.req, pauseWire)
+  pauseFactory.include(!regPort.ack)
+  pauseFactory.include(!rDPort.ack)
 
-  val CompoReg = CompoRegFactory(pause = io.pause)
+  val CompoReg = CompoRegFactory(pauseFactory)
+  pauseWire := pauseFactory.pause
 
-  val y_buf = CompoReg(gen = UInt(64.W), write = true.B, d = io.regY.data)
-  val z_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = Mux(isImm, io.op.z.pad(64), io.regZ.data)
-  )
+  val fetch = new DivFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort, io.rD, rDPort)
 
-  val y = y_buf.q
-  val z = z_buf.q
+  val fetchBuf = CompoReg(gen = DivFetchResult(), write = regPort.ack && rDPort.ack, d = fetch.res)
 
-  val I64_MIN = "h8000000000000000".U(64.W)
-
-  // ── 부호있는 DIV — 절삭 나눗셈을 구한 뒤 floor로 보정 ──
-  val zIsZero    = z === 0.U
-  val minDivNeg1 = (y === I64_MIN) && (z.asSInt === -1.S)
-
-  val ySInt  = y.asSInt
-  val zSInt  = z.asSInt
-  val safeZ  = Mux(zIsZero, 1.S(64.W), zSInt)  // 실제 0으로 나누는 하드웨어 동작을 피하기 위한 안전값
-
-  val tq = ySInt / safeZ  // 절삭 몫
-  val tr = ySInt % safeZ  // 절삭 나머지
-
-  val needAdjust = (tr =/= 0.S) && ((tr < 0.S) =/= (zSInt < 0.S))
-  val floorQ = Mux(needAdjust, tq - 1.S, tq)
-  val floorR = Mux(needAdjust, tr + zSInt, tr)
-
-  val divRes = MuxCase(floorQ.asUInt(63, 0), Seq(
-    zIsZero    -> 0.U,
-    minDivNeg1 -> I64_MIN
-  ))
-  val divRem = MuxCase(floorR.asUInt(63, 0), Seq(
-    zIsZero    -> y,
-    minDivNeg1 -> 0.U
-  ))
-  val divOvf      = minDivNeg1
-  val divCheckSig = zIsZero
-
-  // ── 부호없는 DIVU — rD:Y를 128비트 피제수로 취급 ──
-  val dividend  = Cat(io.rD.data, y)          // 128비트
-  val safeZPad  = Mux(zIsZero, 1.U(128.W), z.pad(128))
-  val bigQ      = dividend / safeZPad
-  val bigR      = dividend % safeZPad
-  val rdGeZ     = io.rD.data >= z             // rD>=Z(제수 0 포함)면 몫이 64비트에 안 들어감
-
-  val divuRes = Mux(rdGeZ, io.rD.data, bigQ(63, 0))
-  val divuRem = Mux(rdGeZ, y, bigR(63, 0))
-
-  io.result.dest      := io.op.x
-  io.result.res       := Mux(isUnsigned, divuRes, divRes)
-  io.result.remainder := Mux(isUnsigned, divuRem, divRem)
-  io.result.ovf       := !isUnsigned && divOvf
-  io.result.divCheck  := !isUnsigned && divCheckSig
+  // ── 연산 단계: 인출이 끝난 값으로 실제 나눗셈을 수행 ──
+  io.result := new DivExec(fetchBuf.q).res
 }

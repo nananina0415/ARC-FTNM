@@ -15,7 +15,7 @@ import chisel3._
 import chisel3.util._
 
 case class MulOp() extends Bundle {
-  val flag = UInt(5.W)
+  val flag = UInt(2.W)
   val x    = UInt(8.W)
   val y    = UInt(8.W)
   val z    = UInt(8.W)
@@ -29,47 +29,77 @@ case class MulResult() extends Bundle {
   val ovf    = Bool()      // 부호있는 MUL만 유효, MULU는 항상 false
 }
 
-class Mul extends Module {
+/** 인출 단계가 연산 단계로 넘기는 값 — 레지스터버스에서 실제로 받아온 Y/Z. */
+case class MulFetchResult() extends Bundle {
+  val uFlag = Bool()
+  val x     = UInt(8.W)
+  val y     = UInt(64.W)
+  val z     = UInt(64.W)
+}
+
+/** 연산 단계 — 인출이 끝난 값으로 실제 곱셈을 수행한다. */
+class MulExec(f: MulFetchResult) {
+  // 128비트 곱 — 부호에 따라 signed/unsigned 곱셈 (둘 다 자동으로 128비트 폭)
+  private val prodSigned   = f.y.asSInt * f.z.asSInt
+  private val prodUnsigned = f.y * f.z
+  private val prod = Mux(f.uFlag, prodUnsigned, prodSigned.asUInt)
+
+  // 결과 부호비트(63) + 상위 64비트, 총 65비트 — 전부 같으면 안전, 하나라도 다르면 오버플로우
+  private val top65 = prod(127, 63)
+  private val safe  = top65.andR || !top65.orR
+
+  val res = Wire(MulResult())
+  res.dest   := f.x
+  res.res    := prod(63, 0)
+  res.himult := prod(127, 64)
+  res.writeH := f.uFlag
+  res.ovf    := !f.uFlag && !safe
+}
+
+/** 인출 단계 — 레지스터버스에 Y/Z를 요청해서 받아온다. */
+class MulFetch(flag: UInt, x: UInt, y: UInt, z: UInt, bus: RegBus, regPort: RegReadPort) {
+  private val zImm = flag(0)
+
+  bus.x.addr    := 0.U
+  regPort.x.set := false.B
+  bus.y.addr    := y
+  regPort.y.set := true.B
+  bus.z.addr    := z
+  regPort.z.set := !zImm
+
+  val res = Wire(MulFetchResult())
+  res.uFlag := flag(1)
+  res.x     := x
+  res.y     := bus.y.data
+  res.z     := Mux(zImm, z.pad(64), bus.z.data)
+}
+
+class Mul(regReadPortFactory: RegReadPortFactory) extends Module {
   val io = IO(new Bundle {
     val op     = Input(MulOp())
     val pause  = Input(Bool())
 
-    val regY   = RegReadPort()
-    val regZ   = RegReadPort()
+    val reg    = new RegBus
 
     val result = Output(MulResult())
   })
 
-  io.regY.addr := io.op.y
-  io.regZ.addr := io.op.z
+  val pauseFactory = new PauseFactory
+  pauseFactory.include(io.pause)
 
-  val isUnsigned = io.op.flag(1)
-  val isImm      = io.op.flag(0)
+  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
+  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
+  val pauseWire = Wire(Bool())
+  val regPort = regReadPortFactory(io.reg, pauseWire)
+  pauseFactory.include(!regPort.ack)
 
-  val CompoReg = CompoRegFactory(pause = io.pause)
+  val CompoReg = CompoRegFactory(pauseFactory)
+  pauseWire := pauseFactory.pause
 
-  val y_buf = CompoReg(gen = UInt(64.W), write = true.B, d = io.regY.data)
-  val z_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = Mux(isImm, io.op.z.pad(64), io.regZ.data)
-  )
+  val fetch = new MulFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort)
 
-  val y = y_buf.q
-  val z = z_buf.q
+  val fetchBuf = CompoReg(gen = MulFetchResult(), write = regPort.ack, d = fetch.res)
 
-  // 128비트 곱 — 부호에 따라 signed/unsigned 곱셈 (둘 다 자동으로 128비트 폭)
-  val prodSigned   = y.asSInt * z.asSInt
-  val prodUnsigned = y * z
-  val prod = Mux(isUnsigned, prodUnsigned, prodSigned.asUInt)
-
-  // 결과 부호비트(63) + 상위 64비트, 총 65비트 — 전부 같으면 안전, 하나라도 다르면 오버플로우
-  val top65 = prod(127, 63)
-  val safe  = top65.andR || !top65.orR
-
-  io.result.dest   := io.op.x
-  io.result.res    := prod(63, 0)
-  io.result.himult := prod(127, 64)
-  io.result.writeH := isUnsigned
-  io.result.ovf    := !isUnsigned && !safe
+  // ── 연산 단계: 인출이 끝난 값으로 실제 곱셈을 수행 ──
+  io.result := new MulExec(fetchBuf.q).res
 }

@@ -41,62 +41,93 @@ case class CompResult() extends Bundle {
   val write = Bool()  // false면 레지스터 파일 쓰기 생략 (CS_ 조건 불만족 시)
 }
 
-class Comp extends Module {
-  val io = IO(new Bundle {
-    val op     = Input(CompOp())
-    val pause  = Input(Bool())
+/** 인출 단계가 연산 단계로 넘기는 값 — 레지스터버스에서 실제로 받아온 Y/Z. */
+case class CompFetchResult() extends Bundle {
+  val flag = UInt(6.W)
+  val x    = UInt(8.W)
+  val y    = UInt(64.W)
+  val z    = UInt(64.W)
+}
 
-    val regY   = RegReadPort()
-    val regZ   = RegReadPort()
+/** 인출 단계 — 레지스터버스에 Y/Z를 요청해서 받아온다. */
+class CompFetch(flag: UInt, x: UInt, y: UInt, z: UInt, bus: RegBus, regPort: RegReadPort) {
+  private val isImm = flag(0)
 
-    val result = Output(CompResult())
-  })
+  bus.x.addr    := 0.U
+  regPort.x.set := false.B
+  bus.y.addr    := y
+  regPort.y.set := true.B
+  bus.z.addr    := z
+  regPort.z.set := !isImm
 
-  io.regY.addr := io.op.y
-  io.regZ.addr := io.op.z
+  val res = Wire(CompFetchResult())
+  res.flag := flag
+  res.x    := x
+  res.y    := bus.y.data
+  res.z    := Mux(isImm, z.pad(64), bus.z.data)
+}
 
-  val isImm = io.op.flag(0)
+/** 연산 단계 — 인출이 끝난 값으로 실제 비교/조건부설정을 수행한다. */
+class CompExec(f: CompFetchResult) {
+  private val comparator = Module(new Comparator())
+  comparator.io.a     := f.y
+  comparator.io.b     := f.z
+  comparator.io.uFlag := f.flag(1)
 
-  val CompoReg = CompoRegFactory(pause = io.pause)
+  private val cmpRes = comparator.io.res.pad(64).asUInt
 
-  val y_buf = CompoReg(gen = UInt(64.W), write = true.B, d = io.regY.data)
-  val z_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = Mux(isImm, io.op.z.pad(64), io.regZ.data)
-  )
+  private val cond    = f.flag(2, 1)
+  private val condInv = !f.flag(3)
 
-  val y = y_buf.q
-  val z = z_buf.q
-
-  val comparator = Module(new Comparator())
-  comparator.io.a     := y
-  comparator.io.b     := z
-  comparator.io.uFlag := io.op.flag(1)
-
-  val cmpRes = comparator.io.res.pad(64).asUInt
-
-  val cond    = io.op.flag(2, 1)
-  val condInv = !io.op.flag(3)
-
-  val condsetter = Module(new CondSetter())
+  private val condsetter = Module(new CondSetter())
   condsetter.io.cond    := cond
-  condsetter.io.y       := y
-  condsetter.io.z       := z
+  condsetter.io.y       := f.y
+  condsetter.io.z       := f.z
   condsetter.io.condInv := condInv
-  condsetter.io.else0   := io.op.flag(5, 4) === "b11".U
+  condsetter.io.else0   := f.flag(5, 4) === "b11".U
 
-  val res   = WireDefault(0.U(64.W))
-  val write = WireDefault(true.B)
+  private val res   = WireDefault(0.U(64.W))
+  private val write = WireDefault(true.B)
 
   // flag[5:4] — 00=CMP/CMPU, 01=CSWAP(미구현), 10=CS_, 11=ZS_
-  switch(io.op.flag(5, 4)) {
+  switch(f.flag(5, 4)) {
     is("b00".U) { res := cmpRes }
     is("b10".U) { res := condsetter.io.res; write := condsetter.io.write }
     is("b11".U) { res := condsetter.io.res; write := condsetter.io.write }
   }
 
-  io.result.dest  := io.op.x
-  io.result.res   := res
-  io.result.write := write
+  val out = Wire(CompResult())
+  out.dest  := f.x
+  out.res   := res
+  out.write := write
+}
+
+class Comp(regReadPortFactory: RegReadPortFactory) extends Module {
+  val io = IO(new Bundle {
+    val op     = Input(CompOp())
+    val pause  = Input(Bool())
+
+    val reg    = new RegBus
+
+    val result = Output(CompResult())
+  })
+
+  val pauseFactory = new PauseFactory
+  pauseFactory.include(io.pause)
+
+  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
+  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
+  val pauseWire = Wire(Bool())
+  val regPort = regReadPortFactory(io.reg, pauseWire)
+  pauseFactory.include(!regPort.ack)
+
+  val CompoReg = CompoRegFactory(pauseFactory)
+  pauseWire := pauseFactory.pause
+
+  val fetch = new CompFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort)
+
+  val fetchBuf = CompoReg(gen = CompFetchResult(), write = regPort.ack, d = fetch.res)
+
+  // ── 연산 단계: 인출이 끝난 값으로 실제 비교/조건부설정을 수행 ──
+  io.result := new CompExec(fetchBuf.q).out
 }

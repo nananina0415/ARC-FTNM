@@ -35,70 +35,98 @@ case class ShiftResult() extends Bundle {
   val res  = UInt(64.W)
 }
 
-class Shift extends Module {
+/** 인출 단계가 연산 단계로 넘기는 값 — 레지스터버스에서 실제로 받아온 Y/시프트량. */
+case class ShiftFetchResult() extends Bundle {
+  val isLeft     = Bool()
+  val isUnsigned = Bool()
+  val x  = UInt(8.W)
+  val y  = UInt(64.W)
+  val sh = UInt(64.W)
+}
+
+/** 인출 단계 — 레지스터버스에 Y/Z를 요청해서 받아온다. */
+class ShiftFetch(flag: UInt, x: UInt, y: UInt, z: UInt, bus: RegBus, regPort: RegReadPort) {
+  private val isImm = flag(0)
+
+  bus.x.addr    := 0.U
+  regPort.x.set := false.B
+  bus.y.addr    := y
+  regPort.y.set := true.B
+  bus.z.addr    := z
+  regPort.z.set := !isImm
+
+  val res = Wire(ShiftFetchResult())
+  res.isLeft     := !flag(2)
+  res.isUnsigned := flag(1)
+  res.x  := x
+  res.y  := bus.y.data
+  res.sh := Mux(isImm, z.pad(64), bus.z.data)
+}
+
+/** 연산 단계 — 인출이 끝난 값으로 실제 시프트를 수행한다. */
+class ShiftExec(f: ShiftFetchResult) {
+  private val y  = f.y
+  private val sh = f.sh
+
+  private val isYMinus = y(63)
+  private val isZBig   = sh(63, 6).orR                 // 시프트량 ≥ 64
+
+  // 정상 경로(시프트량 < 64) — 실제 시프트 수행
+  private val sh6      = sh(5, 0)
+  private val leftRes  = (y << sh6)(63, 0)
+  private val rightRes = Mux(f.isUnsigned, y >> sh6, (y.asSInt >> sh6).asUInt)
+  private val shiftedRes = Mux(f.isLeft, leftRes, rightRes)
+
+  // ovf_mask: decode_6to64(sh6)를 뒤집어서(63-sh6 위치) 저→고로 전파 — 상위 (sh+1)비트를 선택
+  private val decoded  = UIntToOH(sh6, 64)
+  private val reversed = Cat(decoded(63), Reverse(decoded(63, 1)))
+  private val propa64  = Module(new Propa64())
+  propa64.io.in  := reversed
+  propa64.io.cin := false.B
+  private val ovfMask  = propa64.io.res
+
+  // 음수면 Y를 반전해서 "부호와 같은 패턴"을 항상 0으로 맞춘다 (마스크 위치는 부호와 무관하게 고정)
+  private val checkVal    = Mux(isYMinus, ~y, y)
+  private val masked      = checkVal & ovfMask
+  private val maskedEqual = masked.andR || !masked.orR // bit_fold(equal): 전부 1이거나 전부 0 (=안전)
+  private val normalOvf   = f.isLeft && !f.isUnsigned && !maskedEqual  // 마스크된 비트가 서로 다르면 오버플로우
+
+  // 빅시프트 경로(시프트량 ≥ 64)
+  private val bigRes = Mux(f.isLeft, 0.U(64.W), Mux(!f.isUnsigned && isYMinus, "hffffffffffffffff".U(64.W), 0.U(64.W)))
+  private val bigOvf = f.isLeft && !f.isUnsigned && (y =/= 0.U)
+
+  val res = Wire(ShiftResult())
+  res.dest := f.x
+  res.res  := Mux(isZBig, bigRes, shiftedRes)
+  res.ovf  := Mux(isZBig, bigOvf, normalOvf)
+}
+
+class Shift(regReadPortFactory: RegReadPortFactory) extends Module {
   val io = IO(new Bundle {
     val op     = Input(ShiftOp())
     val pause  = Input(Bool())           // 외부 일시정지: 1이면 컴포넌트 전체 홀드
 
-    val regY   = RegReadPort()  // 시프트 대상 값
-    val regZ   = RegReadPort()  // 레지스터 모드일 때 시프트량
+    val reg    = new RegBus
 
     val result = Output(ShiftResult())
   })
 
-  io.regY.addr := io.op.y
-  io.regZ.addr := io.op.z
+  val pauseFactory = new PauseFactory
+  pauseFactory.include(io.pause)
 
-  // op 플래그 파싱 — direction:flag(2), unsign:flag(1), imm:flag(0)
-  val isLeft     = !io.op.flag(2)
-  val isUnsigned =  io.op.flag(1)
-  val isImm      =  io.op.flag(0)
+  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
+  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
+  val pauseWire = Wire(Bool())
+  val regPort = regReadPortFactory(io.reg, pauseWire)
+  pauseFactory.include(!regPort.ack)
 
-  val CompoReg = CompoRegFactory(pause = io.pause)
+  val CompoReg = CompoRegFactory(pauseFactory)
+  pauseWire := pauseFactory.pause
 
-  val y_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = io.regY.data
-  )
+  val fetch = new ShiftFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort)
 
-  val sh_buf = CompoReg(
-    gen   = UInt(64.W),
-    write = true.B,
-    d     = Mux(isImm, io.op.z.pad(64), io.regZ.data)
-  )
+  val fetchBuf = CompoReg(gen = ShiftFetchResult(), write = regPort.ack, d = fetch.res)
 
-  val y  = y_buf.q
-  val sh = sh_buf.q
-
-  val isYMinus = y(63)
-  val isZBig   = sh(63, 6).orR                 // 시프트량 ≥ 64
-
-  // 정상 경로(시프트량 < 64) — 실제 시프트 수행
-  val sh6      = sh(5, 0)
-  val leftRes  = (y << sh6)(63, 0)
-  val rightRes = Mux(isUnsigned, y >> sh6, (y.asSInt >> sh6).asUInt)
-  val shiftedRes = Mux(isLeft, leftRes, rightRes)
-
-  // ovf_mask: decode_6to64(sh6)를 뒤집어서(63-sh6 위치) 저→고로 전파 — 상위 (sh+1)비트를 선택
-  val decoded  = UIntToOH(sh6, 64)
-  val reversed = Cat(decoded(63), Reverse(decoded(63, 1)))
-  val propa64  = Module(new Propa64())
-  propa64.io.in  := reversed
-  propa64.io.cin := false.B
-  val ovfMask  = propa64.io.res
-
-  // 음수면 Y를 반전해서 "부호와 같은 패턴"을 항상 0으로 맞춘다 (마스크 위치는 부호와 무관하게 고정)
-  val checkVal    = Mux(isYMinus, ~y, y)
-  val masked      = checkVal & ovfMask
-  val maskedEqual = masked.andR || !masked.orR // bit_fold(equal): 전부 1이거나 전부 0 (=안전)
-  val normalOvf   = isLeft && !isUnsigned && !maskedEqual  // 마스크된 비트가 서로 다르면 오버플로우
-
-  // 빅시프트 경로(시프트량 ≥ 64)
-  val bigRes = Mux(isLeft, 0.U(64.W), Mux(!isUnsigned && isYMinus, "hffffffffffffffff".U(64.W), 0.U(64.W)))
-  val bigOvf = isLeft && !isUnsigned && (y =/= 0.U)
-
-  io.result.dest := io.op.x
-  io.result.res  := Mux(isZBig, bigRes, shiftedRes)
-  io.result.ovf  := Mux(isZBig, bigOvf, normalOvf)
+  // ── 연산 단계: 인출이 끝난 값으로 실제 시프트를 수행 ──
+  io.result := new ShiftExec(fetchBuf.q).res
 }
