@@ -27,3 +27,18 @@ class ComplexAdder64 extends Module {
   // 두 피연산자 부호가 같고 결과 부호가 달라지면 오버플로우
   io.ovf   := (io.a(63) === io.b(63)) && (io.res(63) =/= io.a(63))
 }
+
+/** 64비트 단순 가산기 — 뺄셈 불가, 오버플로우/최종 캐리 출력 없음.
+ *
+ * 결과를 mod 2^64로 그냥 잘라서 쓰고 오버플로우는 무시해도 되는 곳(Const의 INC/SET 등)에서
+ * ComplexAdder64보다 가볍게 쓴다.
+ */
+class SimpleAdder64 extends Module {
+  val io = IO(new Bundle {
+    val a   = Input(UInt(64.W))
+    val b   = Input(UInt(64.W))
+    val res = Output(UInt(64.W))
+  })
+
+  io.res := (io.a + io.b)(63, 0)
+}
