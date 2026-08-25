@@ -30,6 +30,7 @@ mmix-fpga/project/target/
 mmix-fpga/.Xil/
 mmix-fpga/vivado.jou
 mmix-fpga/vivado.log
+mmix-fpga/test/test_run_dir/
 
 # 4. 개발 도구 및 OS 특성 파일
 # ------------------------------------------
