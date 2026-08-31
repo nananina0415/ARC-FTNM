@@ -48,19 +48,19 @@ case class DivFetchResult() extends Bundle {
 class DivFetch(
   flag: UInt, x: UInt, y: UInt, z: UInt,
   bus: RegBus, regPort: RegReadPort,
-  rD: RegD_R, rDPort: SpecialRegReadPort
+  rD: SpecialRegPort_Div_R, rDPort: SpecialRegReadPort
 ) {
   private val zImm      = flag(0)
   private val isUnsigned = flag(1)
 
-  bus.x.addr    := 0.U
-  regPort.x.set := false.B
-  bus.y.addr    := y
-  regPort.y.set := true.B
-  bus.z.addr    := z
-  regPort.z.set := !zImm
+  regPort.x.addr := 0.U
+  regPort.x.set  := false.B
+  regPort.y.addr := y
+  regPort.y.set  := true.B
+  regPort.z.addr := z
+  regPort.z.set  := !zImm
 
-  rDPort.reqReg.set := isUnsigned
+  rDPort.set_=(isUnsigned)
 
   val res = Wire(DivFetchResult())
   res.uFlag := isUnsigned
@@ -124,26 +124,25 @@ class Div(regReadPortFactory: RegReadPortFactory, specialRegReadPortFactory: Spe
     val pause  = Input(Bool())
 
     val reg    = new RegBus
-    val rD     = RegD_R()  // DIVU가 128비트 피제수(rD:Y)를 만들 때 쓰는 특수 레지스터, 전용 읽기 포트
+    val rD     = SpecialRegPort_Div_R()  // DIVU가 128비트 피제수(rD:Y)를 만들 때 쓰는 특수 레지스터,
+                                          // Div 그룹 공유 읽기 포트(로컬번호 0=rD)
 
     val result = Output(DivResult())
   })
 
-  val pauseFactory = new PauseFactory
-  pauseFactory.include(io.pause)
+  val pauseBox = new PauseBox(3)
+  pauseBox.reasons(0) := io.pause
 
-  // regPort/rDPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 이 포트들의 ack
-  // 자신도 들어가서 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가
-  // 확정된 뒤에 채운다. 두 포트 다 같은 pauseWire를 봐야 서로의 대기 상태 때문에
-  // 재무장되는 것도 막힌다(예: rD 기다리는 동안 Y가 먼저 도착해도 Y가 재요청 안 함).
-  val pauseWire = Wire(Bool())
-  val regPort = regReadPortFactory(io.reg, pauseWire)
-  val rDPort  = specialRegReadPortFactory(io.rD.ack, io.rD.req, pauseWire)
-  pauseFactory.include(!regPort.ack)
-  pauseFactory.include(!rDPort.ack)
+  // 두 포트 다 같은 pauseBox.pause를 봐야 서로의 대기 상태 때문에 재무장되는 것도
+  // 막힌다(예: rD 기다리는 동안 Y가 먼저 도착해도 Y가 재요청 안 함).
+  val regPort = regReadPortFactory(io.reg, pauseBox.pause)
+  val rDPort  = specialRegReadPortFactory(io.rD.ack, pauseBox.pause)
+  io.rD.req  := rDPort.req
+  io.rD.addr := 0.U  // Div 그룹 안에서 rD의 로컬번호(0) — 고정, Div는 rD만 읽는다
+  pauseBox.reasons(1) := !regPort.ack
+  pauseBox.reasons(2) := !rDPort.ack
 
-  val CompoReg = CompoRegFactory(pauseFactory)
-  pauseWire := pauseFactory.pause
+  val CompoReg = CompoRegFactory(pauseBox.pause)
 
   val fetch = new DivFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort, io.rD, rDPort)
 

@@ -53,12 +53,12 @@ case class BitwiseFetchResult() extends Bundle {
 class BitwiseFetch(flag: UInt, x: UInt, y: UInt, z: UInt, bus: RegBus, regPort: RegReadPort) {
   private val isImm = flag(0)
 
-  bus.x.addr    := 0.U
-  regPort.x.set := false.B
-  bus.y.addr    := y
-  regPort.y.set := true.B
-  bus.z.addr    := z
-  regPort.z.set := !isImm
+  regPort.x.addr := 0.U
+  regPort.x.set  := false.B
+  regPort.y.addr := y
+  regPort.y.set  := true.B
+  regPort.z.addr := z
+  regPort.z.set  := !isImm
 
   val res = Wire(BitwiseFetchResult())
   res.flag := flag
@@ -108,17 +108,13 @@ class Bitwise(regReadPortFactory: RegReadPortFactory) extends Module {
     val result = Output(BitwiseResult())
   })
 
-  val pauseFactory = new PauseFactory
-  pauseFactory.include(io.pause)
+  val pauseBox = new PauseBox(2)
+  pauseBox.reasons(0) := io.pause
 
-  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
-  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
-  val pauseWire = Wire(Bool())
-  val regPort = regReadPortFactory(io.reg, pauseWire)
-  pauseFactory.include(!regPort.ack)
+  val regPort = regReadPortFactory(io.reg, pauseBox.pause)
+  pauseBox.reasons(1) := !regPort.ack
 
-  val CompoReg = CompoRegFactory(pauseFactory)
-  pauseWire := pauseFactory.pause
+  val CompoReg = CompoRegFactory(pauseBox.pause)
 
   val fetch = new BitwiseFetch(io.op.flag, io.op.x, io.op.y, io.op.z, io.reg, regPort)
 

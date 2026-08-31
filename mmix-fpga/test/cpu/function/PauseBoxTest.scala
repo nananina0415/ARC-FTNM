@@ -4,15 +4,15 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
-// include()로 넣은 조합 신호는 지연 없이 그 사이클에 바로 pause에 반영돼야 한다.
-class IncludeDelayHarness extends Module {
+// reasons(i) :=로 넣은 조합 신호는 지연 없이 그 사이클에 바로 pause에 반영돼야 한다.
+class ReasonsDelayHarness extends Module {
   val io = IO(new Bundle {
     val w     = Input(Bool())
     val pause = Output(Bool())
   })
-  val pf = new PauseFactory
-  pf.include(io.w)
-  io.pause := pf.pause
+  val pb = new PauseBox(1)
+  pb.reasons(0) := io.w
+  io.pause := pb.pause
 }
 
 // RegPortFactory의 plz(= !received && valid)도 조합 와이어라 valid가 바뀌는 즉시
@@ -33,17 +33,21 @@ class RegPortDelayHarness extends Module {
   port.data := io.data
   port.ack  := io.ack
 
-  val pf  = new PauseFactory
-  val rpf = new RegPortFactory(pf)
-  io.buf   := rpf(port, io.valid, io.addr)
+  val rpf = new RegPortFactory
+  val (buf, plz) = rpf(port, io.valid, io.addr)
+
+  val pb = new PauseBox(1)
+  pb.reasons(0) := plz
+
+  io.buf   := buf
   io.req   := port.req
-  io.pause := pf.pause
+  io.pause := pb.pause
 }
 
-class PauseFactoryTest extends AnyFlatSpec with ChiselScalatestTester {
+class PauseBoxTest extends AnyFlatSpec with ChiselScalatestTester {
 
-  "PauseFactory" should "include(): 조합 신호라 같은 사이클에 바로 반영된다(지연 없음)" in {
-    test(new IncludeDelayHarness) { dut =>
+  "PauseBox" should "reasons(i) :=: 조합 신호라 같은 사이클에 바로 반영된다(지연 없음)" in {
+    test(new ReasonsDelayHarness) { dut =>
       dut.io.w.poke(false.B)
       dut.io.pause.expect(false.B)
 

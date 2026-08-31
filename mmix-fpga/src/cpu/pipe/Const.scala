@@ -60,22 +60,19 @@ class Const(regReadPortFactory: RegReadPortFactory) extends Module {
   val useZeroBase = op === 1.U    // SET일 때만 X 대신 0에서 시작
   val notB        = op === 3.U    // ANDN일 때만 positioned를 반전
 
-  val pauseFactory = new PauseFactory
-  pauseFactory.include(io.pause)
-
-  // regPort 안의 SignalReg들도 pause에 물려야 하는데, 그 pause엔 regPort.ack 자신도 들어가서
-  // 먼저 만들 수가 없다 — Wire로 자리만 잡아두고 값은 pauseFactory가 확정된 뒤에 채운다.
-  val pauseWire = Wire(Bool())
-  val regPort = regReadPortFactory(io.reg, pauseWire)
-  pauseFactory.include(!regPort.ack)
+  val pauseBox = new PauseBox(2)
+  pauseBox.reasons(0) := io.pause
 
   // X는 accFlag=0(새로 시작)이고 SET 계열이 아닐 때만 실제로 결과에 쓰인다 — 그때만 요청한다.
   val needX = !io.accFlag && !useZeroBase
-  io.reg.x.addr := io.op.x
+  val regPort = regReadPortFactory(io.reg, pauseBox.pause)
+  pauseBox.reasons(1) := !regPort.ack
+
+  regPort.x.addr := io.op.x
   regPort.x.set := needX
-  io.reg.y.addr := 0.U
+  regPort.y.addr := 0.U
   regPort.y.set := false.B
-  io.reg.z.addr := 0.U
+  regPort.z.addr := 0.U
   regPort.z.set := false.B
 
   val freshBase = Mux(useZeroBase, 0.U(64.W), io.reg.x.data)
@@ -87,8 +84,7 @@ class Const(regReadPortFactory: RegReadPortFactory) extends Module {
   // 흘러들어가고(accFlag=false일 땐 이전 사이클에 기댈 게 없는 완전히 새 계산이라 래치가 딱히 필요 없다)
   // pause가 보호해야 하는 건 체이닝 중인 acc뿐이다. X를 기다리는 동안도 pause에 포함되니
   // (regPort.ack) write=true.B라도 그 사이엔 CompoReg 자체가 안 걸린다.
-  val CompoReg = CompoRegFactory(pauseFactory)
-  pauseWire := pauseFactory.pause
+  val CompoReg = CompoRegFactory(pauseBox.pause)
   val acc = CompoReg(
     gen   = UInt(64.W),
     write = true.B,
