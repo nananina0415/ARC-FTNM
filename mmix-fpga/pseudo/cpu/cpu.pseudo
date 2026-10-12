@@ -1,0 +1,10 @@
+// ::은 상대주소
+alias ::alu::Alu
+alias ::reg::Registers
+
+seq Cpu {
+    pub clock: In<bit,1>
+
+    alu: Alu
+    mut reg: Registers
+}

@@ -1,0 +1,56 @@
+// 번들은 기본적으로 가지고 있는쪽 입장에서 인아웃
+// *<번들>은 인아웃반전. 포인터처럼 밖에 있는 번들을 가리키는(연결되는) 용도
+
+bundle AluSelect: In<bit,3>
+
+// 조합회로
+// 내부에 번들 삽입시 pub 붙이기
+
+comb Alu {
+    pub alu_sel: AluSelect
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+
+    addsub: AddSub
+    mul: Mul
+    div: Div
+    comp: Compare
+    bitwise: Bitwise
+    shift: Shift
+
+    alu_res_mux: Mux<6,WORD_SIZE>
+}
+
+// wire: 순차회로나 조합회로의 내부 배선
+
+wire Alu {
+    alu_sel[0,1,2] -> alu_res_mux.select[0,1,2]
+    [ alu_res_mux.option[..] ] <- [ // 방향 반대로
+        addsub.res,
+        mul.res,
+        div.res,
+        comp.res,
+        bitwise.res,
+        shift.res,
+    ]
+    alu_res_mux.selected -> res
+
+    arg1[0..WORD_SIZE] => { // 각각배선
+        addsub.arg1,
+        mul.arg1,
+        div.arg1,
+        comp.arg1,
+        bitwise.arg1,
+        shift.arg1,
+    }
+    arg2[0..WORD_SIZE] => {
+        addsub.arg2,
+        mul.arg2,
+        div.arg2,
+        comp.arg2,
+        bitwise.arg2,
+        shift.arg2,
+    }
+
+}

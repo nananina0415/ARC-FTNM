@@ -1,0 +1,102 @@
+seq WordReg {
+    pub clock: In<bit,1>
+    pub enable: In<bit,1>
+    pub rw: In<bit,1>
+    pub data: WordInOut
+
+    buf: [D_FlipFlop; WORD_SIZE]
+    w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
+    tri: TriState64
+}
+
+wire WordReg {  // r=1,w=0
+    clock => { buf[..].clock }
+
+    w_mux.select    <- and(enable, not(rw)) // AND 게이트
+    w_mux.option[0] <- [ buf[..].out ]
+    w_mux.option[1] <- data
+    w_mux.selected  -> [ buf[..].in ]
+
+    tri.enable <- and(enable, rw)
+    tri.in     <- [ buf[..].out ]
+    tri.out    -> data
+}
+
+// 번들은 번들만 포함가능
+
+bundle GeneralRegIO {
+    sel: In<bit,8>
+    rw: In<bit,1>
+    data: WordInOut
+}
+
+bundle SpecialRegIO {
+    sel: In<bit,5>
+    rw: In<bit,1>
+    data: WordInOut
+}
+
+// 순차회로. 내부에 순차회로를 썼으면 순차회로여야함.
+// 내부에 순차회로 삽입시 mut 붙이기
+
+seq Registers {
+    pub clock: In<bit,1>
+
+    pub general: GeneralRegIO
+    pub special: SpecialRegIO
+
+    mut generals: [WordReg; 256]
+    mut specials: [WordReg; 32]
+
+    sel_general_reg: Decoder<8,256>
+    sel_special_reg: Decoder<5,32>
+}
+
+wire Registers {
+    clock => { generals[..].clock, specials[..].clock }
+
+    general.sel         -> sel_general_reg.in
+    sel_general_reg.out -> [ generals[0..256].enable ]
+    general.rw          => { generals[0..256].rw }
+    general.data       <=> { generals[0..256].data }
+
+    special.sel         -> sel_special_reg.in
+    sel_special_reg.out -> [ specials[0..32].enable ]
+    special.rw          => { specials[0..32].rw }
+    special.data       <=> { specials[0..32].data }
+}
+
+alias {
+    rB = 0
+    rD = 1
+    rE = 2
+    rH = 3
+    rJ = 4
+    rM = 5
+    rR = 6
+    rBB = 7
+    rC = 8
+    rN = 9
+    rO = 10
+    rS = 11
+    rI = 12
+    rT = 13
+    rTT = 14
+    rK = 15
+    rQ = 16
+    rU = 17
+    rV = 18
+    rG = 19
+    rL = 20
+    rA = 21
+    rF = 22
+    rP = 23
+    rW = 24
+    rX = 25
+    rY = 26
+    rZ = 27
+    rWW = 28
+    rXX = 29
+    rYY = 30
+    rZZ = 31
+}
