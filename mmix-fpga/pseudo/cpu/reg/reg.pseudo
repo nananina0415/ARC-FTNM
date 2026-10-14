@@ -2,12 +2,14 @@ alias AluDirectIO = alu::AluDirectIO
 
 seq WordReg {
     pub clock: In<bit,1>
+    pub reset: In<bit,1>
     pub enable: In<bit,1>
     pub rw: In<bit,1>
     pub data: WordInOut
 
     buf: [D_FlipFlop; WORD_SIZE]
     w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
+    rst_mux: Mux<2,WORD_SIZE>
     tri: TriState
 }
 
@@ -17,7 +19,12 @@ wire WordReg {  // r=1,w=0
     w_mux.select    <- and(enable, not(rw)) // AND 게이트
     w_mux.option[0] <- [ buf[..].out ]
     w_mux.option[1] <- data
-    w_mux.selected  -> [ buf[..].in ]
+
+    // 동기 리셋. 쓰기보다 우선
+    rst_mux.select    <- reset
+    rst_mux.option[0] <- w_mux.selected
+    rst_mux.option[1] <- 0
+    rst_mux.selected  -> [ buf[..].in ]
 
     tri.enable <- and(enable, rw)
     tri.in     <- [ buf[..].out ]
@@ -28,6 +35,7 @@ wire WordReg {  // r=1,w=0
 
 seq DirectReg<N> {
     pub clock: In<bit,1>
+    pub reset: In<bit,1>
     pub enable: In<bit,1>
     pub rw: In<bit,1>
     pub data: InOut<bit,N>
@@ -38,6 +46,7 @@ seq DirectReg<N> {
 
     buf: [D_FlipFlop; N]
     w_mux: Mux<3,N>
+    rst_mux: Mux<2,N>
     tri: TriState<N>
 }
 
@@ -50,7 +59,12 @@ wire DirectReg<N> {  // r=1,w=0
     w_mux.option[0] <- [ buf[0..N].out ]
     w_mux.option[1] <- data
     w_mux.option[2] <- direct_in
-    w_mux.selected  -> [ buf[0..N].in ]
+
+    // 동기 리셋. 쓰기보다 우선
+    rst_mux.select    <- reset
+    rst_mux.option[0] <- w_mux.selected
+    rst_mux.option[1] <- 0
+    rst_mux.selected  -> [ buf[0..N].in ]
 
     tri.enable <- and(enable, rw)
     tri.in     <- [ buf[0..N].out ]
@@ -78,6 +92,7 @@ bundle SpecialRegIO {
 
 seq Registers {
     pub clock: In<bit,1>
+    pub reset: In<bit,1>
 
     pub general: GeneralRegIO
     pub special: SpecialRegIO
@@ -107,6 +122,15 @@ wire Registers {
         direct_rH.clock,
         direct_rM.clock,
         direct_rR.clock,
+    }
+    reset => {
+        generals[..].reset,
+        specials[..].reset,
+        direct_rA.reset,
+        direct_rD.reset,
+        direct_rH.reset,
+        direct_rM.reset,
+        direct_rR.reset,
     }
 
     general.sel         -> sel_general_reg.in
