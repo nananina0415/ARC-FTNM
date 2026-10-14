@@ -152,7 +152,7 @@ seq Registers {
     w_en_mux: Mux<2,256>  // w_en=0이면 모든 쓰기 enable을 0으로
     sel_special_reg: Decoder<5,32>
 
-    rA_pad: TriState<60>  // rA의 나머지 비트는 GET 시 0
+    rA_pad: TriState<WORD_SIZE-4>  // rA의 나머지 비트는 GET 시 0
 }
 
 wire Registers {

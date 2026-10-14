@@ -25,12 +25,15 @@
 ```
 alias Alu = ::alu::Alu           // 축약
 alias WORD_SIZE = 64             // 상수 선언 겸용
+alias WORD_MSB = WORD_SIZE - 1   // 상수 연산 가능
 alias TriState = TriState<64>    // 파라미터 고정 축약
 
 alias {                          // 블록 형태
     rB = 0
     rD = 1
 }
+
+alias is_sub = or(a, b)          // wire 안 중간 신호에 이름 붙이기
 ```
 
 ## 3. 타입
@@ -115,6 +118,13 @@ clock => { buf[0..N].clock }                // 1비트를 N곳에
 general.data <=> { generals[0..256].data }  // 64비트 버스를 256곳에
 ```
 
+상수와 섞을 때는 상수 부분과 나머지를 나눠 쓴다.
+
+```
+{ a[0,1,2] } <= 0           // a의 0,1,2비트에 각각 0
+a[3..64] <- [ b[0..61] ]    // 나머지 비트
+```
+
 ### 인덱싱
 
 | 표기 | 의미 |
@@ -125,6 +135,8 @@ general.data <=> { generals[0..256].data }  // 64비트 버스를 256곳에
 | `x[..]` | 전체 |
 | `x[0,2,7..21]` | 나열과 범위 혼합 |
 | `x[rA]` | alias 상수로 인덱싱 |
+| `x[k][i]` | k번째 요소의 i번째 비트 |
+| `x[0..WORD_SIZE-1]` | 인덱스에 상수 연산 사용 |
 
 ### 게이트와 상수
 
@@ -134,7 +146,9 @@ exc.v <- or(a, b, c, d)    // 입력 여러 개 가능
 rA_pad.in <- 0             // 상수
 ```
 
-게이트: `and`, `or`, `not`
+게이트: `and`, `or`, `not`, `xor`
+
+- 여러 비트 입력이면 비트별로 적용한다. 입력 너비가 모두 같아야 한다. 예: `not(arg2)` = 64비트 반전
 
 | 상수 | 의미 |
 |---|---|
@@ -153,6 +167,7 @@ sel_alu_op.out[6,7] -> OPENED   // 쓰지 않는 디코더 출력
 | `Mux<n,m>` | `select`, `option[0..n]`, `selected` | 경우의 수 n, 각 경우 너비 m |
 | `Decoder<i,o>` | `in`, `out` | 입력 i비트, 출력 o개 |
 | `TriState<N>` | `enable`, `in`, `out` | `TriState` = `TriState<64>` (글로벌 alias) |
+| `Adder<N>` | `a`, `b`, `c_in`, `sum`, `c_out` | N비트 덧셈 |
 
 ## 9. 명명 규칙
 

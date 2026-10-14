@@ -1,0 +1,76 @@
+// 덧셈/뺄셈 유닛. 즉치는 제어유닛이 arg로 주입
+
+comb AddSub {
+    pub op:   In<bit,4>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+    pub v:    Out<bit,1>  // signed 오버플로 (ADD, SUB, NEG)
+
+    sel_op:    Decoder<4,16>
+    scale_mux: Mux<5,WORD_SIZE>  // arg1 × 1,2,4,8,16
+    inv_mux:   Mux<2,WORD_SIZE>  // 뺄셈이면 arg2 반전
+    adder:     Adder<WORD_SIZE>
+}
+
+wire AddSub {
+    alias {
+        ADD = 0
+        ADDU = 1
+        SUB = 2
+        SUBU = 3
+        ADDU_2 = 4
+        ADDU_4 = 5
+        ADDU_8 = 6
+        ADDU_16 = 7
+        NEG = 8   // Y - $Z. Y는 제어유닛이 arg1로 주입
+        NEGU = 9
+    }
+    alias is_sub = or(
+        sel_op.out[SUB],
+        sel_op.out[SUBU],
+        sel_op.out[NEG],
+        sel_op.out[NEGU],
+    )
+    alias is_signed = or(sel_op.out[ADD], sel_op.out[SUB], sel_op.out[NEG])
+
+    op -> sel_op.in
+    sel_op.out[10..16] -> OPENED
+
+    // 배수: option[k] = arg1을 k비트 왼쪽으로
+    scale_mux.option[0] <- arg1
+
+    { scale_mux.option[1][0] } <= 0
+    scale_mux.option[1][1..WORD_SIZE] <- [ arg1[0..WORD_SIZE-1] ]
+
+    { scale_mux.option[2][0,1] } <= 0
+    scale_mux.option[2][2..WORD_SIZE] <- [ arg1[0..WORD_SIZE-2] ]
+
+    { scale_mux.option[3][0,1,2] } <= 0
+    scale_mux.option[3][3..WORD_SIZE] <- [ arg1[0..WORD_SIZE-3] ]
+
+    { scale_mux.option[4][0,1,2,3] } <= 0
+    scale_mux.option[4][4..WORD_SIZE] <- [ arg1[0..WORD_SIZE-4] ]
+
+    scale_mux.select[0] <- or(sel_op.out[ADDU_2], sel_op.out[ADDU_8])
+    scale_mux.select[1] <- or(sel_op.out[ADDU_4], sel_op.out[ADDU_8])
+    scale_mux.select[2] <- sel_op.out[ADDU_16]
+
+    // 뺄셈: arg2 반전 + carry-in 1
+    inv_mux.select    <- is_sub
+    inv_mux.option[0] <- arg2
+    inv_mux.option[1] <- not(arg2)
+
+    adder.a     <- scale_mux.selected
+    adder.b     <- inv_mux.selected
+    adder.c_in  <- is_sub
+    adder.sum   -> res
+    adder.c_out -> OPENED
+
+    // V: 두 입력 부호가 같은데 결과 부호가 다름
+    v <- and(
+        is_signed,
+        not(xor(adder.a[WORD_MSB], adder.b[WORD_MSB])),
+        xor(adder.sum[WORD_MSB], adder.a[WORD_MSB]),
+    )
+}

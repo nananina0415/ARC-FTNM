@@ -26,6 +26,7 @@ bundle AluDirectIO {  // Alu 입장
 
 comb Alu {
     pub alu_sel: AluSelect
+    pub op: In<bit,4>  // 선택된 하위 유닛 안의 연산
     pub arg1: WordIn
     pub arg2: WordIn
     pub res:  WordOut
@@ -58,6 +59,7 @@ wire Alu {
         SHIFT = 5,
     }
     alu_sel[0,1,2] -> alu_res_mux.select[0,1,2]
+    op -> addsub.op
     [ alu_res_mux.option[..] ] <- [ // 방향 반대로
         addsub.res,
         mul.res,
