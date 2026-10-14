@@ -4,3 +4,5 @@ alias WORD_SIZE = 64  // alias가 상수선언을 겸함
 bundle WordIn: In<bit,WORD_SIZE>
 bundle WordOut: *WordIn
 bundle WordInOut: InOut<bit,WORD_SIZE>
+
+alias TriState = TriState<64>

@@ -1,3 +1,5 @@
+alias AluDirectIO = alu::AluDirectIO
+
 seq WordReg {
     pub clock: In<bit,1>
     pub enable: In<bit,1>
@@ -6,7 +8,7 @@ seq WordReg {
 
     buf: [D_FlipFlop; WORD_SIZE]
     w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
-    tri: TriState64
+    tri: TriState
 }
 
 wire WordReg {  // r=1,w=0
@@ -20,6 +22,41 @@ wire WordReg {  // r=1,w=0
     tri.enable <- and(enable, rw)
     tri.in     <- [ buf[..].out ]
     tri.out    -> data
+}
+
+// 버스(GET/PUT)와 직접 와이어 양쪽으로 접근하는 레지스터
+
+seq DirectReg<N> {
+    pub clock: In<bit,1>
+    pub enable: In<bit,1>
+    pub rw: In<bit,1>
+    pub data: InOut<bit,N>
+
+    pub direct_out: Out<bit,N>  // 항상 현재 값
+    pub direct_in: In<bit,N>
+    pub direct_w_en: In<bit,1>
+
+    buf: [D_FlipFlop; N]
+    w_mux: Mux<3,N>
+    tri: TriState<N>
+}
+
+wire DirectReg<N> {  // r=1,w=0
+    clock => { buf[0..N].clock }
+
+    // 0: 유지, 1: 버스 쓰기, 2: 직접 쓰기, 3(동시 쓰기): 미정의
+    w_mux.select[0] <- and(enable, not(rw))
+    w_mux.select[1] <- direct_w_en
+    w_mux.option[0] <- [ buf[0..N].out ]
+    w_mux.option[1] <- data
+    w_mux.option[2] <- direct_in
+    w_mux.selected  -> [ buf[0..N].in ]
+
+    tri.enable <- and(enable, rw)
+    tri.in     <- [ buf[0..N].out ]
+    tri.out    -> data
+
+    direct_out <- [ buf[0..N].out ]
 }
 
 // 번들은 번들만 포함가능
@@ -44,26 +81,86 @@ seq Registers {
 
     pub general: GeneralRegIO
     pub special: SpecialRegIO
+    pub alu_direct: *AluDirectIO
 
     mut generals: [WordReg; 256]
-    mut specials: [WordReg; 32]
+    mut specials: [WordReg; 32]  // rA,rD,rH,rM,rR 자리는 미사용 (direct_*가 담당)
+
+    mut direct_rA: DirectReg<4>  // 비트 배치는 alu::RaBits
+    mut direct_rD: DirectReg<WORD_SIZE>
+    mut direct_rH: DirectReg<WORD_SIZE>
+    mut direct_rM: DirectReg<WORD_SIZE>
+    mut direct_rR: DirectReg<WORD_SIZE>
 
     sel_general_reg: Decoder<8,256>
     sel_special_reg: Decoder<5,32>
+
+    rA_pad: TriState<60>  // rA의 나머지 비트는 GET 시 0
 }
 
 wire Registers {
-    clock => { generals[..].clock, specials[..].clock }
+    clock => {
+        generals[..].clock,
+        specials[..].clock,
+        direct_rA.clock,
+        direct_rD.clock,
+        direct_rH.clock,
+        direct_rM.clock,
+        direct_rR.clock,
+    }
 
     general.sel         -> sel_general_reg.in
     sel_general_reg.out -> [ generals[0..256].enable ]
     general.rw          => { generals[0..256].rw }
     general.data       <=> { generals[0..256].data }
 
-    special.sel         -> sel_special_reg.in
-    sel_special_reg.out -> [ specials[0..32].enable ]
-    special.rw          => { specials[0..32].rw }
-    special.data       <=> { specials[0..32].data }
+    // 특수 레지스터 버스 (GET/PUT)
+    special.sel -> sel_special_reg.in
+
+    sel_special_reg.out[0,2,4,7..21,22..32] -> [ specials[0,2,4,7..21,22..32].enable ]
+    special.rw   => { specials[0,2,4,7..21,22..32].rw }
+    special.data <=> { specials[0,2,4,7..21,22..32].data }
+
+    sel_special_reg.out[rA, rD, rH, rM, rR] -> [
+        direct_rA.enable,
+        direct_rD.enable,
+        direct_rH.enable,
+        direct_rM.enable,
+        direct_rR.enable,
+    ]
+    special.rw => {
+        direct_rA.rw,
+        direct_rD.rw,
+        direct_rH.rw,
+        direct_rM.rw,
+        direct_rR.rw,
+    }
+    special.data[6,7,14,15] <=> { direct_rA.data }
+    special.data <=> {
+        direct_rD.data,
+        direct_rH.data,
+        direct_rM.data,
+        direct_rR.data,
+    }
+
+    rA_pad.enable <- and(sel_special_reg.out[rA], special.rw)
+    rA_pad.in     <- 0
+    rA_pad.out    -> special.data[0..6, 8..14, 16..WORD_SIZE]
+
+    // ALU 직접 와이어
+    direct_rA.direct_out -> alu_direct.rA_in
+    alu_direct.rA_out    -> direct_rA.direct_in
+    alu_direct.rA_w_en   -> direct_rA.direct_w_en
+
+    direct_rD.direct_out  -> alu_direct.rD_in
+    direct_rD.direct_w_en <- 0
+    direct_rM.direct_out  -> alu_direct.rM_in
+    direct_rM.direct_w_en <- 0
+
+    alu_direct.rH_out  -> direct_rH.direct_in
+    alu_direct.rH_w_en -> direct_rH.direct_w_en
+    alu_direct.rR_out  -> direct_rR.direct_in
+    alu_direct.rR_w_en -> direct_rR.direct_w_en
 }
 
 alias {

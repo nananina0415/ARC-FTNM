@@ -1,6 +1,5 @@
-// ::은 상대주소
-alias ::alu::Alu
-alias ::reg::Registers
+alias Alu = ::alu::Alu
+alias Registers = ::reg::Registers
 
 seq Cpu {
     pub clock: In<bit,1>

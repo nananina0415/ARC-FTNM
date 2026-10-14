@@ -3,6 +3,24 @@
 
 bundle AluSelect: In<bit,3>
 
+// rA 중 정수연산에 필요한 비트만. [0..4] = rA의 비트 6,7,14,15
+// [0]: V event, [1]: D event, [2]: V enable, [3]: D enable
+bundle RaBits: In<bit,4>
+
+bundle AluDirectIO {  // Alu 입장
+    rA_in:   RaBits
+    rA_out:  *RaBits
+    rA_w_en: Out<bit,1>
+
+    rD_in:   WordIn      // DIVU 피제수 상위 64비트
+    rM_in:   WordIn      // MUX 마스크
+
+    rH_out:  WordOut     // MULU 곱 상위 64비트
+    rH_w_en: Out<bit,1>
+    rR_out:  WordOut     // DIV/DIVU 나머지
+    rR_w_en: Out<bit,1>
+}
+
 // 조합회로
 // 내부에 번들 삽입시 pub 붙이기
 
@@ -12,6 +30,9 @@ comb Alu {
     pub arg2: WordIn
     pub res:  WordOut
 
+    pub spec_direct: AluDirectIO
+    pub trip_req: Out<bit,1>  // 트립 발생은 제어가 처리
+
     addsub: AddSub
     mul: Mul
     div: Div
@@ -19,12 +40,23 @@ comb Alu {
     bitwise: Bitwise
     shift: Shift
 
+    exc: ExcCheck
+
     alu_res_mux: Mux<6,WORD_SIZE>
+    sel_alu_op: Decoder<3,8>  // 선택된 유닛의 쓰기/예외 신호만 통과시키는 용도
 }
 
 // wire: 순차회로나 조합회로의 내부 배선
 
 wire Alu {
+    alias {
+        ADD_SUB = 0,
+        MUL = 1,
+        DIV = 2,
+        COMP = 3,
+        BITWISE = 4,
+        SHIFT = 5,
+    }
     alu_sel[0,1,2] -> alu_res_mux.select[0,1,2]
     [ alu_res_mux.option[..] ] <- [ // 방향 반대로
         addsub.res,
@@ -53,4 +85,49 @@ wire Alu {
         shift.arg2,
     }
 
+    alu_sel[0,1,2] -> sel_alu_op.in[0,1,2]
+
+    // 특수 레지스터
+    spec_direct.rD_in -> div.rD
+    spec_direct.rM_in -> bitwise.rM
+
+    mul.rH              -> spec_direct.rH_out
+    spec_direct.rH_w_en <- and(mul.rH_w_en, sel_alu_op.out[MUL])
+    div.rR              -> spec_direct.rR_out
+    spec_direct.rR_w_en <- and(div.rR_w_en, sel_alu_op.out[DIV])
+
+    // 예외: 유닛들이 동시에 계산하므로 선택된 유닛의 이벤트만 반영
+    exc.v <- or(
+        and(addsub.v, sel_alu_op.out[ADD_SUB]),
+        and(mul.v,    sel_alu_op.out[MUL]),
+        and(div.v,    sel_alu_op.out[DIV]),
+        and(shift.v,  sel_alu_op.out[SHIFT]),
+    )
+    exc.d <- and(div.d, sel_alu_op.out[DIV])
+
+    exc.ra_in    <- spec_direct.rA_in
+    exc.ra_out   -> spec_direct.rA_out
+    exc.ra_w_en  -> spec_direct.rA_w_en
+    exc.trip_req -> trip_req
+}
+
+// D/V 예외 발생 시 enable=0이면 event 비트 설정, enable=1이면 trip_req
+comb ExcCheck {
+    pub d: In<bit,1>
+    pub v: In<bit,1>
+
+    pub ra_in:  RaBits
+    pub ra_out: *RaBits
+    pub ra_w_en: Out<bit,1>
+    pub trip_req: Out<bit,1>
+}
+
+wire ExcCheck {
+    ra_out[0] <- or(ra_in[0], and(v, not(ra_in[2])))
+    ra_out[1] <- or(ra_in[1], and(d, not(ra_in[3])))
+    ra_out[2] <- ra_in[2]
+    ra_out[3] <- ra_in[3]
+
+    ra_w_en  <- or(and(v, not(ra_in[2])), and(d, not(ra_in[3])))
+    trip_req <- or(and(v, ra_in[2]), and(d, ra_in[3]))
 }
