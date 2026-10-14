@@ -3,22 +3,21 @@ alias AluDirectIO = alu::AluDirectIO
 seq WordReg {
     pub clock: In<bit,1>
     pub reset: In<bit,1>
-    pub enable: In<bit,1>
-    pub rw: In<bit,1>
-    pub data: WordInOut
+    pub w_en: In<bit,1>
+    pub in: WordIn
+    pub out: WordOut  // 항상 현재 값
 
     buf: [D_FlipFlop; WORD_SIZE]
     w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
     rst_mux: Mux<2,WORD_SIZE>
-    tri: TriState
 }
 
-wire WordReg {  // r=1,w=0
+wire WordReg {
     clock => { buf[..].clock }
 
-    w_mux.select    <- and(enable, not(rw)) // AND 게이트
+    w_mux.select    <- w_en
     w_mux.option[0] <- [ buf[..].out ]
-    w_mux.option[1] <- data
+    w_mux.option[1] <- in
 
     // 동기 리셋. 쓰기보다 우선
     rst_mux.select    <- reset
@@ -26,9 +25,44 @@ wire WordReg {  // r=1,w=0
     rst_mux.option[1] <- 0
     rst_mux.selected  -> [ buf[..].in ]
 
-    tri.enable <- and(enable, rw)
-    tri.in     <- [ buf[..].out ]
-    tri.out    -> data
+    out <- [ buf[..].out ]
+}
+
+bundle WordRegBus {  // WordRegPort 입장
+    r1_en: In<bit,1>
+    r1:    WordOut
+    r2_en: In<bit,1>
+    r2:    WordOut
+    w_en:  In<bit,1>
+    w:     WordIn
+}
+
+// 읽기 버스 2개, 쓰기 버스 1개에 붙는 레지스터
+
+seq WordRegPort {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub bus: WordRegBus
+
+    mut reg: WordReg
+    r1_tri: TriState
+    r2_tri: TriState
+}
+
+wire WordRegPort {
+    clock -> reg.clock
+    reset -> reg.reset
+
+    bus.w_en -> reg.w_en
+    bus.w    -> reg.in
+
+    r1_tri.enable <- bus.r1_en
+    r1_tri.in     <- reg.out
+    r1_tri.out    -> bus.r1
+
+    r2_tri.enable <- bus.r2_en
+    r2_tri.in     <- reg.out
+    r2_tri.out    -> bus.r2
 }
 
 // 버스(GET/PUT)와 직접 와이어 양쪽으로 접근하는 레지스터
@@ -76,9 +110,14 @@ wire DirectReg<N> {  // r=1,w=0
 // 번들은 번들만 포함가능
 
 bundle GeneralRegIO {
-    sel: In<bit,8>
-    rw: In<bit,1>
-    data: WordInOut
+    r1_sel:  In<bit,8>
+    r1_data: WordOut  // 읽기 버스 1
+    r2_sel:  In<bit,8>
+    r2_data: WordOut  // 읽기 버스 2
+
+    w_sel:   In<bit,8>
+    w_data:  WordIn   // 쓰기 버스
+    w_en:    In<bit,1>
 }
 
 bundle SpecialRegIO {
@@ -98,7 +137,7 @@ seq Registers {
     pub special: SpecialRegIO
     pub alu_direct: *AluDirectIO
 
-    mut generals: [WordReg; 256]
+    mut generals: [WordRegPort; 256]
     mut specials: [WordReg; 32]  // rA,rD,rH,rM,rR 자리는 미사용 (direct_*가 담당)
 
     mut direct_rA: DirectReg<4>  // 비트 배치는 alu::RaBits
@@ -107,7 +146,10 @@ seq Registers {
     mut direct_rM: DirectReg<WORD_SIZE>
     mut direct_rR: DirectReg<WORD_SIZE>
 
-    sel_general_reg: Decoder<8,256>
+    sel_r1: Decoder<8,256>
+    sel_r2: Decoder<8,256>
+    sel_w:  Decoder<8,256>
+    w_en_mux: Mux<2,256>  // w_en=0이면 모든 쓰기 enable을 0으로
     sel_special_reg: Decoder<5,32>
 
     rA_pad: TriState<60>  // rA의 나머지 비트는 GET 시 0
@@ -133,10 +175,21 @@ wire Registers {
         direct_rR.reset,
     }
 
-    general.sel         -> sel_general_reg.in
-    sel_general_reg.out -> [ generals[0..256].enable ]
-    general.rw          => { generals[0..256].rw }
-    general.data       <=> { generals[0..256].data }
+    // 범용 레지스터 버스 (읽기 2, 쓰기 1)
+    general.r1_sel -> sel_r1.in
+    sel_r1.out     -> [ generals[0..256].bus.r1_en ]
+    general.r1_data <= { generals[0..256].bus.r1 }
+
+    general.r2_sel -> sel_r2.in
+    sel_r2.out     -> [ generals[0..256].bus.r2_en ]
+    general.r2_data <= { generals[0..256].bus.r2 }
+
+    general.w_sel        -> sel_w.in
+    w_en_mux.select      <- general.w_en
+    w_en_mux.option[0]   <- 0
+    w_en_mux.option[1]   <- sel_w.out
+    w_en_mux.selected    -> [ generals[0..256].bus.w_en ]
+    general.w_data       => { generals[0..256].bus.w }
 
     // 특수 레지스터 버스 (GET/PUT)
     special.sel -> sel_special_reg.in
