@@ -59,7 +59,8 @@ wire Alu {
         SHIFT = 5,
     }
     alu_sel[0,1,2] -> alu_res_mux.select[0,1,2]
-    op -> addsub.op
+    op    -> addsub.op
+    op[0] => { mul.op, div.op }
     [ alu_res_mux.option[..] ] <- [ // 방향 반대로
         addsub.res,
         mul.res,

@@ -1,0 +1,152 @@
+// 나눗셈 유닛. 즉치는 제어유닛이 arg로 주입
+// DIV:  y = arg1, z = arg2. 몫 ⌊y/z⌋, 나머지는 0이거나 z와 부호가 같음
+// DIVU: (rD:arg1) / arg2. rD >= arg2 이면 몫 = rD, 나머지 = arg1
+// unsigned Divider 하나를 공유하고, DIV는 절댓값으로 나눈 뒤 부호를 보정
+
+comb Div {
+    pub op:   In<bit,1>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+    pub v:    Out<bit,1>  // DIV: -2^63 / -1
+    pub d:    Out<bit,1>  // DIV: z = 0
+
+    pub rD:      WordIn   // DIVU 피제수 상위 64비트
+    pub rR:      WordOut  // 나머지
+    pub rR_w_en: Out<bit,1>
+
+    sel_op:  Decoder<1,2>
+    divider: Divider<WORD_SIZE>
+
+    // DIV 절댓값: 음수면 반전 + 1
+    y_inv_mux: Mux<2,WORD_SIZE>
+    abs_y:     Adder<WORD_SIZE>
+    z_inv_mux: Mux<2,WORD_SIZE>
+    abs_z:     Adder<WORD_SIZE>
+
+    dividend_mux: Mux<2,2*WORD_SIZE>
+    divisor_mux:  Mux<2,WORD_SIZE>
+
+    // DIV 몫 보정
+    q_inv_mux: Mux<2,WORD_SIZE>
+    q_adj:     Adder<WORD_SIZE>
+
+    // DIV 나머지 보정
+    zr_sub:    Adder<WORD_SIZE>  // |z| - r0
+    r_mag_mux: Mux<2,WORD_SIZE>
+    r_inv_mux: Mux<2,WORD_SIZE>
+    r_adj:     Adder<WORD_SIZE>
+
+    rd_cmp: Adder<WORD_SIZE>  // DIVU: rD - arg2, c_out = (rD >= arg2)
+
+    res_mux: Mux<4,WORD_SIZE>
+    rR_mux:  Mux<4,WORD_SIZE>
+}
+
+wire Div {
+    alias {
+        DIV = 0
+        DIVU = 1
+    }
+    alias sy = arg1[WORD_MSB]  // y 부호
+    alias sz = arg2[WORD_MSB]  // z 부호
+    alias diff = xor(sy, sz)
+    alias r_nz = or(divider.remainder[0..WORD_SIZE])
+
+    alias z_zero = not(or(arg2[0..WORD_SIZE]))
+    alias y_min  = and(sy, not(or(arg1[0..WORD_MSB])))  // y = -2^63
+    alias z_m1   = and(arg2[0..WORD_SIZE])              // z = -1
+
+    op -> sel_op.in
+
+    // |y|, |z|
+    y_inv_mux.select    <- sy
+    y_inv_mux.option[0] <- arg1
+    y_inv_mux.option[1] <- not(arg1)
+    abs_y.a     <- y_inv_mux.selected
+    abs_y.b     <- 0
+    abs_y.c_in  <- sy
+    abs_y.c_out -> OPENED
+
+    z_inv_mux.select    <- sz
+    z_inv_mux.option[0] <- arg2
+    z_inv_mux.option[1] <- not(arg2)
+    abs_z.a     <- z_inv_mux.selected
+    abs_z.b     <- 0
+    abs_z.c_in  <- sz
+    abs_z.c_out -> OPENED
+
+    // Divider 입력. 0: DIV, 1: DIVU
+    dividend_mux.select <- sel_op.out[DIVU]
+    dividend_mux.option[0][0..WORD_SIZE] <- abs_y.sum
+    { dividend_mux.option[0][WORD_SIZE..2*WORD_SIZE] } <= 0
+    dividend_mux.option[1][0..WORD_SIZE] <- arg1
+    dividend_mux.option[1][WORD_SIZE..2*WORD_SIZE] <- rD
+    dividend_mux.selected -> divider.dividend
+
+    divisor_mux.select    <- sel_op.out[DIVU]
+    divisor_mux.option[0] <- abs_z.sum
+    divisor_mux.option[1] <- arg2
+    divisor_mux.selected  -> divider.divisor
+
+    // 몫: 부호 같음 → q0, 부호 다름 & 나머지 0 → -q0, 부호 다름 & 나머지 ≠ 0 → ~q0 (= -(q0+1))
+    q_inv_mux.select    <- diff
+    q_inv_mux.option[0] <- divider.quotient
+    q_inv_mux.option[1] <- not(divider.quotient)
+    q_adj.a     <- q_inv_mux.selected
+    q_adj.b     <- 0
+    q_adj.c_in  <- and(diff, not(r_nz))
+    q_adj.c_out -> OPENED
+
+    // 나머지 크기: 부호 다름 & 나머지 ≠ 0 → |z| - r0, 그 외 → r0
+    zr_sub.a     <- abs_z.sum
+    zr_sub.b     <- not(divider.remainder)
+    zr_sub.c_in  <- 1
+    zr_sub.c_out -> OPENED
+
+    r_mag_mux.select    <- and(diff, r_nz)
+    r_mag_mux.option[0] <- divider.remainder
+    r_mag_mux.option[1] <- zr_sub.sum
+
+    // 나머지 부호는 z를 따름
+    r_inv_mux.select    <- sz
+    r_inv_mux.option[0] <- r_mag_mux.selected
+    r_inv_mux.option[1] <- not(r_mag_mux.selected)
+    r_adj.a     <- r_inv_mux.selected
+    r_adj.b     <- 0
+    r_adj.c_in  <- sz
+    r_adj.c_out -> OPENED
+
+    // DIVU: rD >= arg2 (arg2 = 0 포함)
+    rd_cmp.a   <- rD
+    rd_cmp.b   <- not(arg2)
+    rd_cmp.c_in <- 1
+    rd_cmp.sum -> OPENED
+
+    // 결과 선택
+    // 0: DIV 정상, 1: DIVU 정상, 2: DIV z = 0, 3: DIVU rD >= arg2
+    alias exc_case = or(
+        and(sel_op.out[DIV], z_zero),
+        and(sel_op.out[DIVU], rd_cmp.c_out),
+    )
+    res_mux.select[0] <- sel_op.out[DIVU]
+    res_mux.select[1] <- exc_case
+    res_mux.option[0] <- q_adj.sum
+    res_mux.option[1] <- divider.quotient
+    res_mux.option[2] <- 0
+    res_mux.option[3] <- rD
+    res_mux.selected  -> res
+
+    rR_mux.select[0] <- sel_op.out[DIVU]
+    rR_mux.select[1] <- exc_case
+    rR_mux.option[0] <- r_adj.sum
+    rR_mux.option[1] <- divider.remainder
+    rR_mux.option[2] <- arg1
+    rR_mux.option[3] <- arg1
+    rR_mux.selected  -> rR
+
+    rR_w_en <- 1
+
+    d <- and(sel_op.out[DIV], z_zero)
+    v <- and(sel_op.out[DIV], y_min, z_m1)
+}

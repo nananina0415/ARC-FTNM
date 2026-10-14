@@ -1,0 +1,37 @@
+// 곱셈 유닛. 즉치는 제어유닛이 arg로 주입
+
+comb Mul {
+    pub op:   In<bit,1>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+    pub v:    Out<bit,1>  // MUL signed 오버플로
+
+    pub rH:      WordOut  // MULU 곱 상위 64비트
+    pub rH_w_en: Out<bit,1>
+
+    sel_op:     Decoder<1,2>
+    multiplier: Multiplier<WORD_SIZE>
+}
+
+wire Mul {
+    alias {
+        MUL = 0
+        MULU = 1
+    }
+    alias hi_all_one  = and(multiplier.hi[0..WORD_SIZE], multiplier.lo[WORD_MSB])
+    alias hi_all_zero = not(or(multiplier.hi[0..WORD_SIZE], multiplier.lo[WORD_MSB]))
+
+    op -> sel_op.in
+
+    multiplier.a      <- arg1
+    multiplier.b      <- arg2
+    multiplier.signed <- sel_op.out[MUL]
+
+    multiplier.lo -> res
+    multiplier.hi -> rH
+    rH_w_en <- sel_op.out[MULU]
+
+    // V: signed 곱이 64비트를 벗어남 (hi 전체와 lo 최상위 비트가 모두 같지 않음)
+    v <- and(sel_op.out[MUL], not(or(hi_all_one, hi_all_zero)))
+}

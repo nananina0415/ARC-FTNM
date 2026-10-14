@@ -148,7 +148,9 @@ rA_pad.in <- 0             // 상수
 
 게이트: `and`, `or`, `not`, `xor`
 
-- 여러 비트 입력이면 비트별로 적용한다. 입력 너비가 모두 같아야 한다. 예: `not(arg2)` = 64비트 반전
+- 인덱스를 붙인 `x[..]`, `x[a..b]`는 한 가닥씩 나뉘어 각각 입력이 된다. 예: `and(a[0..WORD_SIZE])` = a의 모든 비트 AND
+- 인덱스 없이 여러 비트 신호를 넣으면 비트별로 적용한다. 입력 너비가 모두 같아야 한다. 예: `not(arg2)` = 64비트 반전
+- `[ x[..] ]`은 나뉜 가닥을 다시 묶은 것이다
 
 | 상수 | 의미 |
 |---|---|
@@ -168,6 +170,8 @@ sel_alu_op.out[6,7] -> OPENED   // 쓰지 않는 디코더 출력
 | `Decoder<i,o>` | `in`, `out` | 입력 i비트, 출력 o개 |
 | `TriState<N>` | `enable`, `in`, `out` | `TriState` = `TriState<64>` (글로벌 alias) |
 | `Adder<N>` | `a`, `b`, `c_in`, `sum`, `c_out` | N비트 덧셈 |
+| `Multiplier<N>` | `a`, `b`, `signed`, `lo`, `hi` | N비트 × N비트 → 2N비트 곱. `signed`=1이면 signed |
+| `Divider<N>` | `dividend`, `divisor`, `quotient`, `remainder` | unsigned. `dividend`는 2N비트 |
 
 ## 9. 명명 규칙
 
