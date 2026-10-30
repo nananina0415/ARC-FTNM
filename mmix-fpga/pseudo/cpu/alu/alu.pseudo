@@ -27,9 +27,11 @@ bundle AluDirectIO {  // Alu 입장
 comb Alu {
     pub alu_sel: AluSelect
     pub op: In<bit,4>  // 선택된 하위 유닛 안의 연산
+    pub write_en: In<bit,1>  // 제어유닛이 결과 저장 사이클에만 1
     pub arg1: WordIn
     pub arg2: WordIn
     pub res:  WordOut
+    pub res_w_en: Out<bit,1>  // res를 레지스터에 쓸지. 제어유닛이 사용
 
     pub spec_direct: AluDirectIO
     pub trip_req: Out<bit,1>  // 트립 발생은 제어가 처리
@@ -40,10 +42,12 @@ comb Alu {
     comp: Compare
     bitwise: Bitwise
     shift: Shift
+    cond: Cond
 
     exc: ExcCheck
 
-    alu_res_mux: Mux<6,WORD_SIZE>
+    alu_res_mux: Mux<7,WORD_SIZE>
+    alu_w_en_mux: Mux<7,1>
     sel_alu_op: Decoder<3,8>  // 선택된 유닛의 쓰기/예외 신호만 통과시키는 용도
 }
 
@@ -57,10 +61,12 @@ wire Alu {
         COMP = 3,
         BITWISE = 4,
         SHIFT = 5,
+        COND = 6,
     }
     alu_sel[0,1,2] -> alu_res_mux.select[0,1,2]
-    op    -> addsub.op
-    op[0] => { mul.op, div.op }
+    op    => { addsub.op, bitwise.op, cond.op }
+    op[0] => { mul.op, div.op, comp.op }
+    op[0,1] -> shift.op
     [ alu_res_mux.option[..] ] <- [ // 방향 반대로
         addsub.res,
         mul.res,
@@ -68,8 +74,15 @@ wire Alu {
         comp.res,
         bitwise.res,
         shift.res,
+        cond.res,
     ]
     alu_res_mux.selected -> res
+
+    // 결과 쓰기 여부. 항상 쓰는 유닛은 1
+    alu_sel[0,1,2] -> alu_w_en_mux.select[0,1,2]
+    { alu_w_en_mux.option[ADD_SUB, MUL, DIV, COMP, BITWISE, SHIFT] } <= 1
+    alu_w_en_mux.option[COND] <- cond.res_w_en
+    res_w_en <- and(write_en, alu_w_en_mux.selected)
 
     arg1[0..WORD_SIZE] => { // 각각배선
         addsub.arg1,
@@ -78,6 +91,7 @@ wire Alu {
         comp.arg1,
         bitwise.arg1,
         shift.arg1,
+        cond.arg1,
     }
     arg2[0..WORD_SIZE] => {
         addsub.arg2,
@@ -86,6 +100,7 @@ wire Alu {
         comp.arg2,
         bitwise.arg2,
         shift.arg2,
+        cond.arg2,
     }
 
     alu_sel[0,1,2] -> sel_alu_op.in[0,1,2]
@@ -95,9 +110,9 @@ wire Alu {
     spec_direct.rM_in -> bitwise.rM
 
     mul.rH              -> spec_direct.rH_out
-    spec_direct.rH_w_en <- and(mul.rH_w_en, sel_alu_op.out[MUL])
+    spec_direct.rH_w_en <- and(write_en, mul.rH_w_en, sel_alu_op.out[MUL])
     div.rR              -> spec_direct.rR_out
-    spec_direct.rR_w_en <- and(div.rR_w_en, sel_alu_op.out[DIV])
+    spec_direct.rR_w_en <- and(write_en, div.rR_w_en, sel_alu_op.out[DIV])
 
     // 예외: 유닛들이 동시에 계산하므로 선택된 유닛의 이벤트만 반영
     exc.v <- or(
@@ -110,7 +125,7 @@ wire Alu {
 
     exc.ra_in    <- spec_direct.rA_in
     exc.ra_out   -> spec_direct.rA_out
-    exc.ra_w_en  -> spec_direct.rA_w_en
+    spec_direct.rA_w_en <- and(write_en, exc.ra_w_en)
     exc.trip_req -> trip_req
 }
 

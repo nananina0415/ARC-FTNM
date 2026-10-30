@@ -1,0 +1,46 @@
+// 비교 유닛. 즉치는 제어유닛이 arg로 주입
+// res = -1 (arg1 < arg2), 0 (같음), 1 (arg1 > arg2)
+
+comb Compare {
+    pub op:   In<bit,1>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+
+    sel_op:  Decoder<1,2>
+    sub:     Adder<WORD_SIZE>  // arg1 - arg2
+    res_mux: Mux<3,WORD_SIZE>
+}
+
+wire Compare {
+    alias {
+        CMP = 0
+        CMPU = 1
+    }
+    alias v_sub = and(
+        xor(arg1[WORD_MSB], arg2[WORD_MSB]),
+        xor(sub.sum[WORD_MSB], arg1[WORD_MSB]),
+    )
+    alias lt_signed   = xor(sub.sum[WORD_MSB], v_sub)
+    alias lt_unsigned = not(sub.c_out)
+    alias lt = or(
+        and(sel_op.out[CMP],  lt_signed),
+        and(sel_op.out[CMPU], lt_unsigned),
+    )
+    alias eq = not(or(sub.sum[0..WORD_SIZE]))
+
+    op -> sel_op.in
+
+    sub.a    <- arg1
+    sub.b    <- not(arg2)
+    sub.c_in <- 1
+
+    // 0: 1 (큼), 1: 0 (같음), 2: -1 (작음)
+    res_mux.select[0] <- eq
+    res_mux.select[1] <- lt
+    res_mux.option[0][0] <- 1
+    { res_mux.option[0][1..WORD_SIZE] } <= 0
+    res_mux.option[1] <- 0
+    { res_mux.option[2][0..WORD_SIZE] } <= 1
+    res_mux.selected -> res
+}

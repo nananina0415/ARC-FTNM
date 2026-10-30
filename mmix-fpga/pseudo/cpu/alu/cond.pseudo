@@ -1,0 +1,51 @@
+// 조건부 설정 유닛 (CSxx, ZSxx). 즉치는 제어유닛이 arg로 주입
+// arg1 = $Y (조건 판정), arg2 = $Z (설정값)
+// op 번호는 opcode #60~#7F 의 (opcode >> 1) 하위 4비트. op[3]: 0 = CS, 1 = ZS
+// CS: 조건 거짓이면 쓰지 않음 (res_w_en = 0), ZS: 조건 거짓이면 0을 씀
+
+comb Cond {
+    pub op:       In<bit,4>
+    pub arg1:     WordIn
+    pub arg2:     WordIn
+    pub res:      WordOut
+    pub res_w_en: Out<bit,1>
+
+    sel_cond: Decoder<3,8>
+    res_mux:  Mux<2,WORD_SIZE>
+}
+
+wire Cond {
+    alias {
+        N = 0
+        Z = 1
+        P = 2
+        OD = 3
+        NN = 4
+        NZ = 5
+        NP = 6
+        EV = 7
+    }
+    alias is_zs = op[3]
+    alias neg   = arg1[WORD_MSB]
+    alias zero  = not(or(arg1[0..WORD_SIZE]))
+    alias odd   = arg1[0]
+    alias cond = or(
+        and(sel_cond.out[N],  neg),
+        and(sel_cond.out[Z],  zero),
+        and(sel_cond.out[P],  not(or(neg, zero))),
+        and(sel_cond.out[OD], odd),
+        and(sel_cond.out[NN], not(neg)),
+        and(sel_cond.out[NZ], not(zero)),
+        and(sel_cond.out[NP], or(neg, zero)),
+        and(sel_cond.out[EV], not(odd)),
+    )
+
+    op[0,1,2] -> sel_cond.in
+
+    res_mux.select    <- cond
+    res_mux.option[0] <- 0
+    res_mux.option[1] <- arg2
+    res_mux.selected  -> res
+
+    res_w_en <- or(cond, is_zs)
+}
