@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "div.divide_zero_enabled",
+  "target": {
+    "mnemonic": "DIV",
+    "opcode": "0x1c",
+    "pc": "0x0",
+    "word": "0x1c030102",
+    "executions": 1
+  },
+  "tags": [
+    "divide_zero_enabled",
+    "register"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x000000000000007b",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff",
+      "rA": "0x0000000000008000"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "fault",
+    "reason": 4,
+    "registers": {},
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "divide_zero_enabled"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

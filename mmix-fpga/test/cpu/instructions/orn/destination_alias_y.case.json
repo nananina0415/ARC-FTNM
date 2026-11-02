@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "id": "orn.destination_alias_y",
+  "target": {
+    "mnemonic": "ORN",
+    "opcode": "0xc2",
+    "pc": "0x0",
+    "word": "0xc2010102",
+    "executions": 1
+  },
+  "tags": [
+    "destination_alias_y",
+    "register"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000007",
+      "$2": "0x0000000000000003"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$1": "0xffffffffffffffff"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "destination_alias_y"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

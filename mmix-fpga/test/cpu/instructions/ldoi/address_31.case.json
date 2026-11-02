@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "ldoi.address_31",
+  "target": {
+    "mnemonic": "LDOI",
+    "opcode": "0x8d",
+    "pc": "0x0",
+    "word": "0x8d03011f",
+    "executions": 1
+  },
+  "tags": [
+    "address_31",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000100",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x118": "01",
+      "0x119": "80",
+      "0x11a": "ff",
+      "0x11b": "7f",
+      "0x11c": "55",
+      "0x11d": "aa",
+      "0x11e": "12",
+      "0x11f": "34"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x0180ff7f55aa1234"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "address_31"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

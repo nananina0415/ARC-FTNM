@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "id": "sri.immediate_0",
+  "target": {
+    "mnemonic": "SRI",
+    "opcode": "0x3d",
+    "pc": "0x0",
+    "word": "0x3d030100",
+    "executions": 1
+  },
+  "tags": [
+    "immediate_0",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x8000000000000081",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x8000000000000081"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "immediate_0"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

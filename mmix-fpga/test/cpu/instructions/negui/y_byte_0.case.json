@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "id": "negui.y_byte_0",
+  "target": {
+    "mnemonic": "NEGUI",
+    "opcode": "0x37",
+    "pc": "0x0",
+    "word": "0x370300ff",
+    "executions": 1
+  },
+  "tags": [
+    "y_byte_0",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$0": "0x0000000000000007",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0xffffffffffffff01"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "y_byte_0"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

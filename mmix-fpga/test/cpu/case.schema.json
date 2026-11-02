@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MMIX CPU program assertions, version 1",
+  "type": "object",
+  "required": ["schema", "id", "target", "initial", "expect", "profiles", "coverage", "limits"],
+  "properties": {
+    "schema": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9_.]+$"},
+    "target": {
+      "type": "object",
+      "required": ["mnemonic", "opcode", "pc", "word", "executions"],
+      "properties": {
+        "mnemonic": {"type": "string"},
+        "opcode": {"type": "string", "pattern": "^0x[0-9a-f]{2}$"},
+        "pc": {"$ref": "#/$defs/integer"},
+        "word": {"type": "string", "pattern": "^0x[0-9a-f]{8}$"},
+        "executions": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "initial": {
+      "type": "object",
+      "required": ["entry", "registers", "special", "memory"],
+      "properties": {
+        "entry": {"$ref": "#/$defs/integer"},
+        "registers": {"$ref": "#/$defs/registers"},
+        "special": {"$ref": "#/$defs/special"},
+        "memory": {"$ref": "#/$defs/memory"}
+      },
+      "additionalProperties": false
+    },
+    "expect": {
+      "type": "object",
+      "required": ["stop", "reason", "registers", "special", "memory", "unchanged_other_state", "subject_effects"],
+      "properties": {
+        "stop": {"enum": ["halt", "fault"]},
+        "reason": {"type": "integer", "minimum": 0, "maximum": 7},
+        "registers": {"$ref": "#/$defs/registers"},
+        "special": {"$ref": "#/$defs/special"},
+        "memory": {"$ref": "#/$defs/memory"},
+        "unchanged_other_state": {"const": true},
+        "subject_effects": {
+          "type": "object",
+          "required": ["register_writes", "memory_writes"],
+          "properties": {
+            "register_writes": {"type": "integer", "minimum": 0},
+            "memory_writes": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "coverage": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "profiles": {"type": "array", "minItems": 1, "items": {"enum": ["no_stall", "backpressure"]}, "uniqueItems": true},
+    "limits": {
+      "type": "object",
+      "required": ["cycles", "wall_seconds"],
+      "properties": {
+        "cycles": {"type": "integer", "minimum": 1},
+        "wall_seconds": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "integer": {"type": "string", "pattern": "^0x[0-9a-f]+$"},
+    "registers": {"type": "object", "propertyNames": {"pattern": "^\\$([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$"}, "additionalProperties": {"$ref": "#/$defs/integer"}},
+    "special": {"type": "object", "propertyNames": {"enum": ["rB", "rD", "rE", "rH", "rJ", "rM", "rR", "rBB", "rC", "rN", "rO", "rS", "rI", "rT", "rTT", "rK", "rQ", "rU", "rV", "rG", "rL", "rA", "rF", "rP", "rW", "rX", "rY", "rZ", "rWW", "rXX", "rYY", "rZZ"]}, "additionalProperties": {"$ref": "#/$defs/integer"}},
+    "memory": {"type": "object", "propertyNames": {"pattern": "^0x[0-9a-f]+$"}, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{2}$"}}
+  }
+}
