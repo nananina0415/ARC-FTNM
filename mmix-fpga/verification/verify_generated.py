@@ -1,0 +1,347 @@
+"""Independent HDL checks of generated RTL. Run only when explicitly requested.
+
+Uses source-map for generated identifiers, never the compiler's evaluator as
+the arithmetic oracle. Requires pyslang plus Icarus Verilog for simulation.
+"""
+from pathlib import Path
+import argparse
+import json
+import os
+import random
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / ".tools" / "hdl"))
+MASK = (1 << 64) - 1
+
+
+def enc(*parts):
+    return "s_" + "_".join(f"{len(str(x))}_{x}" for x in parts)
+
+
+def signed(value):
+    return value - (1 << 64) if value >> 63 else value
+
+
+class Checks:
+    def __init__(self, rtl, output, iverilog):
+        self.rtl, self.output, self.iverilog = rtl, output, iverilog
+        self.mapping = json.loads((rtl / "source-map.json").read_text(encoding="utf-8"))
+        self.modules = self.mapping["modules"]
+        self.sources = [str((rtl / name).resolve()) for name in (rtl / "sources.f").read_text().splitlines()]
+        self.results = {}
+
+    def find(self, source):
+        return next(m for m in self.modules if m["source"] and m["source"]["file"] == source)
+
+    def declaration(self, module):
+        lines, connections = [], []
+        for port in module["ports"]:
+            kind = "reg" if port["direction"] == "in" else "wire"
+            lines.append(f"{kind} [{port['width']-1}:0] {port['name']};")
+            connections.append(f".{port['name']}({port['name']})")
+        lines.append(f"{module['module']} dut ({', '.join(connections)});")
+        return lines
+
+    def simulate(self, name, text):
+        tb = self.output / f"{name}.sv"
+        tb.write_text(text, encoding="utf-8", newline="\n")
+        executable = self.output / f"{name}.vvp"
+        args_file = self.output / f"{name}.f"
+        args_file.write_text("\n".join(s.replace("\\", "/") for s in self.sources + [str(tb.resolve())]) + "\n", encoding="utf-8")
+        command = [str(self.iverilog), "-g2012", "-s", "tb", "-o", str(executable)] + self.sources + [str(tb.resolve())]
+        compiled = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        (self.output / f"{name}-compile.log").write_text(compiled.stdout + compiled.stderr, encoding="utf-8")
+        if compiled.returncode:
+            raise RuntimeError(f"{name}: HDL compilation failed\n{compiled.stderr}")
+        runtime = self.iverilog.with_name("vvp.exe" if os.name == "nt" else "vvp")
+        run = subprocess.run([str(runtime), str(executable)], capture_output=True, text=True, timeout=120)
+        (self.output / f"{name}.log").write_text(run.stdout + run.stderr, encoding="utf-8")
+        if run.returncode or "PASS" not in run.stdout:
+            raise RuntimeError(f"{name}: simulation failed\n{run.stdout}\n{run.stderr}")
+        self.results[name] = run.stdout.strip()
+        print(run.stdout.strip(), flush=True)
+
+    def lint(self):
+        import pyslang
+        compilation = pyslang.ast.Compilation()
+        for source in self.sources:
+            compilation.addSyntaxTree(pyslang.syntax.SyntaxTree.fromFile(source))
+        diagnostics = compilation.getAllDiagnostics()
+        report = pyslang.DiagnosticEngine.reportAll(compilation.sourceManager, diagnostics)
+        (self.output / "slang.log").write_text(report, encoding="utf-8")
+        self.results["slang_diagnostics"] = len(diagnostics)
+        if diagnostics:
+            raise RuntimeError(report)
+        print(f"PASS syntax/elaboration: {len(self.sources)} modules, zero diagnostics", flush=True)
+
+    def parity(self):
+        sys.path.insert(0, str(ROOT))
+        from crosscompiler.compiler import Compiler
+        compiler = Compiler(ROOT / "pseudo", ROOT / "pseudo/grammar.peg")
+        first, _, warnings = compiler.build("cpu::Cpu")
+        second, _, _ = compiler.build("cpu::Cpu")
+        if warnings or first != second:
+            raise RuntimeError("Compiler output is non-deterministic or has warnings")
+        for name, contents in first.items():
+            if (self.rtl / name).read_text(encoding="utf-8") != contents:
+                raise RuntimeError(f"Generated RTL differs from current source/compiler: {name}")
+        self.results["source_parity"] = f"{len(first)} matching artifacts, two identical independent builds"
+        print(f"PASS source parity: {len(first)} artifacts, deterministic output", flush=True)
+
+    def alu(self):
+        module = self.find("cpu/alu/alu.pseudo")
+        # alu.pseudo contains both Alu and ExcCheck; select Alu by its arg1 port.
+        module = next(m for m in self.modules if any(p["path"] == ["arg1"] for p in m["ports"])
+                      and m["source"] and m["source"]["file"] == "cpu/alu/alu.pseudo")
+        lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module)
+        lines += ["integer count=0;", "initial begin"]
+        rng = random.Random(20261102)
+        operations = [(0, op) for op in range(10)] + [(unit, op) for unit in (1, 2, 3) for op in range(2)]
+        operations += [(4, op) for op in (0, 1, 2, 3, 4, 5, 6, 7, 12)] + [(5, op) for op in range(4)] + [(6, op) for op in range(16)]
+        edge = [0, 1, 2, 63, 64, 65, (1 << 63)-1, 1 << 63, MASK-1, MASK]
+        cases = 0
+        def assign(path, value, width=64):
+            return f"{enc('port', *path)} = {width}'h{value:x};"
+        def check(path, value, width=64):
+            return f"if ({enc('port', *path)} !== {width}'h{value:x}) $fatal(1, \"ALU case {cases}: {'.'.join(path)}\");"
+        for unit, op in operations:
+            vectors = [(a, b) for a in edge for b in edge]
+            vectors += [(rng.getrandbits(64), rng.getrandbits(64)) for _ in range(64)]
+            for a, b in vectors:
+                rd, mask, ra, enable = rng.getrandbits(64), rng.getrandbits(64), rng.randrange(16), rng.randrange(2)
+                if unit == 2 and op == 1 and cases % 2:
+                    rd = rng.randrange(b) if b else 0
+                result, overflow, divide_zero, write, high, rem = 0, False, False, True, 0, 0
+                sa, sb = signed(a), signed(b)
+                if unit == 0:
+                    result = a + b if op < 2 else a - b if op in (2, 3, 8, 9) else (a << (op - 3)) + b
+                    exact = sa + sb if op == 0 else sa - sb
+                    overflow = op in (0, 2, 8) and not -(1 << 63) <= exact < (1 << 63)
+                elif unit == 1:
+                    full = sa * sb if op == 0 else a * b
+                    result, high = full & MASK, (full >> 64) & MASK
+                    overflow = op == 0 and not -(1 << 63) <= full < (1 << 63)
+                elif unit == 2:
+                    if op == 0:
+                        result, rem = (sa // sb, sa % sb) if b else (0, a)
+                        divide_zero = b == 0
+                        overflow = a == 1 << 63 and b == MASK
+                    elif rd >= b:
+                        result, rem = rd, a
+                    else:
+                        result, rem = divmod((rd << 64) | a, b)
+                elif unit == 3:
+                    x, y = (sa, sb) if op == 0 else (a, b)
+                    result = (x > y) - (x < y)
+                elif unit == 4:
+                    result = {0: a | b, 1: a | ~b, 2: ~(a | b), 3: a ^ b,
+                              4: a & b, 5: a & ~b, 6: ~(a & b), 7: ~(a ^ b),
+                              12: (a & mask) | (b & ~mask)}[op]
+                elif unit == 5:
+                    if op < 2:
+                        result = (a << b) & MASK if b < 64 else 0
+                        overflow = op == 0 and ((a != 0) if b >= 64 else not -(1 << 63) <= sa * (1 << b) < (1 << 63))
+                    else:
+                        result = (sa >> min(b, 64)) if op == 2 else (a >> min(b, 64))
+                else:
+                    condition = [sa < 0, a == 0, sa > 0, bool(a & 1), sa >= 0, a != 0, sa <= 0, not(a & 1)][op & 7]
+                    result, write = b if condition else 0, bool(condition or op & 8)
+                trip = (overflow and bool(ra & 4)) or (divide_zero and bool(ra & 8))
+                ra_write = (overflow and not(ra & 4)) or (divide_zero and not(ra & 8))
+                ra_out = ra | (1 if overflow and not(ra & 4) else 0) | (2 if divide_zero and not(ra & 8) else 0)
+                lines += [assign(("alu_sel",), unit, 3), assign(("op",), op, 4), assign(("arg1",), a), assign(("arg2",), b),
+                          assign(("write_en",), enable, 1), assign(("spec_direct", "rA_in"), ra, 4),
+                          assign(("spec_direct", "rD_in"), rd), assign(("spec_direct", "rM_in"), mask), "#1;",
+                          check(("res",), result & MASK), check(("res_w_en",), int(write and enable), 1),
+                          check(("trip_req",), int(trip), 1), check(("spec_direct", "rA_out"), ra_out, 4),
+                          check(("spec_direct", "rA_w_en"), int(ra_write and enable), 1),
+                          check(("spec_direct", "rH_w_en"), int(unit == 1 and op == 1 and enable), 1),
+                          check(("spec_direct", "rR_w_en"), int(unit == 2 and enable), 1)]
+                if unit == 1:
+                    lines.append(check(("spec_direct", "rH_out"), high))
+                if unit == 2:
+                    lines.append(check(("spec_direct", "rR_out"), rem & MASK))
+                cases += 1
+        lines += [f'$display("PASS ALU: {cases} independent vectors");', "$finish; end endmodule"]
+        self.simulate("alu", "\n".join(lines))
+
+    def cpu(self):
+        module = next(m for m in self.modules if m["module"] == self.mapping["top"])
+        p = lambda *path: enc("port", *path)
+        alu = "dut." + enc("instance", "alu") + "."
+        reg = "dut." + enc("instance", "reg") + "."
+        lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module)
+        clock, reset, calib = p("clock"), p("reset"), p("init_calib_complete")
+        arvalid, arready, araddr = [p("axi", "read", x) for x in ("arvalid", "arready", "araddr")]
+        rvalid, rready, rdata, rresp, rid, rlast = [p("axi", "read", x) for x in ("rvalid", "rready", "rdata", "rresp", "rid", "rlast")]
+        lines += [f"initial {clock}=0; always #5 {clock}=~{clock};",
+                  "reg [7:0] memory[0:255]; integer expected_dest[0:63]; reg [63:0] expected_value[0:63];",
+                  "integer cycle=0, pending=0, delay_count=0, saved_address=0, requests=0, writes=0, j=0;",
+                  "integer mode=0, expected_writes=0, expected_requests=0; reg stalled=0; reg [29:0] last_address;",
+                  f"always @(negedge {clock}) begin",
+                  f"  if ({reset}) begin {arready}=0; {rvalid}=0; end else begin",
+                  f"    {arready}=(!pending && !{rvalid} && cycle%4==2);",
+                  f"    if(pending && !{rvalid}) begin",
+                  "      if(delay_count>0) delay_count=delay_count-1; else begin",
+                  f"        for(j=0;j<32;j=j+1) {rdata}[j*8 +: 8]=memory[saved_address+j];",
+                  f"        {rid}=(mode==3)?4'd1:4'd0; {rresp}=(mode==2)?2'b10:2'b00; {rlast}=1; {rvalid}=1;",
+                  "      end end end end",
+                  f"always @(posedge {clock}) begin",
+                  f"  if({reset}) begin cycle=0;pending=0;requests=0;writes=0;stalled=0; end else begin",
+                  "    cycle=cycle+1;",
+                  f"    if(!{calib} && {arvalid}) $fatal(1,\"request before calibration\");",
+                  f"    if(stalled && (!{arvalid} || {araddr}!==last_address)) $fatal(1,\"AR changed under backpressure\");",
+                  f"    stalled={arvalid} && !{arready}; last_address={araddr};",
+                  f"    if({arvalid} && {arready}) begin",
+                  f"      if({araddr} !== (requests*32)) $fatal(1,\"wrong fetch cache-miss block\");",
+                  f"      if({p('axi','read','arsize')}!==3'd5 || {p('axi','read','arlen')}!==0 || {p('axi','read','arburst')}!==1 || {p('axi','read','arid')}!==0) $fatal(1,\"AXI shape\");",
+                  f"      pending=1;delay_count=3;saved_address={araddr};requests=requests+1;end",
+                  f"    if({rvalid} && {rready}) begin pending=0;{rvalid}<=0;end",
+                  f"    if({reg}{p('general','w_en')}) begin",
+                  f"      if(writes>=expected_writes || {reg}{p('general','w_sel')}!==expected_dest[writes][7:0] || {alu}{p('res')}!==expected_value[writes]) $fatal(1,\"writeback mismatch at %0d\", writes);",
+                  "      writes=writes+1; end",
+                  f"    if({p('axi','write','awvalid')} || {p('axi','write','wvalid')}) $fatal(1,\"unexpected AXI write\");",
+                  "  end end",
+                  "task instruction; input integer address; input [31:0] word; begin",
+                  "memory[address]=word[31:24];memory[address+1]=word[23:16];memory[address+2]=word[15:8];memory[address+3]=word[7:0];end endtask",
+                  "task begin_case; input integer new_mode; begin",
+                  f"@(negedge {clock}); {reset}=1;{calib}=0;mode=new_mode;",
+                  "for(j=0;j<256;j=j+1) memory[j]=0;",
+                  f"repeat(3) @(negedge {clock}); end endtask",
+                  "task run_case; input integer reason; integer limit; begin",
+                  f"{reset}=0; repeat(7) @(negedge {clock}); {calib}=1; limit=0;",
+                  f"while(!{p('done')} && !{p('fault')} && limit<600) begin @(negedge {clock});limit=limit+1;end",
+                  f"if(limit==600) $fatal(1,\"CPU timeout\");",
+                  f"if(reason==0) begin if(!{p('done')} || {p('fault')}) $fatal(1,\"expected HALT\"); end",
+                  f"else if(!{p('fault')} || {p('done')} || {p('fault_reason')}!==reason[2:0]) $fatal(1,\"wrong fault reason\");",
+                  "if(writes!=expected_writes || requests!=expected_requests) $fatal(1,\"request/write count\");",
+                  f"repeat(10) begin @(negedge {clock}); if({arvalid} || {reg}{p('general','w_en')}) $fatal(1,\"activity after stop\");end",
+                  "$display(\"PASS CPU scenario mode=%0d writes=%0d requests=%0d reason=%0d\",mode,writes,requests,reason);",
+                  "end endtask", "initial begin"]
+        for port in module["ports"]:
+            if port["direction"] == "in" and port["path"] != ["clock"]:
+                lines.append(f"{port['name']}=0;")
+        lines += ["begin_case(0); expected_writes=1;expected_requests=1;expected_dest[0]=1;expected_value[0]=0;",
+                  "instruction(0,32'h20010203);run_case(0);",
+                  "begin_case(0);expected_writes=4;expected_requests=1;",
+                  "expected_dest[0]=2;expected_value[0]=7;expected_dest[1]=3;expected_value[1]=9;expected_dest[2]=1;expected_value[2]=16;expected_dest[3]=4;expected_value[3]=23;",
+                  "instruction(0,32'h21020007);instruction(4,32'h21030009);instruction(8,32'h20010203);instruction(12,32'h20040102);run_case(0);",
+                  "begin_case(0);expected_writes=11;expected_requests=2;",
+                  "for(j=0;j<10;j=j+1) begin instruction(j*4,32'h210a0a01);expected_dest[j]=10;expected_value[j]=j+1;end",
+                  "instruction(40,32'h200b0a0a);expected_dest[10]=11;expected_value[10]=20;run_case(0);",
+                  "begin_case(0);expected_writes=3;expected_requests=1;expected_dest[0]=2;expected_value[0]=1;expected_dest[1]=2;expected_value[1]=64'h8000000000000000;expected_dest[2]=1;expected_value[2]=0;",
+                  "instruction(0,32'h21020001);instruction(4,32'h3b02023f);instruction(8,32'h20010202);run_case(0);",
+                  f"if({reg}{p('alu_direct','rA_in')}!==4'b0001) $fatal(1,\"ADD overflow rA event not recorded\");",
+                  "begin_case(1);expected_writes=0;expected_requests=1;instruction(0,32'h01000000);run_case(2);",
+                  "begin_case(2);expected_writes=0;expected_requests=1;instruction(0,32'h20010203);run_case(1);",
+                  "begin_case(3);expected_writes=0;expected_requests=1;instruction(0,32'h20010203);run_case(1);",
+                  '$display("PASS CPU: seven scenarios including ADD overflow rA event");$finish;end',
+                  'initial begin #500000; $fatal(1,"global timeout"); end', "endmodule"]
+        self.simulate("cpu", "\n".join(lines))
+
+    def decoder(self):
+        module = self.find("cpu/decode/decode.pseudo")
+        lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module) + ["initial begin"]
+        table = {}
+        for opcode in range(0x18, 0x20): table[opcode] = (1 if opcode < 0x1c else 2, (opcode >> 1) & 1)
+        for opcode in range(0x20, 0x30): table[opcode] = (0, (opcode - 0x20) // 2)
+        for opcode in range(0x30, 0x34): table[opcode] = (3, (opcode >> 1) & 1)
+        for opcode in range(0x34, 0x38): table[opcode] = (0, 8 + (opcode - 0x34) // 2)
+        for opcode in range(0x38, 0x40): table[opcode] = (5, (opcode - 0x38) // 2)
+        for opcode in range(0x60, 0x80): table[opcode] = (6, (opcode - 0x60) // 2)
+        for opcode in range(0xc0, 0xd0): table[opcode] = (4, (opcode - 0xc0) // 2)
+        table[0xd8] = table[0xd9] = (4, 12)
+        vectors = [(opcode << 24 | 0xa55ac3, valid) for opcode in range(256) for valid in (0, 1)]
+        vectors += [(word, valid) for word in (0, 1, 0x100, 0x10000) for valid in (0, 1)]
+        for index, (word, input_valid) in enumerate(vectors):
+            opcode, x, y, z = word >> 24, (word >> 16) & 255, (word >> 8) & 255, word & 255
+            supported, halt = opcode in table, word == 0
+            memory = 0x8c <= opcode <= 0x8f or 0xac <= opcode <= 0xaf
+            store = 0xac <= opcode <= 0xaf
+            unit, op = table.get(opcode, (3, 0))
+            expected = {"valid": int(input_valid and (supported or halt or memory)),
+                        "unsupported": int(input_valid and not(supported or halt or memory)),
+                        "memory": int(input_valid and memory), "store": int(input_valid and store),
+                        "halt": int(input_valid and halt), "alu_sel": unit, "op": op,
+                        "r1_sel": y, "r2_sel": z, "w_sel": x,
+                        "arg1_imm": int(input_valid and supported and 0x34 <= opcode <= 0x37),
+                        "arg2_imm": int(input_valid and (supported or memory) and opcode & 1), "imm_y": y, "imm_z": z}
+            lines += [f"{enc('port','instruction')}=32'h{word:08x};{enc('port','instruction_valid')}=1'b{input_valid};#1;"]
+            for key, value in expected.items():
+                width = next(p["width"] for p in module["ports"] if p["path"] == ["control", key])
+                lines.append(f"if({enc('port','control',key)} !== {width}'d{value}) $fatal(1,\"decoder case {index} {key}\");")
+        lines += [f'$display("PASS decoder: {len(vectors)} cases, all 256 opcodes");$finish;end endmodule']
+        self.simulate("decoder", "\n".join(lines))
+
+    def cache(self):
+        module = self.find("cpu/cache/cache.pseudo")
+        p = lambda key: enc("port", key)
+        lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module)
+        lines += [f"initial {p('clock')}=0;always #5 {p('clock')}=~{p('clock')};", "initial begin"]
+        for port in module["ports"]:
+            if port["direction"] == "in" and port["path"] != ["clock"]:
+                lines.append(f"{port['name']}=0;")
+        lines += [f"{p('reset')}=1;repeat(2) @(negedge {p('clock')});{p('reset')}=0;"]
+        def lookup(address, hit, data=None):
+            lines.append(f"{p('lookup_address')}=30'd{address};#1;if({p('hit')}!==1'b{hit}) $fatal(1,\"cache hit addr {address}\");")
+            if data is not None:
+                lines.append(f"if({p('line')}!==256'h{data:064x}) $fatal(1,\"cache data addr {address}\");")
+        values = [int.from_bytes(bytes([i+1])*32, "little") for i in range(8)]
+        for i in range(8):
+            lookup(0x1000+i*32, 0)
+            lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1000+i*32};{p('fill_data')}=256'h{values[i]:064x};{p('fill_en')}=1;",
+                      f"@(negedge {p('clock')});{p('fill_en')}=0;"]
+        for i in range(8): lookup(0x1000+i*32, 1, values[i])
+        # Byte-mask store hit: update bytes 16..23 only.
+        pattern = int.from_bytes(bytes([0xab])*32, "little")
+        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1000+3*32};{p('store_data')}=256'h{pattern:064x};{p('store_mask')}=32'h00ff0000;{p('store_en')}=1;",
+                  f"@(negedge {p('clock')});{p('store_en')}=0;"]
+        bytes_ = bytearray([4]*32)
+        bytes_[16:24] = bytes([0xab])*8
+        values[3] = int.from_bytes(bytes_, "little")
+        for i in range(8): lookup(0x1000+i*32, 1, values[i])
+        # Store miss must not allocate or overwrite the conflicting resident line.
+        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1100};{p('store_en')}=1;",
+                  f"@(negedge {p('clock')});{p('store_en')}=0;"]
+        lookup(0x1100, 0)
+        lookup(0x1000, 1, values[0])
+        # Read fill at the same index replaces one line, preserving the other seven.
+        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1100};{p('fill_data')}=256'h{pattern:064x};{p('fill_en')}=1;",
+                  f"@(negedge {p('clock')});{p('fill_en')}=0;"]
+        lookup(0x1100, 1, pattern)
+        lookup(0x1000, 0)
+        for i in range(1,8): lookup(0x1000+i*32, 1, values[i])
+        lines += [f"@(negedge {p('clock')});{p('invalidate')}=1;@(negedge {p('clock')});{p('invalidate')}=0;"]
+        for i in range(8): lookup(0x1000+i*32, 0)
+        lookup(0x1100, 0)
+        lines += ['$display("PASS cache: eight resident lines, masked store hit, no-write-allocate, conflict replacement, invalidate");$finish;end endmodule']
+        self.simulate("cache", "\n".join(lines))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rtl", type=Path, default=ROOT / "src/cpu")
+    parser.add_argument("--out", type=Path, default=ROOT / "build/verification")
+    parser.add_argument("--iverilog", type=Path, default=ROOT / ".tools/iverilog/app/bin/iverilog.exe")
+    parser.add_argument("--only", choices=("lint", "alu", "cpu", "decoder", "cache", "parity"))
+    args = parser.parse_args()
+    args.out.mkdir(parents=True, exist_ok=True)
+    checks = Checks(args.rtl, args.out, args.iverilog)
+    if args.only:
+        getattr(checks, args.only)()
+    else:
+        checks.parity()
+        checks.lint()
+        checks.alu()
+        checks.decoder()
+        checks.cache()
+        checks.cpu()
+    result_file = args.out / "results.json"
+    previous = json.loads(result_file.read_text(encoding="utf-8")) if args.only and result_file.exists() else {}
+    result_file.write_text(json.dumps(dict(previous, **checks.results), indent=2), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()
