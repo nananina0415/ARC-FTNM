@@ -1,0 +1,54 @@
+// CPU(AXI master) 입장. mig_7series_0에 맞춘 AXI4: 주소 30비트, 데이터 256비트, ID 4비트.
+// FPGA RAM controller의 AXI slave에 연결. AXI 신호는 Cpu.clock과 같은 클록 도메인.
+// 현재 페치만 사용하므로 쓰기 채널은 Cpu에서 비활성화.
+
+bundle AxiRead {
+    arid:     Out<bit,4>
+    araddr:   Out<bit,30>
+    arlen:    Out<bit,8>
+    arsize:   Out<bit,3>
+    arburst:  Out<bit,2>
+    arlock:   Out<bit,1>
+    arcache:  Out<bit,4>
+    arprot:   Out<bit,3>
+    arqos:    Out<bit,4>
+    arvalid:  Out<bit,1>
+    arready:  In<bit,1>
+
+    rid:      In<bit,4>
+    rdata:    In<bit,256>
+    rresp:    In<bit,2>
+    rlast:    In<bit,1>
+    rvalid:   In<bit,1>
+    rready:   Out<bit,1>
+}
+
+bundle AxiWrite {
+    awid:     Out<bit,4>
+    awaddr:   Out<bit,30>
+    awlen:    Out<bit,8>
+    awsize:   Out<bit,3>
+    awburst:  Out<bit,2>
+    awlock:   Out<bit,1>
+    awcache:  Out<bit,4>
+    awprot:   Out<bit,3>
+    awqos:    Out<bit,4>
+    awvalid:  Out<bit,1>
+    awready:  In<bit,1>
+
+    wdata:    Out<bit,256>
+    wstrb:    Out<bit,32>
+    wlast:    Out<bit,1>
+    wvalid:   Out<bit,1>
+    wready:   In<bit,1>
+
+    bid:      In<bit,4>
+    bresp:    In<bit,2>
+    bvalid:   In<bit,1>
+    bready:   Out<bit,1>
+}
+
+bundle AxiMaster {
+    read:  AxiRead
+    write: AxiWrite
+}

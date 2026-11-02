@@ -1,0 +1,68 @@
+// 구현된 ALU 명령만 해독하는 조합회로. 실행 단계/PC 제어는 제어유닛 담당.
+// instruction[24..32]=OP, [16..24]=X, [8..16]=Y, [0..8]=Z.
+// 인접한 register/immediate opcode 쌍을 함께 해독하고 OP bit 0으로 Z 입력 선택.
+
+bundle DecodeControl {  // InstructionDecode 입장
+    valid:       Out<bit,1>  // instruction_valid && 지원 명령
+    unsupported: Out<bit,1>  // instruction_valid && 미지원 명령
+    halt:        Out<bit,1>  // TRAP 0,Halt,0 (#00000000), 현재 런타임의 종료 요청
+    memory:      Out<bit,1>  // LDO/STO 및 unsigned/즉치형
+    store:       Out<bit,1>
+    alu_sel:     Out<bit,3>
+    op:          Out<bit,4>
+    r1_sel:      Out<bit,8>
+    r2_sel:      Out<bit,8>
+    w_sel:       Out<bit,8>
+    arg1_imm:    Out<bit,1>  // NEG/NEGU: Y 자체, 그 외 $Y
+    arg2_imm:    Out<bit,1>  // 즉치형: Z 자체, 그 외 $Z
+    imm_y:       WordOut    // unsigned byte, 0 확장
+    imm_z:       WordOut
+}
+
+comb InstructionDecode {
+    pub instruction: In<bit,32>
+    pub instruction_valid: In<bit,1>  // 페치 오류가 없는 유효한 명령
+    pub control: DecodeControl
+
+    sel_pair: Decoder<7,128>
+}
+
+wire InstructionDecode {
+    alias supported = or(sel_pair.out[12], sel_pair.out[13], sel_pair.out[14], sel_pair.out[15], sel_pair.out[16], sel_pair.out[17], sel_pair.out[18], sel_pair.out[19], sel_pair.out[20], sel_pair.out[21], sel_pair.out[22], sel_pair.out[23], sel_pair.out[24], sel_pair.out[25], sel_pair.out[26], sel_pair.out[27], sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[96], sel_pair.out[97], sel_pair.out[98], sel_pair.out[99], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+    alias enabled = and(instruction_valid, supported)
+    alias neg = or(sel_pair.out[26], sel_pair.out[27])
+    alias is_load = or(sel_pair.out[70,71])
+    alias is_store = or(sel_pair.out[86,87])
+    alias is_memory = or(is_load, is_store)
+
+    instruction[25..32] -> sel_pair.in
+    sel_pair.out[0..12,32..48,64..70,72..86,88..96,104..108,109..128] -> OPENED
+    alias is_halt = not(or(instruction[0..32]))
+    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory))
+    control.halt <- and(instruction_valid, is_halt)
+    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory)))
+    control.memory <- and(instruction_valid, is_memory)
+    control.store <- and(instruction_valid, is_store)
+
+    instruction[8..16] -> control.r1_sel
+    instruction[0..8] -> control.r2_sel
+    instruction[16..24] -> control.w_sel
+    control.arg1_imm <- and(enabled, neg)
+    control.arg2_imm <- and(instruction_valid, or(supported, is_memory), instruction[24])
+    control.imm_y[0..8] <- [ instruction[8..16] ]
+    { control.imm_y[8..WORD_SIZE] } <= 0
+    control.imm_z[0..8] <- [ instruction[0..8] ]
+    { control.imm_z[8..WORD_SIZE] } <= 0
+
+    // ALU 유닛 번호: AddSub=0, Mul=1, Div=2, Compare=3, Bitwise=4, Shift=5, Cond=6.
+    // 미지원 opcode는 예외 없는 Compare로 선택. 쓰기 허용은 valid로 차단.
+    control.alu_sel[0] <- or(not(supported), or(sel_pair.out[12], sel_pair.out[13], sel_pair.out[24], sel_pair.out[25], sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31]))
+    control.alu_sel[1] <- or(not(supported), or(sel_pair.out[14], sel_pair.out[15], sel_pair.out[24], sel_pair.out[25], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63]))
+    control.alu_sel[2] <- or(sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[96], sel_pair.out[97], sel_pair.out[98], sel_pair.out[99], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+
+    // 각 하위 유닛의 op 번호로 변환. AddSub의 NEG/NEGU는 8/9.
+    control.op[0] <- or(sel_pair.out[13], sel_pair.out[15], sel_pair.out[17], sel_pair.out[19], sel_pair.out[21], sel_pair.out[23], sel_pair.out[25], sel_pair.out[27], sel_pair.out[29], sel_pair.out[31], sel_pair.out[49], sel_pair.out[51], sel_pair.out[53], sel_pair.out[55], sel_pair.out[57], sel_pair.out[59], sel_pair.out[61], sel_pair.out[63], sel_pair.out[97], sel_pair.out[99], sel_pair.out[101], sel_pair.out[103])
+    control.op[1] <- or(sel_pair.out[18], sel_pair.out[19], sel_pair.out[22], sel_pair.out[23], sel_pair.out[30], sel_pair.out[31], sel_pair.out[50], sel_pair.out[51], sel_pair.out[54], sel_pair.out[55], sel_pair.out[58], sel_pair.out[59], sel_pair.out[62], sel_pair.out[63], sel_pair.out[98], sel_pair.out[99], sel_pair.out[102], sel_pair.out[103])
+    control.op[2] <- or(sel_pair.out[20], sel_pair.out[21], sel_pair.out[22], sel_pair.out[23], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+    control.op[3] <- or(sel_pair.out[26], sel_pair.out[27], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[108])
+}

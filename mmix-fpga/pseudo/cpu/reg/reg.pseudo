@@ -121,6 +121,7 @@ bundle GeneralRegIO {
 }
 
 bundle SpecialRegIO {
+    enable: In<bit,1>  // GET/PUT 버스 접근 허용. ALU 직접 경로와 별개
     sel: In<bit,5>
     rw: In<bit,1>
     data: WordInOut
@@ -138,7 +139,7 @@ seq Registers {
     pub alu_direct: *AluDirectIO
 
     mut generals: [WordRegPort; 256]
-    mut specials: [WordReg; 32]  // rA,rD,rH,rM,rR 자리는 미사용 (direct_*가 담당)
+    mut specials: [DirectReg<WORD_SIZE>; 32]  // rA,rD,rH,rM,rR 자리는 미사용
 
     mut direct_rA: DirectReg<4>  // 비트 배치는 alu::RaBits
     mut direct_rD: DirectReg<WORD_SIZE>
@@ -151,6 +152,7 @@ seq Registers {
     sel_w:  Decoder<8,256>
     w_en_mux: Mux<2,256>  // w_en=0이면 모든 쓰기 enable을 0으로
     sel_special_reg: Decoder<5,32>
+    special_enable: Mux<2,32>
 
     rA_pad: TriState<WORD_SIZE-4>  // rA의 나머지 비트는 GET 시 0
 }
@@ -193,12 +195,23 @@ wire Registers {
 
     // 특수 레지스터 버스 (GET/PUT)
     special.sel -> sel_special_reg.in
+    special_enable.select <- special.enable
+    special_enable.option[0] <- 0
+    special_enable.option[1] <- sel_special_reg.out
 
-    sel_special_reg.out[0,2,4,7..21,22..32] -> [ specials[0,2,4,7..21,22..32].enable ]
+    // 일반 특수 레지스터는 버스만 사용. 전용 다섯 칸은 접근하지 않음.
+    { specials[0..32].direct_w_en } <= 0
+    { specials[0..32].direct_in } <= 0
+    specials[0..32].direct_out -> OPENED
+    { specials[rD,rH,rM,rR,rA].enable } <= 0
+    { specials[rD,rH,rM,rR,rA].rw } <= 0
+    { specials[rD,rH,rM,rR,rA].data } <= OPENED
+
+    special_enable.selected[0,2,4,7..21,22..32] -> [ specials[0,2,4,7..21,22..32].enable ]
     special.rw   => { specials[0,2,4,7..21,22..32].rw }
     special.data <=> { specials[0,2,4,7..21,22..32].data }
 
-    sel_special_reg.out[rA, rD, rH, rM, rR] -> [
+    special_enable.selected[rA, rD, rH, rM, rR] -> [
         direct_rA.enable,
         direct_rD.enable,
         direct_rH.enable,
@@ -220,7 +233,7 @@ wire Registers {
         direct_rR.data,
     }
 
-    rA_pad.enable <- and(sel_special_reg.out[rA], special.rw)
+    rA_pad.enable <- and(special_enable.selected[rA], special.rw)
     rA_pad.in     <- 0
     rA_pad.out    -> special.data[0..6, 8..14, 16..WORD_SIZE]
 
@@ -231,13 +244,16 @@ wire Registers {
 
     direct_rD.direct_out  -> alu_direct.rD_in
     direct_rD.direct_w_en <- 0
+    direct_rD.direct_in <- 0
     direct_rM.direct_out  -> alu_direct.rM_in
     direct_rM.direct_w_en <- 0
+    direct_rM.direct_in <- 0
 
     alu_direct.rH_out  -> direct_rH.direct_in
     alu_direct.rH_w_en -> direct_rH.direct_w_en
     alu_direct.rR_out  -> direct_rR.direct_in
     alu_direct.rR_w_en -> direct_rR.direct_w_en
+    [ direct_rH.direct_out, direct_rR.direct_out ] -> OPENED
 }
 
 alias {

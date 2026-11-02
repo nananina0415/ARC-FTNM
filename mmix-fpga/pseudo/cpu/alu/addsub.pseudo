@@ -35,7 +35,7 @@ wire AddSub {
     alias is_signed = or(sel_op.out[ADD], sel_op.out[SUB], sel_op.out[NEG])
 
     op -> sel_op.in
-    sel_op.out[10..16] -> OPENED
+    sel_op.out[ADDU,10..16] -> OPENED
 
     // 배수: option[k] = arg1을 k비트 왼쪽으로
     scale_mux.option[0] <- arg1

@@ -1,0 +1,221 @@
+bundle MemoryIO { // MemoryAccess 입장, 요청/응답 각 한 건씩
+    req_valid: In<bit,1>
+    req_ready: Out<bit,1>
+    address: WordIn
+    store: In<bit,1>
+    write_data: WordIn
+    res_valid: Out<bit,1>
+    res_ready: In<bit,1>
+    read_data: WordOut
+    error: Out<bit,1>
+}
+seq MemoryAccess {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub ram_ready: In<bit,1>
+    pub control: MemoryIO
+    pub axi: AxiMaster
+    pub instruction_invalidate: Out<bit,1> // 쓰기 응답 시 I-cache 무효화
+    mut address: reg::ValueReg<WORD_SIZE>
+    mut store_value: reg::ValueReg<WORD_SIZE>
+    mut load_value: reg::ValueReg<WORD_SIZE>
+    mut ar_pending: reg::ValueReg<1>
+    mut r_pending: reg::ValueReg<1>
+    mut aw_pending: reg::ValueReg<1>
+    mut w_pending: reg::ValueReg<1>
+    mut b_pending: reg::ValueReg<1>
+    mut full: reg::ValueReg<1>
+    mut bus_error: reg::ValueReg<1>
+    mut error: reg::ValueReg<1>
+    load_mux: Mux<4,WORD_SIZE>
+    store_mux: Mux<4,256>
+    strobe_mux: Mux<4,32>
+    mut cache: cache::LineCache8
+    line_source: Mux<2,256>
+    load_index: Mux<2,2>
+}
+wire MemoryAccess {
+    alias active = not(reset)
+    alias accept = and(control.req_valid, control.req_ready)
+    alias invalid_address = or(control.address[30..WORD_SIZE])
+    alias bad = and(accept, invalid_address)
+    alias cached = and(accept, not(invalid_address), not(control.store), cache.hit)
+    alias start_read = and(accept, not(invalid_address), not(control.store), not(cache.hit))
+    alias start_write = and(accept, not(invalid_address), control.store)
+    alias ar_fire = and(axi.read.arvalid, axi.read.arready)
+    alias r_fire = and(axi.read.rvalid, axi.read.rready)
+    alias read_done = and(r_fire, axi.read.rlast)
+    alias aw_fire = and(axi.write.awvalid, axi.write.awready)
+    alias w_fire = and(axi.write.wvalid, axi.write.wready)
+    alias b_fire = and(axi.write.bvalid, axi.write.bready)
+    alias r_error = or(axi.read.rresp[0..2], axi.read.rid[0..4], not(axi.read.rlast))
+    alias b_error = or(axi.write.bresp[0..2], axi.write.bid[0..4])
+    alias finish = or(bad, read_done, b_fire, cached)
+    alias consume = and(control.res_valid, control.res_ready)
+    clock => { address.clock, store_value.clock, load_value.clock, ar_pending.clock, r_pending.clock, aw_pending.clock, w_pending.clock, b_pending.clock, full.clock, bus_error.clock, error.clock }
+    reset => { address.reset, store_value.reset, load_value.reset, ar_pending.reset, r_pending.reset, aw_pending.reset, w_pending.reset, b_pending.reset, full.reset, bus_error.reset, error.reset }
+    clock -> cache.clock
+    reset -> cache.reset
+    cache.invalidate <- and(active, b_fire, b_error)
+    control.address[0..30] -> cache.lookup_address
+    address.out[0..30] -> cache.update_address
+    cache.fill_en <- and(active, read_done, not(bus_error.out), not(r_error))
+    cache.fill_data <- axi.read.rdata
+    cache.store_en <- and(active, b_fire, not(b_error))
+    cache.store_data <- store_mux.selected
+    cache.store_mask <- strobe_mux.selected
+    instruction_invalidate <- and(active, b_fire)
+    line_source.select <- cached
+    line_source.option[0] <- axi.read.rdata
+    line_source.option[1] <- cache.line
+    load_index.select <- cached
+    load_index.option[0] <- [ address.out[3..5] ]
+    load_index.option[1] <- [ control.address[3..5] ]
+    control.req_ready <- and(active, ram_ready, not(or(ar_pending.out, r_pending.out, aw_pending.out, w_pending.out, b_pending.out, full.out)))
+    address.w_en <- accept
+    address.in <- control.address
+    address.out[0..3,30..WORD_SIZE] -> OPENED
+    store_value.w_en <- accept
+    store_value.in <- control.write_data
+
+    ar_pending.w_en <- 1
+    ar_pending.in <- or(start_read, and(ar_pending.out, not(ar_fire)))
+    r_pending.w_en <- 1
+    r_pending.in <- or(ar_fire, and(r_pending.out, not(read_done)))
+    aw_pending.w_en <- 1
+    aw_pending.in <- or(start_write, and(aw_pending.out, not(aw_fire)))
+    w_pending.w_en <- 1
+    w_pending.in <- or(start_write, and(w_pending.out, not(w_fire)))
+    b_pending.w_en <- 1
+    b_pending.in <- or(start_write, and(b_pending.out, not(b_fire)))
+    full.w_en <- 1
+    full.in <- or(finish, and(full.out, not(consume)))
+    bus_error.w_en <- or(accept, r_fire)
+    bus_error.in <- and(not(accept), or(bus_error.out, r_error))
+    error.w_en <- finish
+    error.in <- or(bad, and(read_done, or(bus_error.out, r_error)), and(b_fire, b_error))
+    error.out -> control.error
+    full.out -> control.res_valid
+    load_value.out -> control.read_data
+
+    // MMIX octa 접근은 8바이트로 내림 정렬. RAM bus는 32바이트 beat.
+    { axi.read.araddr[0..5] } <= 0
+    axi.read.araddr[5..30] <- [ address.out[5..30] ]
+    axi.read.arid <- 0
+    axi.read.arlen <- 0
+    { axi.read.arsize[0,2] } <= 1
+    axi.read.arsize[1] <- 0
+    axi.read.arburst[0] <- 1
+    axi.read.arburst[1] <- 0
+    axi.read.arlock <- 0
+    axi.read.arcache <- 0
+    axi.read.arprot <- 0
+    axi.read.arqos <- 0
+    axi.read.arvalid <- and(active, ar_pending.out)
+    axi.read.rready <- and(active, r_pending.out)
+
+    load_mux.select <- load_index.selected
+    load_mux.option[0][56..64] <- [ line_source.selected[0..8] ]
+    load_mux.option[0][48..56] <- [ line_source.selected[8..16] ]
+    load_mux.option[0][40..48] <- [ line_source.selected[16..24] ]
+    load_mux.option[0][32..40] <- [ line_source.selected[24..32] ]
+    load_mux.option[0][24..32] <- [ line_source.selected[32..40] ]
+    load_mux.option[0][16..24] <- [ line_source.selected[40..48] ]
+    load_mux.option[0][8..16] <- [ line_source.selected[48..56] ]
+    load_mux.option[0][0..8] <- [ line_source.selected[56..64] ]
+    load_mux.option[1][56..64] <- [ line_source.selected[64..72] ]
+    load_mux.option[1][48..56] <- [ line_source.selected[72..80] ]
+    load_mux.option[1][40..48] <- [ line_source.selected[80..88] ]
+    load_mux.option[1][32..40] <- [ line_source.selected[88..96] ]
+    load_mux.option[1][24..32] <- [ line_source.selected[96..104] ]
+    load_mux.option[1][16..24] <- [ line_source.selected[104..112] ]
+    load_mux.option[1][8..16] <- [ line_source.selected[112..120] ]
+    load_mux.option[1][0..8] <- [ line_source.selected[120..128] ]
+    load_mux.option[2][56..64] <- [ line_source.selected[128..136] ]
+    load_mux.option[2][48..56] <- [ line_source.selected[136..144] ]
+    load_mux.option[2][40..48] <- [ line_source.selected[144..152] ]
+    load_mux.option[2][32..40] <- [ line_source.selected[152..160] ]
+    load_mux.option[2][24..32] <- [ line_source.selected[160..168] ]
+    load_mux.option[2][16..24] <- [ line_source.selected[168..176] ]
+    load_mux.option[2][8..16] <- [ line_source.selected[176..184] ]
+    load_mux.option[2][0..8] <- [ line_source.selected[184..192] ]
+    load_mux.option[3][56..64] <- [ line_source.selected[192..200] ]
+    load_mux.option[3][48..56] <- [ line_source.selected[200..208] ]
+    load_mux.option[3][40..48] <- [ line_source.selected[208..216] ]
+    load_mux.option[3][32..40] <- [ line_source.selected[216..224] ]
+    load_mux.option[3][24..32] <- [ line_source.selected[224..232] ]
+    load_mux.option[3][16..24] <- [ line_source.selected[232..240] ]
+    load_mux.option[3][8..16] <- [ line_source.selected[240..248] ]
+    load_mux.option[3][0..8] <- [ line_source.selected[248..256] ]
+    load_value.w_en <- or(read_done, cached)
+    load_value.in <- load_mux.selected
+
+    { axi.write.awaddr[0..5] } <= 0
+    axi.write.awaddr[5..30] <- [ address.out[5..30] ]
+    axi.write.awid <- 0
+    axi.write.awlen <- 0
+    { axi.write.awsize[0,2] } <= 1
+    axi.write.awsize[1] <- 0
+    axi.write.awburst[0] <- 1
+    axi.write.awburst[1] <- 0
+    axi.write.awlock <- 0
+    axi.write.awcache <- 0
+    axi.write.awprot <- 0
+    axi.write.awqos <- 0
+    axi.write.awvalid <- and(active, aw_pending.out)
+    axi.write.wvalid <- and(active, w_pending.out)
+    axi.write.wlast <- 1
+    axi.write.bready <- and(active, b_pending.out, not(aw_pending.out), not(w_pending.out))
+    store_mux.select <- [ address.out[3..5] ]
+    strobe_mux.select <- [ address.out[3..5] ]
+    { store_mux.option[0][64..256] } <= 0
+    store_mux.option[0][0..8] <- [ store_value.out[56..64] ]
+    store_mux.option[0][8..16] <- [ store_value.out[48..56] ]
+    store_mux.option[0][16..24] <- [ store_value.out[40..48] ]
+    store_mux.option[0][24..32] <- [ store_value.out[32..40] ]
+    store_mux.option[0][32..40] <- [ store_value.out[24..32] ]
+    store_mux.option[0][40..48] <- [ store_value.out[16..24] ]
+    store_mux.option[0][48..56] <- [ store_value.out[8..16] ]
+    store_mux.option[0][56..64] <- [ store_value.out[0..8] ]
+    { strobe_mux.option[0][0..8] } <= 1
+    { strobe_mux.option[0][8..32] } <= 0
+    { store_mux.option[1][0..64] } <= 0
+    { store_mux.option[1][128..256] } <= 0
+    store_mux.option[1][64..72] <- [ store_value.out[56..64] ]
+    store_mux.option[1][72..80] <- [ store_value.out[48..56] ]
+    store_mux.option[1][80..88] <- [ store_value.out[40..48] ]
+    store_mux.option[1][88..96] <- [ store_value.out[32..40] ]
+    store_mux.option[1][96..104] <- [ store_value.out[24..32] ]
+    store_mux.option[1][104..112] <- [ store_value.out[16..24] ]
+    store_mux.option[1][112..120] <- [ store_value.out[8..16] ]
+    store_mux.option[1][120..128] <- [ store_value.out[0..8] ]
+    { strobe_mux.option[1][0..8] } <= 0
+    { strobe_mux.option[1][8..16] } <= 1
+    { strobe_mux.option[1][16..32] } <= 0
+    { store_mux.option[2][0..128] } <= 0
+    { store_mux.option[2][192..256] } <= 0
+    store_mux.option[2][128..136] <- [ store_value.out[56..64] ]
+    store_mux.option[2][136..144] <- [ store_value.out[48..56] ]
+    store_mux.option[2][144..152] <- [ store_value.out[40..48] ]
+    store_mux.option[2][152..160] <- [ store_value.out[32..40] ]
+    store_mux.option[2][160..168] <- [ store_value.out[24..32] ]
+    store_mux.option[2][168..176] <- [ store_value.out[16..24] ]
+    store_mux.option[2][176..184] <- [ store_value.out[8..16] ]
+    store_mux.option[2][184..192] <- [ store_value.out[0..8] ]
+    { strobe_mux.option[2][0..16] } <= 0
+    { strobe_mux.option[2][16..24] } <= 1
+    { strobe_mux.option[2][24..32] } <= 0
+    { store_mux.option[3][0..192] } <= 0
+    store_mux.option[3][192..200] <- [ store_value.out[56..64] ]
+    store_mux.option[3][200..208] <- [ store_value.out[48..56] ]
+    store_mux.option[3][208..216] <- [ store_value.out[40..48] ]
+    store_mux.option[3][216..224] <- [ store_value.out[32..40] ]
+    store_mux.option[3][224..232] <- [ store_value.out[24..32] ]
+    store_mux.option[3][232..240] <- [ store_value.out[16..24] ]
+    store_mux.option[3][240..248] <- [ store_value.out[8..16] ]
+    store_mux.option[3][248..256] <- [ store_value.out[0..8] ]
+    { strobe_mux.option[3][0..24] } <= 0
+    { strobe_mux.option[3][24..32] } <= 1
+    store_mux.selected -> axi.write.wdata
+    strobe_mux.selected -> axi.write.wstrb
+}

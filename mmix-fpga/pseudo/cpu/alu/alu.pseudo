@@ -104,6 +104,7 @@ wire Alu {
     }
 
     alu_sel[0,1,2] -> sel_alu_op.in[0,1,2]
+    sel_alu_op.out[COMP,BITWISE,COND,7] -> OPENED
 
     // 특수 레지스터
     spec_direct.rD_in -> div.rD

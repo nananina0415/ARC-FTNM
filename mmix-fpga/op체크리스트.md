@@ -144,10 +144,10 @@
 | [ ] | [ ] | #89 | LDTI | LDT 즉치 |
 | [ ] | [ ] | #8A | LDTU | tetra 로드, 0 확장 |
 | [ ] | [ ] | #8B | LDTUI | LDTU 즉치 |
-| [ ] | [ ] | #8C | LDO | octa(8바이트) 로드 |
-| [ ] | [ ] | #8D | LDOI | LDO 즉치 |
-| [ ] | [ ] | #8E | LDOU | octa 로드 (LDO와 동일) |
-| [ ] | [ ] | #8F | LDOUI | LDOU 즉치 |
+| [ ] | [x] | #8C | LDO | octa(8바이트) 로드 |
+| [ ] | [x] | #8D | LDOI | LDO 즉치 |
+| [ ] | [x] | #8E | LDOU | octa 로드 (LDO와 동일) |
+| [ ] | [x] | #8F | LDOUI | LDOU 즉치 |
 | [ ] | [ ] | ~~#90~~ | ~~LDSF~~ | ~~단정도 부동소수점 로드 → 배정도~~ |
 | [ ] | [ ] | ~~#91~~ | ~~LDSFI~~ | ~~LDSF 즉치~~ |
 | [ ] | [ ] | #92 | LDHT | tetra를 상위 32비트로 로드, 하위 0 |
@@ -176,10 +176,10 @@
 | [ ] | [ ] | #A9 | STTI | STT 즉치 |
 | [ ] | [ ] | #AA | STTU | tetra 저장 (unsigned) |
 | [ ] | [ ] | #AB | STTUI | STTU 즉치 |
-| [ ] | [ ] | #AC | STO | octa 저장 |
-| [ ] | [ ] | #AD | STOI | STO 즉치 |
-| [ ] | [ ] | #AE | STOU | octa 저장 (STO와 동일) |
-| [ ] | [ ] | #AF | STOUI | STOU 즉치 |
+| [ ] | [x] | #AC | STO | octa 저장 |
+| [ ] | [x] | #AD | STOI | STO 즉치 |
+| [ ] | [x] | #AE | STOU | octa 저장 (STO와 동일) |
+| [ ] | [x] | #AF | STOUI | STOU 즉치 |
 | [ ] | [ ] | ~~#B0~~ | ~~STSF~~ | ~~배정도 → 단정도 부동소수점 저장~~ |
 | [ ] | [ ] | ~~#B1~~ | ~~STSFI~~ | ~~STSF 즉치~~ |
 | [ ] | [ ] | #B2 | STHT | $X 상위 32비트를 tetra로 저장 |

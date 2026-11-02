@@ -1,0 +1,22 @@
+// 폭을 파라미터로 갖는 저장 소자. 동기 reset이 쓰기보다 우선.
+seq ValueReg<N> {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub w_en: In<bit,1>
+    pub in: In<bit,N>
+    pub out: Out<bit,N>
+    buf: [D_FlipFlop; N]
+    hold: Mux<2,N>
+    rst: Mux<2,N>
+}
+wire ValueReg<N> {
+    clock => { buf[0..N].clock }
+    hold.select <- w_en
+    hold.option[0] <- [ buf[0..N].out ]
+    hold.option[1] <- in
+    rst.select <- reset
+    rst.option[0] <- hold.selected
+    rst.option[1] <- 0
+    rst.selected -> [ buf[0..N].in ]
+    out <- [ buf[0..N].out ]
+}

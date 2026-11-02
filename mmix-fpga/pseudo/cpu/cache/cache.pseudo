@@ -1,0 +1,56 @@
+// 8 direct-mapped blocks × 32 bytes = 256 bytes.
+// 주소: tag[29:8], index[7:5], offset[4:0]. AXI byte lane 순서 그대로 저장.
+seq LineCache8 {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub invalidate: In<bit,1>
+    pub lookup_address: In<bit,30>
+    pub hit: Out<bit,1>
+    pub line: Out<bit,256>
+    pub update_address: In<bit,30>
+    pub fill_en: In<bit,1>
+    pub fill_data: In<bit,256>
+    pub store_en: In<bit,1>
+    pub store_data: In<bit,256>
+    pub store_mask: In<bit,32>
+    mut blocks: [CacheBlock; 8]
+    select_update: Decoder<3,8>
+    tag_mux: Mux<8,22>
+    valid_mux: Mux<8,1>
+    data_mux: Mux<8,256>
+}
+wire LineCache8 {
+    clock => { blocks[0..8].clock }
+    reset => { blocks[0..8].reset }
+    invalidate => { blocks[0..8].invalidate }
+    update_address[5..8] -> select_update.in
+    update_address[8..30] => { blocks[0..8].update_tag }
+    fill_data => { blocks[0..8].fill_data }
+    store_data => { blocks[0..8].store_data }
+    store_mask => { blocks[0..8].store_mask }
+    blocks[0].fill_en <- and(fill_en, select_update.out[0])
+    blocks[0].store_en <- and(store_en, select_update.out[0])
+    blocks[1].fill_en <- and(fill_en, select_update.out[1])
+    blocks[1].store_en <- and(store_en, select_update.out[1])
+    blocks[2].fill_en <- and(fill_en, select_update.out[2])
+    blocks[2].store_en <- and(store_en, select_update.out[2])
+    blocks[3].fill_en <- and(fill_en, select_update.out[3])
+    blocks[3].store_en <- and(store_en, select_update.out[3])
+    blocks[4].fill_en <- and(fill_en, select_update.out[4])
+    blocks[4].store_en <- and(store_en, select_update.out[4])
+    blocks[5].fill_en <- and(fill_en, select_update.out[5])
+    blocks[5].store_en <- and(store_en, select_update.out[5])
+    blocks[6].fill_en <- and(fill_en, select_update.out[6])
+    blocks[6].store_en <- and(store_en, select_update.out[6])
+    blocks[7].fill_en <- and(fill_en, select_update.out[7])
+    blocks[7].store_en <- and(store_en, select_update.out[7])
+    lookup_address[5..8] => { tag_mux.select, valid_mux.select, data_mux.select }
+    [ blocks[0..8].tag ] -> [ tag_mux.option[0..8] ]
+    [ blocks[0..8].valid ] -> [ valid_mux.option[0..8] ]
+    [ blocks[0..8].data ] -> [ data_mux.option[0..8] ]
+    alias difference = xor(tag_mux.selected, [ lookup_address[8..30] ])
+    hit <- and(valid_mux.selected, not(or(difference[0..22])))
+    data_mux.selected -> line
+    lookup_address[0..5] -> OPENED
+    update_address[0..5] -> OPENED
+}
