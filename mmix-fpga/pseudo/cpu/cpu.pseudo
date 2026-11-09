@@ -28,6 +28,7 @@ seq Cpu {
     read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
     read1_mux: Mux<2,8>
+    read1_slot: Mux<2,8>  // 레지스터 스택 내부 읽기는 슬롯을 직접 지정
     writeback_mux: Mux<4,WORD_SIZE>
     store_data_mux: Mux<2,WORD_SIZE>
     special_source: Mux<2,WORD_SIZE>
@@ -63,6 +64,37 @@ wire Cpu {
     reg.general.r1_data -> control.branch_value
     alu.trip_req -> control.trip_req
 
+    decode.control.writes_x -> control.decoded_writes_x
+    decode.control.push -> control.decoded_push
+    decode.control.push_go -> control.decoded_push_go
+    decode.control.pop -> control.decoded_pop
+    decode.control.put_g -> control.decoded_put_g
+    decode.control.put_l -> control.decoded_put_l
+    decode.control.w_sel -> control.decoded_x
+    special_source.selected -> control.special_value
+    reg.general.r1_data -> control.stack_r1_data
+    reg.stack.rJ_out -> control.stack_regs.rJ_out
+    control.stack_regs.rJ_in -> reg.stack.rJ_in
+    control.stack_regs.rJ_w_en -> reg.stack.rJ_w_en
+    reg.stack.rO_out -> control.stack_regs.rO_out
+    control.stack_regs.rO_in -> reg.stack.rO_in
+    control.stack_regs.rO_w_en -> reg.stack.rO_w_en
+    reg.stack.rS_out -> control.stack_regs.rS_out
+    control.stack_regs.rS_in -> reg.stack.rS_in
+    control.stack_regs.rS_w_en -> reg.stack.rS_w_en
+    reg.stack.rG_out -> control.stack_regs.rG_out
+    control.stack_regs.rG_in -> reg.stack.rG_in
+    control.stack_regs.rG_w_en -> reg.stack.rG_w_en
+    reg.stack.rL_out -> control.stack_regs.rL_out
+    control.stack_regs.rL_in -> reg.stack.rL_in
+    control.stack_regs.rL_w_en -> reg.stack.rL_w_en
+    control.stack_r1_physical -> reg.general.r1_physical
+    control.stack_w_en -> reg.general.stack_w_en
+    control.stack_w_slot -> reg.general.stack_w_sel
+    control.stack_w_data -> reg.general.stack_w_data
+
+    reg.stack.rG_out -> special_access.g
+    reg.stack.rL_out -> special_access.l
     special_source.select <- decode.control.special_immediate
     special_source.option[0] <- reg.general.r2_data
     special_source.option[1] <- decode.control.imm_z
@@ -96,6 +128,12 @@ wire Cpu {
     decode.control.branch_unconditional -> decoded.branch_unconditional
     decode.control.branch_condition -> decoded.branch_condition
     decode.control.branch_offset -> decoded.branch_offset
+    decode.control.writes_x -> decoded.writes_x
+    decode.control.push -> decoded.push
+    decode.control.push_go -> decoded.push_go
+    decode.control.pop -> decoded.pop
+    decode.control.put_g -> decoded.put_g
+    decode.control.put_l -> decoded.put_l
     decode.control.alu_sel -> decoded.alu_sel
     decode.control.op -> decoded.op
     decode.control.r1_sel -> decoded.r1_sel
@@ -115,7 +153,10 @@ wire Cpu {
     read1_mux.select <- control.store_read_x
     read1_mux.option[0] <- decode.control.r1_sel
     read1_mux.option[1] <- decode.control.w_sel
-    read1_mux.selected -> reg.general.r1_sel
+    read1_slot.select <- control.stack_r1_physical
+    read1_slot.option[0] <- read1_mux.selected
+    read1_slot.option[1] <- control.stack_r1_slot
+    read1_slot.selected -> reg.general.r1_sel
     decode.control.r2_sel -> reg.general.r2_sel
     decode.control.w_sel -> reg.general.w_sel
 

@@ -5,7 +5,7 @@
     "mnemonic": "PUT",
     "opcode": "0xf6",
     "pc": "0x0",
-    "word": "0xf6130003",
+    "word": "0xf6080003",
     "executions": 0
   },
   "tags": [

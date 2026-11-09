@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "puti.rl_shrink",
+  "target": {
+    "mnemonic": "PUTI",
+    "opcode": "0xf7",
+    "pc": "0x0",
+    "word": "0xf7140003",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "rl_shrink"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {},
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000009"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {},
+    "special": {
+      "rL": "0x0000000000000003"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "rl_shrink"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 120
+  }
+}

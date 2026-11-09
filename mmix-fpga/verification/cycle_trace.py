@@ -8,7 +8,7 @@ from verify_generated import enc
 SPECIAL_NAMES = ["rB", "rD", "rE", "rH", "rJ", "rM", "rR", "rBB", "rC", "rN", "rO", "rS",
                  "rI", "rT", "rTT", "rK", "rQ", "rU", "rV", "rG", "rL", "rA", "rF", "rP",
                  "rW", "rX", "rY", "rZ", "rWW", "rXX", "rYY", "rZZ"]
-STATES = ["REQUEST", "WAIT", "EXECUTE", "HALTED", "FAULT", "MEMORY_REQUEST", "MEMORY_WAIT", "MEMORY_COMMIT"]
+STATES = ["REQUEST", "WAIT", "EXECUTE", "HALTED", "FAULT", "MEMORY_REQUEST", "MEMORY_WAIT", "MEMORY_COMMIT", "STACK"]
 
 
 def instrumentation(path):
@@ -53,11 +53,13 @@ def instrumentation(path):
         write((',' if index else '') + '"%016h"', value)
     write('],"special":[')
     for index, name in enumerate(SPECIAL_NAMES):
-        if name in ("rA", "rD", "rH", "rM", "rR"):
+        if name in ("rA", "rD", "rH", "rM", "rR", "rJ", "rO", "rS", "rG", "rL"):
             value = f"{regs}{enc('instance','direct_'+name)}.{p('direct_out')}"
             if name == "rA":
                 # Physical compact storage -> architectural rA bits 6,7,14,15.
                 value = "{48'b0," + value + "[3:2],6'b0," + value + "[1:0],6'b0}"
+            elif name in ("rG", "rL"):
+                value = "{56'b0," + value + "}"
         else:
             value = f"{regs}{enc('instance','specials',str(index))}.{p('direct_out')}"
         write((',' if index else '') + '"%016h"', value)

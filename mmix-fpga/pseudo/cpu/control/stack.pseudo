@@ -1,0 +1,372 @@
+// 레지스터 스택의 여러 클록 동작을 수행한다. EXECUTE에서 required=1이면 Control이
+// STACK 상태로 넘어오고, start=1인 에지부터 이 FSM이 진행한다.
+// retry: EXECUTE를 다시 수행, retire: 명령 완료, range_fault/access_fault: 정지.
+seq StackControl {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub start: In<bit,1>
+    pub writes_x: In<bit,1>
+    pub push: In<bit,1>
+    pub pop: In<bit,1>
+    pub put_g: In<bit,1>
+    pub put_l: In<bit,1>  // PUT rL 완료 에지. 여러 클록이 필요 없다
+    pub x: In<bit,8>
+    pub value: WordIn  // PUT 값
+    pub r1_data: WordIn
+
+    pub rG: In<bit,8>
+    pub rL: In<bit,8>
+    pub rO: WordIn
+    pub rS: WordIn
+    pub rG_in: Out<bit,8>
+    pub rG_w_en: Out<bit,1>
+    pub rL_in: Out<bit,8>
+    pub rL_w_en: Out<bit,1>
+    pub rO_in: WordOut
+    pub rO_w_en: Out<bit,1>
+    pub rS_in: WordOut
+    pub rS_w_en: Out<bit,1>
+
+    pub required: Out<bit,1>
+    pub retry: Out<bit,1>
+    pub retire: Out<bit,1>
+    pub push_retire: Out<bit,1>
+    pub range_fault: Out<bit,1>
+    pub access_fault: Out<bit,1>
+
+    pub r1_physical: Out<bit,1>
+    pub r1_slot: Out<bit,8>
+    pub w_en: Out<bit,1>
+    pub w_slot: Out<bit,8>
+    pub w_data: WordOut
+
+    pub mem_valid: Out<bit,1>
+    pub mem_store: Out<bit,1>
+    pub mem_ready: In<bit,1>
+    pub mem_res_valid: In<bit,1>
+    pub mem_res_ready: Out<bit,1>
+    pub mem_read_data: WordIn
+    pub mem_error: In<bit,1>
+
+    mut state: reg::ValueReg<4>
+    mut y: reg::ValueReg<WORD_SIZE>  // POP이 hole로 옮길 값
+    mut k: reg::ValueReg<8>  // hole이 기록한 PUSH 칸 수 - 1
+    sel: Decoder<4,16>
+    geometry: reg::RingGeometry
+
+    x_vs_g: Adder<8>
+    x_vs_l: Adder<8>
+    l_vs_x: Adder<8>
+    value_vs_g: Adder<8>
+    value_vs_l: Adder<8>
+    pending: Adder<9>  // (rO-rS)/8. rS가 잠시 rO를 넘는 경우까지 구분한다
+    fill_level: Adder<7>
+    hole_vs_pending: Adder<9>
+
+    minus_one_source: Mux<4,8>
+    minus_one: Adder<8>
+    offset: Mux<3,8>
+    ring_add: Adder<7>
+    slot: Mux<3,8>
+    data: Mux<4,WORD_SIZE>
+    y_source: Mux<2,WORD_SIZE>
+
+    increment_source: Mux<2,8>
+    increment: Adder<8>
+    count: Mux<2,8>
+    l_increment: Adder<8>
+    l_subtract: Adder<8>
+
+    pop_x: Mux<2,8>
+    pop_sum: Adder<8>
+    pop_vs_g: Adder<8>
+    pop_l: Mux<2,8>
+    k_vs_l: Adder<8>
+
+    l_source: Mux<4,8>
+    g_source: Mux<2,8>
+    o_count: Mux<2,8>
+    o_add: Adder<WORD_SIZE>
+    s_add: Adder<WORD_SIZE>
+}
+
+wire StackControl {
+    alias {
+        IDLE=0
+        GROW=1
+        CHECK=2
+        SPILL_REQUEST=3
+        SPILL_WAIT=4
+        POP_READ=5
+        POP_BASE=6
+        FILL_ADDRESS=7
+        FILL_REQUEST=8
+        FILL_WAIT=9
+        POP_HOLE=10
+        POP_COMMIT=11
+        PUSH_COMMIT=12
+        G_CLEAR=13
+        G_FLUSH=14
+        G_COMMIT=15
+    }
+    alias idle = sel.out[IDLE]
+    alias grow = sel.out[GROW]
+    alias check = sel.out[CHECK]
+    alias spill_request = sel.out[SPILL_REQUEST]
+    alias spill_wait = sel.out[SPILL_WAIT]
+    alias pop_read = sel.out[POP_READ]
+    alias pop_base = sel.out[POP_BASE]
+    alias fill_address = sel.out[FILL_ADDRESS]
+    alias fill_request = sel.out[FILL_REQUEST]
+    alias fill_wait = sel.out[FILL_WAIT]
+    alias pop_hole = sel.out[POP_HOLE]
+    alias pop_commit = sel.out[POP_COMMIT]
+    alias push_commit = sel.out[PUSH_COMMIT]
+    alias g_clear = sel.out[G_CLEAR]
+    alias g_flush = sel.out[G_FLUSH]
+    alias g_commit = sel.out[G_COMMIT]
+
+    alias x_global = x_vs_g.c_out
+    alias x_local = not(x_vs_l.c_out)
+    alias need_grow = and(writes_x, not(x_global), not(x_local))
+    alias push_global = and(push, x_global)
+    alias mask5 = geometry.mask[5]
+    alias mask6 = geometry.mask[6]
+
+    alias ring_changes = or(xor(value[7], rG[7]), xor(or(value[7], value[6]), or(rG[7], rG[6])))
+    alias g_above = not(value_vs_g.c_out)
+    alias value_below_l = and(not(or(value[8..WORD_SIZE])), not(value_vs_l.c_out))
+
+    alias pending_zero = not(or(pending.sum[0..9]))
+    alias ring_full = not(or(fill_level.sum[0..5], and(fill_level.sum[5], mask5), and(fill_level.sum[6], mask6)))
+    alias hole_bad = or(r1_data[7], and(r1_data[6], not(mask6)), and(r1_data[5], not(mask5)))
+    alias hole_needs_fill = hole_vs_pending.c_out  // 미저장 칸 수 <= k
+    alias x_at_most_l = l_vs_x.c_out
+    alias grow_bad = and(grow, need_grow, or(increment.sum[7], and(increment.sum[6], not(mask6)), and(increment.sum[5], not(mask5))))
+    alias pop_bad = or(pop_l.selected[7], and(pop_l.selected[6], not(mask6)), and(pop_l.selected[5], not(mask5)))
+    alias pop_ok = and(pop_commit, not(pop_bad))
+    alias pop_writes_hole = not(k_vs_l.c_out)
+    alias res_ok = and(mem_res_valid, not(mem_error))
+
+    clock => { state.clock, y.clock, k.clock }
+    reset => { state.reset, y.reset, k.reset }
+
+    required <- or(need_grow, push, pop, put_g)
+    rG -> geometry.g
+    rO -> geometry.rO
+    rS -> geometry.rS
+
+    // 번호 비교
+    x -> x_vs_g.a
+    x_vs_g.b <- not(rG)
+    x_vs_g.c_in <- 1
+    x_vs_g.sum -> OPENED
+    x -> x_vs_l.a
+    x_vs_l.b <- not(rL)
+    x_vs_l.c_in <- 1
+    x_vs_l.sum -> OPENED
+    rL -> l_vs_x.a
+    l_vs_x.b <- not(x)
+    l_vs_x.c_in <- 1
+    l_vs_x.sum -> OPENED
+    value_vs_g.a <- [ value[0..8] ]
+    value_vs_g.b <- not(rG)
+    value_vs_g.c_in <- 1
+    value_vs_g.sum -> OPENED
+    value_vs_l.a <- [ value[0..8] ]
+    value_vs_l.b <- not(rL)
+    value_vs_l.c_in <- 1
+    value_vs_l.sum -> OPENED
+
+    // ring에 있고 메모리에는 없는 칸 수
+    pending.a <- [ rO[3..12] ]
+    pending.b <- not([ rS[3..12] ])
+    pending.c_in <- 1
+    pending.c_out -> OPENED
+    fill_level.a <- [ pending.sum[0..7] ]
+    fill_level.b <- [ rL[0..7] ]
+    fill_level.c_in <- 0
+    fill_level.c_out -> OPENED
+    hole_vs_pending.a[0..8] <- [ r1_data[0..8] ]
+    hole_vs_pending.a[8] <- 0
+    hole_vs_pending.b <- not(pending.sum)
+    hole_vs_pending.c_in <- 1
+    hole_vs_pending.sum -> OPENED
+
+    // 다음 상태
+    alias enter = and(idle, start)
+    alias next_grow = and(enter, or(need_grow, push_global))
+    alias next_check = and(grow, not(grow_bad))
+    alias next_spill_request = or(and(check, ring_full), and(spill_request, not(mem_ready)), and(g_flush, not(pending_zero)))
+    alias next_spill_wait = or(and(spill_request, mem_ready), and(spill_wait, not(mem_res_valid)))
+    alias next_pop_read = and(enter, not(need_grow), pop)
+    alias next_pop_base = pop_read
+    alias next_fill_address = or(and(pop_base, pending_zero), and(pop_hole, not(hole_bad), hole_needs_fill))
+    alias next_fill_request = or(fill_address, and(fill_request, not(mem_ready)))
+    alias next_fill_wait = or(and(fill_request, mem_ready), and(fill_wait, not(mem_res_valid)))
+    alias next_pop_hole = or(and(pop_base, not(pending_zero)), and(fill_wait, res_ok))
+    alias next_pop_commit = and(pop_hole, not(hole_bad), not(hole_needs_fill))
+    alias next_push_commit = or(
+        and(enter, not(need_grow), push, not(push_global)),
+        and(check, not(ring_full), push_global),
+        and(spill_wait, res_ok, push_global),
+    )
+    alias next_g_clear = or(and(enter, put_g, not(ring_changes)), and(g_flush, pending_zero), and(g_clear, g_above))
+    alias next_g_flush = or(and(enter, put_g, ring_changes), and(spill_wait, res_ok, put_g))
+    alias next_g_commit = and(g_clear, not(g_above))
+
+    state.w_en <- 1
+    state.out -> sel.in
+    state.in[0] <- or(next_grow, next_spill_request, next_pop_read, next_fill_address, next_fill_wait, next_pop_commit, next_g_clear, next_g_commit)
+    state.in[1] <- or(next_check, next_spill_request, next_pop_base, next_fill_address, next_pop_hole, next_pop_commit, next_g_flush, next_g_commit)
+    state.in[2] <- or(next_spill_wait, next_pop_read, next_pop_base, next_fill_address, next_push_commit, next_g_clear, next_g_flush, next_g_commit)
+    state.in[3] <- or(next_fill_request, next_fill_wait, next_pop_hole, next_pop_commit, next_push_commit, next_g_clear, next_g_flush, next_g_commit)
+
+    retry <- or(and(check, not(ring_full), not(push_global)), and(spill_wait, res_ok, not(push_global), not(put_g)))
+    retire <- or(push_commit, pop_ok, g_commit)
+    push_commit -> push_retire
+    range_fault <- or(grow_bad, and(pop_hole, hole_bad), and(pop_commit, pop_bad))
+    access_fault <- and(or(spill_wait, fill_wait), mem_res_valid, mem_error)
+
+    // 슬롯 계산. minus_one은 hole 위치(-1), X-1, L-1, G-1을 만든다.
+    minus_one_source.select[0] <- or(pop_read, g_clear)
+    minus_one_source.select[1] <- or(and(push_commit, push_global), g_clear)
+    minus_one_source.option[0] <- 0
+    minus_one_source.option[1] <- x
+    minus_one_source.option[2] <- rL
+    minus_one_source.option[3] <- rG
+    minus_one_source.selected -> minus_one.a
+    { minus_one.b[0..8] } <= 1
+    minus_one.c_in <- 0
+    minus_one.c_out -> OPENED
+
+    offset.select[0] <- and(push_commit, not(push_global))
+    offset.select[1] <- or(pop_read, pop_hole, pop_commit, and(push_commit, push_global))
+    offset.option[0] <- rL
+    offset.option[1] <- x
+    offset.option[2] <- minus_one.sum
+    geometry.alpha -> ring_add.a
+    ring_add.b <- [ offset.selected[0..7] ]
+    ring_add.c_in <- 0
+    ring_add.c_out -> OPENED
+
+    slot.select[0] <- or(spill_request, fill_wait)
+    slot.select[1] <- g_clear
+    slot.option[0][0..7] <- and(ring_add.sum, geometry.mask)
+    slot.option[0][7] <- 0
+    slot.option[1][0..7] <- geometry.gamma
+    slot.option[1][7] <- 0
+    slot.option[2] <- minus_one.sum
+    slot.selected -> r1_slot
+    slot.selected -> w_slot
+    r1_physical <- or(spill_request, pop_read, pop_hole)
+
+    // 내부 쓰기: GROW/G_CLEAR는 0, PUSH는 hole 값, POP은 y, FILL은 메모리 값.
+    w_en <- or(
+        and(grow, not(grow_bad)),
+        push_commit,
+        and(pop_ok, pop_writes_hole),
+        and(fill_wait, res_ok),
+        and(g_clear, g_above),
+    )
+    data.select[0] <- or(push_commit, fill_wait)
+    data.select[1] <- or(pop_commit, fill_wait)
+    data.option[0] <- 0
+    data.option[1][0..8] <- offset.selected
+    { data.option[1][8..WORD_SIZE] } <= 0
+    y.out -> data.option[2]
+    mem_read_data -> data.option[3]
+    data.selected -> w_data
+
+    // POP 값과 hole 내용
+    y_source.select <- and(or(x[0..8]), x_at_most_l)
+    y_source.option[0] <- 0
+    y_source.option[1] <- r1_data
+    y.w_en <- pop_read
+    y_source.selected -> y.in
+    k.w_en <- pop_hole
+    k.in <- [ r1_data[0..8] ]
+
+    // PUSH: 칸 수 = X+1 또는 L. POP: 칸 수 = k+1.
+    increment_source.select <- pop
+    increment_source.option[0] <- x
+    increment_source.option[1] <- k.out
+    increment_source.selected -> increment.a
+    increment.b <- 0
+    increment.c_in <- 1
+    increment.c_out -> OPENED
+    count.select <- push_global
+    count.option[0] <- increment.sum
+    count.option[1] <- rL
+
+    l_increment.a <- rL
+    l_increment.b <- 0
+    l_increment.c_in <- 1
+    l_increment.c_out -> OPENED
+    l_subtract.a <- rL
+    l_subtract.b <- not(count.selected)
+    l_subtract.c_in <- 1
+    l_subtract.c_out -> OPENED
+
+    // POP의 새 L = min(k + (X<=L ? X : L+1), G)
+    pop_x.select <- x_at_most_l
+    pop_x.option[0] <- l_increment.sum
+    pop_x.option[1] <- x
+    k.out -> pop_sum.a
+    pop_x.selected -> pop_sum.b
+    pop_sum.c_in <- 0
+    pop_sum.sum -> pop_vs_g.a
+    pop_vs_g.b <- not(rG)
+    pop_vs_g.c_in <- 1
+    pop_vs_g.sum -> OPENED
+    pop_l.select <- or(pop_sum.c_out, pop_vs_g.c_out)
+    pop_l.option[0] <- pop_sum.sum
+    pop_l.option[1] <- rG
+    k.out -> k_vs_l.a
+    k_vs_l.b <- not(pop_l.selected)
+    k_vs_l.c_in <- 1
+    k_vs_l.sum -> OPENED
+
+    // 상태 레지스터 갱신
+    l_source.select[0] <- or(push_commit, put_l)
+    l_source.select[1] <- or(pop_commit, put_l)
+    l_source.option[0] <- l_increment.sum
+    l_source.option[1] <- l_subtract.sum
+    l_source.option[2] <- pop_l.selected
+    l_source.option[3] <- [ value[0..8] ]
+    l_source.selected -> rL_in
+    rL_w_en <- or(and(grow, not(grow_bad)), push_commit, pop_ok, and(put_l, value_below_l))
+
+    g_source.select <- g_commit
+    g_source.option[0] <- minus_one.sum
+    g_source.option[1] <- [ value[0..8] ]
+    g_source.selected -> rG_in
+    rG_w_en <- or(and(g_clear, g_above), g_commit)
+
+    // rO에 8*칸 수를 더하거나 뺀다.
+    o_count.select <- pop
+    o_count.option[0] <- count.selected
+    o_count.option[1] <- not(count.selected)
+    rO -> o_add.a
+    { o_add.b[0..3] } <= pop
+    o_add.b[3..11] <- o_count.selected
+    { o_add.b[11..WORD_SIZE] } <= pop
+    o_add.c_in <- pop
+    o_add.c_out -> OPENED
+    o_add.sum -> rO_in
+    rO_w_en <- or(push_commit, pop_ok)
+
+    // rS는 8씩 움직인다. FILL_ADDRESS에서 -8, SPILL 완료에서 +8.
+    rS -> s_add.a
+    { s_add.b[0..3] } <= 0
+    s_add.b[3] <- 1
+    { s_add.b[4..WORD_SIZE] } <= fill_address
+    s_add.c_in <- 0
+    s_add.c_out -> OPENED
+    s_add.sum -> rS_in
+    rS_w_en <- or(and(spill_wait, res_ok), fill_address)
+
+    mem_valid <- or(spill_request, fill_request)
+    mem_store <- spill_request
+    mem_res_ready <- or(and(spill_wait, mem_res_valid), and(fill_wait, mem_res_valid))
+}

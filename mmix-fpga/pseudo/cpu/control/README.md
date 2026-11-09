@@ -14,6 +14,7 @@ HALT와 FAULT에서는 reset까지 해당 PC를 유지한다.
 | MEMORY_COMMIT | load 결과 저장 또는 store 완료 후 PC+4 |
 | HALTED | done=1, 추가 요청과 레지스터 쓰기 없음 |
 | FAULT | fault=1, 추가 요청과 레지스터 쓰기 없음 |
+| STACK | StackControl이 레지스터 스택 동작을 수행. 끝나면 EXECUTE 재실행, 명령 완료, 또는 FAULT |
 
 ## 분기 구조
 
@@ -46,9 +47,29 @@ ALU의 `Cond`도 같은 Condition 정의를 별도로 인스턴스화한다. 모
 목표는 다음 Fetch에서 오류로 보고하며 FAULT의 PC에는 잘못된 목표 주소가 남는다.
 실행 횟수나 예제의 분기 주소를 하드코딩하지 않는다.
 
-지원하는 제어 이동은 #40~#5F의 B/PB와 #F0~#F1의 JMP/JMPB다. GO와
-레지스터 스택 호출은 아직 구현하지 않았다. RelativeAddress의 base/offset 포트는
-분리되어 있어 향후 주소를 만드는 다른 연산에서도 계산 모듈을 재사용할 수 있다.
+지원하는 제어 이동은 #40~#5F의 B/PB, #F0~#F1의 JMP/JMPB, 레지스터 스택의
+PUSHJ/PUSHGO/POP이다. GO는 아직 구현하지 않았다. RelativeAddress는 PUSHJ에서
+현재 PC, POP에서 rJ를 기준으로 쓴다.
+
+## 레지스터 스택
+
+슬롯 구조는 [reg/README.md](../reg/README.md)를 따른다. EXECUTE에서 `stack.required`이면
+STACK으로 넘어가고 ALU 쓰기, PC 진행, 메모리 시작을 하지 않는다. 명령 버퍼는 완료까지 유지한다.
+
+| StackControl 단계 | 동작 |
+|---|---|
+| GROW, CHECK | `l[α+L]←0`, L+1. `(미저장 칸 수 + L) mod R = 0`이면 SPILL. 끝나면 EXECUTE 재실행 |
+| SPILL_REQUEST, SPILL_WAIT | `M8[rS]←l[γ]`, rS+8 |
+| PUSH_COMMIT | `l[α+n]←n`, rJ←PC+4, L−(n+1), rO+8(n+1), PC←목표 |
+| POP_READ, POP_BASE, POP_HOLE | y 읽기, 빈 ring이면 FILL, hole에서 k 읽기, 미저장 칸 수 <= k이면 FILL |
+| FILL_ADDRESS, FILL_REQUEST, FILL_WAIT | rS−8, `l[γ]←M8[rS]` |
+| POP_COMMIT | `L←min(k+X',G)`, L>k이면 `l[α-1]←y`, PC←rJ+4YZ, rO−8(k+1) |
+| G_FLUSH, G_CLEAR, G_COMMIT | R이 바뀌면 전부 SPILL, 새로 글로벌이 된 칸을 0으로, G 갱신 |
+
+X<G인 PUSH는 일반 목적지와 같이 marginal이면 GROW를 거친다. X>=G인 PUSH는 GROW를 한 번
+거쳐 n=L-1로 hole을 쓴다. `$X`가 목적지인 명령은 조건이 거짓인 CS*여도 먼저 L을 늘린다.
+spill/fill은 octa 크기로 MemoryAccess를 사용하며 접근 오류는 fault_reason bit 0이다.
+L이 R에 닿는 경우와 hole 값 k가 R 이상인 경우는 fault_reason bit 1이다.
 
 ## 메모리·정지·오류
 
@@ -79,8 +100,8 @@ GET은 읽기 버스 값을 GPR writeback mux에 전달하고, PUT은 $Z 또는 
 버스에 구동한다. 쓰기는 EXECUTE 완료 경계에서 한 번만 발생한다. 이 명령들과 GETA에서는
 ALU execute_en을 차단해 사용하지 않는 ALU 결과나 rA/rH/rR 쓰기를 막는다.
 
-CPU의 SpecialAccess는 실제 지원 레지스터와 rA 쓰기 값을 decoded_valid에 반영한다.
-미지원 시스템/스택 레지스터나 무효 형식은 WAIT에서 fault_reason bit 1로 정지하며,
+CPU의 SpecialAccess는 실제 지원 레지스터와 rA/rG 쓰기 값을 decoded_valid에 반영한다.
+미지원 시스템 레지스터나 무효 형식은 WAIT에서 fault_reason bit 1로 정지하며,
 해당 명령의 EXECUTE나 레지스터 쓰기는 발생하지 않는다. rA의 V/D 이벤트 및 enable 비트는
 GET/PUT 경로와 기존 ALU 경로에서 같은 저장 상태를 사용한다.
 

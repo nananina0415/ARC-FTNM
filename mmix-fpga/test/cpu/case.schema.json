@@ -23,6 +23,7 @@
       "required": ["entry", "registers", "special", "memory"],
       "properties": {
         "entry": {"$ref": "#/$defs/integer"},
+        "explicit_stack": {"type": "boolean"},
         "registers": {"$ref": "#/$defs/registers"},
         "special": {"$ref": "#/$defs/special"},
         "memory": {"$ref": "#/$defs/memory"}

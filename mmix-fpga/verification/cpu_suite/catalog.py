@@ -9,7 +9,7 @@ PAIRS = {
                                          "ZSN","ZSZ","ZSP","ZSOD","ZSNN","ZSNZ","ZSNP","ZSEV"])},
     0x80: 'LDB',0x82:'LDBU',0x84:'LDW',0x86:'LDWU',0x88:'LDT',0x8a:'LDTU',
     0x8c: "LDO", 0x8e: "LDOU",0xa2:'STBU',0xa6:'STWU',0xaa:'STTU',
-    0xac: "STO", 0xae: "STOU",0xb4:'STCO',
+    0xac: "STO", 0xae: "STOU",0xb4:'STCO',0xbe:'PUSHGO',
     **{0xc0+2*i: n for i,n in enumerate(["OR","ORN","NOR","XOR","AND","ANDN","NAND","NXOR"])},
     0xd8: "MUX",
 }
@@ -27,6 +27,8 @@ ADDRESSES={0xf4:'GETA',0xf5:'GETAB'}
 SPECIAL_OPS={0xf6:'PUT',0xf7:'PUTI',0xfe:'GET'}
 ISA.update(ADDRESSES)
 ISA.update(SPECIAL_OPS)
+STACK_OPS={0xbe:'PUSHGO',0xbf:'PUSHGOI',0xf2:'PUSHJ',0xf3:'PUSHJB',0xf8:'POP'}
+ISA.update(STACK_OPS)
 ISA[0] = "HALT"
 SPECIAL = ["rB","rD","rE","rH","rJ","rM","rR","rBB","rC","rN","rO","rS","rI","rT","rTT","rK",
            "rQ","rU","rV","rG","rL","rA","rF","rP","rW","rX","rY","rZ","rWW","rXX","rYY","rZZ"]
@@ -35,6 +37,8 @@ MASK = (1 << 64)-1
 LOAD_BASES=set(range(0x80,0x90,2))
 STORE_BASES={0xa2,0xa6,0xaa,0xac,0xae,0xb4}
 SPECIAL_IMPLEMENTED=set(range(8))|set(range(21,32))
+SPECIAL_STACK_READ_ONLY={10,11}  # rO, rS
+SPECIAL_STACK_CHECKED={19,20}  # rG, rL
 
 
 def memory_shape(op):
@@ -64,11 +68,19 @@ def integer(value):
 def required_coverage(op):
     """Mandatory semantic boundaries, independent of executed-case discovery."""
     if not op:return ['stop']
+    if op in (0xbe,0xbf,0xf2,0xf3):
+        return ['basic','x_zero','x_marginal','x_global','x_global_l_zero','return_value','ring_wrap',
+                'spill_fill_r32','spill_fill_r64','spill_fill_r128']
+    if op==0xf8:
+        return ['pop_zero','pop_one','pop_two','pop_above_l','pop_return_offset','pop_g_clamp_fault',
+                'pop_range_fault','pop_multi_fill']
     if op in ADDRESSES:
         return ['basic','destination_register0','destination_register255','zero','one','sign_before','sign_boundary','max_wyde','enables_preserved']
     if op in SPECIAL_OPS:
+        stack=['rl','rg','ro','rs'] if op==0xfe else ['rl_shrink','rl_no_grow','rg_raise','rg_lower_clear',
+              'rg_ring_change_empty','rg_ring_change_with_locals','rg_below_32','rg_below_l']
         return ['basic','destination_register0','destination_register255','ra_supported',
-                'unsupported_system_register','invalid_y','invalid_index'] + (['ra_unsupported_bits'] if op!=0xfe else [])
+                'unsupported_system_register','invalid_y','invalid_index'] + (['ra_unsupported_bits'] if op!=0xfe else []) + stack
     if op in BRANCHES:
         tags=['basic','destination_register0','destination_register255','enables_preserved',
               'offset_extreme','offset_sign_boundary','offset_before_sign_boundary','offset_near']

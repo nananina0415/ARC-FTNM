@@ -3610,6 +3610,40 @@
       ]
     },
     {
+      "mnemonic": "PUSHGO",
+      "opcode": "0xbe",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "x_zero",
+        "x_marginal",
+        "x_global",
+        "x_global_l_zero",
+        "return_value",
+        "ring_wrap",
+        "spill_fill_r32",
+        "spill_fill_r64",
+        "spill_fill_r128"
+      ]
+    },
+    {
+      "mnemonic": "PUSHGOI",
+      "opcode": "0xbf",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "x_zero",
+        "x_marginal",
+        "x_global",
+        "x_global_l_zero",
+        "return_value",
+        "ring_wrap",
+        "spill_fill_r32",
+        "spill_fill_r64",
+        "spill_fill_r128"
+      ]
+    },
+    {
       "mnemonic": "OR",
       "opcode": "0xc0",
       "supported": true,
@@ -4625,6 +4659,40 @@
       ]
     },
     {
+      "mnemonic": "PUSHJ",
+      "opcode": "0xf2",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "x_zero",
+        "x_marginal",
+        "x_global",
+        "x_global_l_zero",
+        "return_value",
+        "ring_wrap",
+        "spill_fill_r32",
+        "spill_fill_r64",
+        "spill_fill_r128"
+      ]
+    },
+    {
+      "mnemonic": "PUSHJB",
+      "opcode": "0xf3",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "x_zero",
+        "x_marginal",
+        "x_global",
+        "x_global_l_zero",
+        "return_value",
+        "ring_wrap",
+        "spill_fill_r32",
+        "spill_fill_r64",
+        "spill_fill_r128"
+      ]
+    },
+    {
       "mnemonic": "GETA",
       "opcode": "0xf4",
       "supported": true,
@@ -4668,7 +4736,15 @@
         "unsupported_system_register",
         "invalid_y",
         "invalid_index",
-        "ra_unsupported_bits"
+        "ra_unsupported_bits",
+        "rl_shrink",
+        "rl_no_grow",
+        "rg_raise",
+        "rg_lower_clear",
+        "rg_ring_change_empty",
+        "rg_ring_change_with_locals",
+        "rg_below_32",
+        "rg_below_l"
       ],
       "special_registers": [
         "rB",
@@ -4705,7 +4781,15 @@
         "unsupported_system_register",
         "invalid_y",
         "invalid_index",
-        "ra_unsupported_bits"
+        "ra_unsupported_bits",
+        "rl_shrink",
+        "rl_no_grow",
+        "rg_raise",
+        "rg_lower_clear",
+        "rg_ring_change_empty",
+        "rg_ring_change_with_locals",
+        "rg_below_32",
+        "rg_below_l"
       ],
       "special_registers": [
         "rB",
@@ -4731,6 +4815,21 @@
       "ra_mask": "0xc0c0"
     },
     {
+      "mnemonic": "POP",
+      "opcode": "0xf8",
+      "supported": true,
+      "required_coverage": [
+        "pop_zero",
+        "pop_one",
+        "pop_two",
+        "pop_above_l",
+        "pop_return_offset",
+        "pop_g_clamp_fault",
+        "pop_range_fault",
+        "pop_multi_fill"
+      ]
+    },
+    {
       "mnemonic": "GET",
       "opcode": "0xfe",
       "supported": true,
@@ -4741,7 +4840,11 @@
         "ra_supported",
         "unsupported_system_register",
         "invalid_y",
-        "invalid_index"
+        "invalid_index",
+        "rl",
+        "rg",
+        "ro",
+        "rs"
       ],
       "special_registers": [
         "rB",

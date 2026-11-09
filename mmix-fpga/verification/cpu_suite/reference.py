@@ -1,5 +1,5 @@
 """Instruction semantics oracle, independent of compiler/RTL decoder logic."""
-from .catalog import LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, memory_shape
+from .catalog import LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_STACK_READ_ONLY, memory_shape
 
 
 def signed(value):
@@ -27,7 +27,8 @@ def execute(opcode, x, y, z, registers, special, memory):
     if opcode in (0xfe,0xf6,0xf7):
         index=z if opcode==0xfe else x
         value=z if opcode==0xf7 else regs[z]
-        valid=y==0 and index in SPECIAL_IMPLEMENTED and not(
+        readable=SPECIAL_IMPLEMENTED|SPECIAL_STACK_READ_ONLY if opcode==0xfe else SPECIAL_IMPLEMENTED
+        valid=y==0 and index in readable and not(
             opcode!=0xfe and index==21 and value&~0xc0c0)
         if not valid:
             return {'registers':regs,'special':spec,'memory':mem,'stop':'fault','reason':2,

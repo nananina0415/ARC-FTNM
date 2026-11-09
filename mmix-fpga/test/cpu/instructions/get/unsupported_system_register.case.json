@@ -5,7 +5,7 @@
     "mnemonic": "GET",
     "opcode": "0xfe",
     "pc": "0x0",
-    "word": "0xfe030013",
+    "word": "0xfe030008",
     "executions": 0
   },
   "tags": [

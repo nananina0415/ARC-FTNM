@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 
-from .catalog import ADDRESSES, BRANCHES, CONSTANTS, ISA, LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, memory_shape, required_coverage
+from .catalog import ADDRESSES, BRANCHES, CONSTANTS, ISA, LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, STACK_OPS, memory_shape, required_coverage
 from .reference import execute
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,7 +21,7 @@ def write_case(root, op, label, a=7, b=3, *, x=3, y=1, z=2, rd=0, ra=0,
     if alias == "yz" and not immediate: z=y; b=a
     if alias == "all" and not immediate: x=y=z=255; b=a
     registers, special = [0]*256, [0]*32
-    special[19] = 255  # MMIXAL default rG metadata, not a register-window implementation.
+    special[19] = 255  # MMIXAL default rG metadata. run.py installs the flat test window.
     special[1], special[3], special[5], special[6], special[21] = rd,0x1122334455667788,rm,0x8877665544332211,ra
     registers[y] = a&MASK
     if not immediate: registers[z]=b&MASK
@@ -105,7 +105,7 @@ def write_composition(root):
 def generate(root):
     names=[]
     for op,mnemonic in sorted(ISA.items()):
-        if op in BRANCHES or op in ADDRESSES or op in SPECIAL_OPS:continue
+        if op in BRANCHES or op in ADDRESSES or op in SPECIAL_OPS or op in STACK_OPS:continue
         def emit(label,*args,**kwargs): names.append(write_case(root,op,label,*args,**kwargs))
         if op == 0:
             emit("stop");continue
@@ -194,6 +194,8 @@ def generate(root):
     names.extend(generate_branches(root))
     from .extended_cases import generate as generate_extended
     names.extend(generate_extended(root))
+    from .stack_cases import generate as generate_stack
+    names.extend(generate_stack(root))
     catalog=[{"mnemonic":name,"opcode":f"0x{op:02x}","supported":True,
               "required_coverage":required_coverage(op),
               **({'special_registers':[SPECIAL[i] for i in sorted(SPECIAL_IMPLEMENTED)],'ra_mask':'0xc0c0'} if op in SPECIAL_OPS else {})}

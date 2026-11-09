@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 from verification.cpu_suite.assembler import assemble  # noqa: E402
 from cycle_trace import STATES, SPECIAL_NAMES, instrumentation, load_frames, render  # noqa: E402
 
-REQUEST, WAIT, EXECUTE, HALTED, MEMORY_REQUEST, MEMORY_WAIT, MEMORY_COMMIT = 0, 1, 2, 3, 5, 6, 7
+REQUEST, WAIT, EXECUTE, HALTED, MEMORY_REQUEST, MEMORY_WAIT, MEMORY_COMMIT, STACK = 0, 1, 2, 3, 5, 6, 7, 8
 PATH_EXECUTE = [REQUEST, WAIT, EXECUTE]
 PATH_MEMORY = [REQUEST, WAIT, EXECUTE, MEMORY_REQUEST, MEMORY_WAIT, MEMORY_COMMIT]
 PATH_HALT = [REQUEST, WAIT, EXECUTE, HALTED]
@@ -81,7 +81,8 @@ STORES = [
     (0x6C, 0xE0, 0xFF000000, dict(zip(range(0xF8, 0x100), bytes.fromhex("000000000000007F")))),
     (0x70, 0xE0, 0x0F000000, dict(zip(range(0xF8, 0xFC), bytes.fromhex("817E8001")))),
 ]
-FINAL_SPECIAL = {"rD": 0x80FF, "rM": 0xFF, "rA": 0x40}
+# The program starts at L=0 with G=255. Its highest destination is $30, so L ends at 31.
+FINAL_SPECIAL = {"rD": 0x80FF, "rM": 0xFF, "rA": 0x40, "rG": 255, "rL": 31}
 FOCUS_WORDS = [26, 27, 28, 29, 30, 31]
 
 
@@ -150,7 +151,20 @@ def testbench(checks, module, words):
 
 
 def state_of(frame):
-    return int(frame["state"], 16) if frame["state"] in "01234567" else None
+    return int(frame["state"], 16) if frame["state"] in "012345678" else None
+
+
+def without_growth(path):
+    """Marginal $X adds EXECUTE -> STACK -> EXECUTE before the instruction runs."""
+    result = []
+    for state in path:
+        if state == STACK:
+            result.pop()
+        elif state == EXECUTE and result and result[-1] == EXECUTE:
+            continue
+        else:
+            result.append(state)
+    return result
 
 
 def split_instructions(frames, start):
@@ -187,7 +201,7 @@ def judge(frames, memory_image):
         opcode = OPCODE.get(pc)
         memory_kind = opcode is not None and (0x80 <= opcode <= 0x8F or 0xA0 <= opcode <= 0xB5)
         expected = PATH_HALT if pc == 0xCC else PATH_MEMORY if memory_kind else PATH_EXECUTE
-        if item["path"] != expected:
+        if without_growth(item["path"]) != expected:
             errors.append(f"pc={pc:#x} state path {[STATES[s] if s is not None else 'X' for s in item['path']]}")
         executing = [i for i in range(item["first"], item["last"] + 1) if state_of(frames[i]) == EXECUTE]
         if not executing:

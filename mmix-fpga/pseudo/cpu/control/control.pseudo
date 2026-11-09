@@ -19,6 +19,21 @@ seq Control {
     pub branch_condition: In<bit,3>
     pub branch_value: WordIn
     pub branch_offset: WordIn
+    pub decoded_writes_x: In<bit,1>
+    pub decoded_push: In<bit,1>
+    pub decoded_push_go: In<bit,1>
+    pub decoded_pop: In<bit,1>
+    pub decoded_put_g: In<bit,1>
+    pub decoded_put_l: In<bit,1>
+    pub decoded_x: In<bit,8>
+    pub special_value: WordIn
+    pub stack_regs: *reg::StackDirectIO
+    pub stack_r1_physical: Out<bit,1>
+    pub stack_r1_slot: Out<bit,8>
+    pub stack_r1_data: WordIn
+    pub stack_w_en: Out<bit,1>
+    pub stack_w_slot: Out<bit,8>
+    pub stack_w_data: WordOut
     pub effective_address: WordIn
     pub store_data: WordIn
     pub trip_req: In<bit,1>
@@ -33,14 +48,17 @@ seq Control {
     pub done: Out<bit,1>
     pub fault: Out<bit,1>
     pub fault_reason: Out<bit,3> // [0] fetch/data access, [1] decode, [2] trip
-    mut state: reg::ValueReg<3>
+    mut state: reg::ValueReg<4>
     mut pc: reg::ValueReg<WORD_SIZE>
     mut address: reg::ValueReg<WORD_SIZE>
     mut reason: reg::ValueReg<3>
-    sel: Decoder<3,8>
+    mut stack: StackControl
+    sel: Decoder<4,16>
     pc_add: Adder<WORD_SIZE>
     branch: Branch
-    next_pc: Mux<2,WORD_SIZE>
+    branch_base: Mux<2,WORD_SIZE>  // POP은 rJ 기준, 그 외는 현재 PC 기준
+    next_pc: Mux<3,WORD_SIZE>
+    memory_address: Mux<2,WORD_SIZE>
 }
 wire Control {
     alias {
@@ -52,6 +70,7 @@ wire Control {
         MEMORY_REQUEST=5
         MEMORY_WAIT=6
         MEMORY_COMMIT=7
+        STACK=8
     }
     alias active=not(reset)
     alias request=sel.out[REQUEST]
@@ -62,9 +81,13 @@ wire Control {
     alias mem_request=sel.out[MEMORY_REQUEST]
     alias mem_wait=sel.out[MEMORY_WAIT]
     alias mem_commit=sel.out[MEMORY_COMMIT]
+    alias stack_active=sel.out[STACK]
     alias response_ok=and(fetch.res_valid, not(fetch.error), decoded_valid)
-    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put)
-    alias success=and(response_ok, or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
+    alias stack_enter=and(active, executing, response_ok, stack.required)
+    alias stack_exit=or(stack.retire, stack.retry, stack_fault)
+    alias stack_fault=or(stack.range_fault, stack.access_fault)
+    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put, decoded_push, decoded_pop)
+    alias success=and(response_ok, not(stack.required), or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
     alias retire_execute=and(active, executing, success, not(decoded_halt), not(decoded_memory))
     alias retire_mem=and(active, mem_commit)
     alias halt_now=and(executing, success, decoded_halt)
@@ -72,17 +95,48 @@ wire Control {
     alias req_fire=and(fetch.req_valid, fetch.req_ready)
     alias mem_fire=and(memory.req_valid, memory.req_ready)
     alias wait_fault=and(waiting, fetch.res_valid, not(response_ok))
-    alias exec_fault=and(executing, not(success))
+    alias exec_fault=and(executing, not(success), not(stack_enter))
     alias mem_fault=and(mem_wait, memory.res_valid, memory.error)
     alias mem_success=and(mem_wait, memory.res_valid, not(memory.error))
-    alias enter_fault=or(wait_fault, exec_fault, mem_fault)
-    clock => { state.clock, pc.clock, address.clock, reason.clock }
-    reset => { state.reset, pc.reset, address.reset, reason.reset }
+    alias enter_fault=or(wait_fault, exec_fault, mem_fault, stack_fault)
+    clock => { state.clock, pc.clock, address.clock, reason.clock, stack.clock }
+    reset => { state.reset, pc.reset, address.reset, reason.reset, stack.reset }
     state.w_en <- 1
     state.out -> sel.in
+    sel.out[9..16] -> OPENED
     state.in[0] <- or(and(request, req_fire), and(waiting, not(fetch.res_valid)), halt_now, completed, start_mem, and(mem_request, not(mem_fire)), mem_success)
-    state.in[1] <- or(and(waiting, response_ok), halt_now, completed, and(mem_request, mem_fire), and(mem_wait, not(mem_fault)))
+    state.in[1] <- or(and(waiting, response_ok), halt_now, completed, and(mem_request, mem_fire), and(mem_wait, not(mem_fault)), stack.retry)
     state.in[2] <- or(enter_fault, failed, start_mem, mem_request, mem_wait)
+    state.in[3] <- or(stack_enter, and(stack_active, not(stack_exit)))
+
+    stack.start <- stack_enter
+    decoded_writes_x -> stack.writes_x
+    decoded_push -> stack.push
+    decoded_pop -> stack.pop
+    decoded_put_g -> stack.put_g
+    stack.put_l <- and(retire_execute, decoded_put_l)
+    decoded_x -> stack.x
+    special_value -> stack.value
+    stack_r1_data -> stack.r1_data
+    stack_regs.rG_out -> stack.rG
+    stack_regs.rL_out -> stack.rL
+    stack_regs.rO_out -> stack.rO
+    stack_regs.rS_out -> stack.rS
+    stack.rG_in -> stack_regs.rG_in
+    stack.rG_w_en -> stack_regs.rG_w_en
+    stack.rL_in -> stack_regs.rL_in
+    stack.rL_w_en -> stack_regs.rL_w_en
+    stack.rO_in -> stack_regs.rO_in
+    stack.rO_w_en -> stack_regs.rO_w_en
+    stack.rS_in -> stack_regs.rS_in
+    stack.rS_w_en -> stack_regs.rS_w_en
+    stack_regs.rJ_in <- pc_add.sum
+    stack_regs.rJ_w_en <- stack.push_retire
+    stack.r1_physical -> stack_r1_physical
+    stack.r1_slot -> stack_r1_slot
+    stack.w_en -> stack_w_en
+    stack.w_slot -> stack_w_slot
+    stack.w_data -> stack_w_data
 
     pc_add.a <- pc.out
     { pc_add.b[0,1,3..WORD_SIZE] } <= 0
@@ -93,32 +147,46 @@ wire Control {
     branch_unconditional -> branch.unconditional
     branch_condition -> branch.condition_select
     branch_value -> branch.value
-    pc.out -> branch.pc
+    branch_base.select <- decoded_pop
+    branch_base.option[0] <- pc.out
+    branch_base.option[1] <- stack_regs.rJ_out
+    branch_base.selected -> branch.pc
     branch_offset -> branch.offset
-    next_pc.select <- and(retire_execute, branch.taken)
+    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO)
+    next_pc.select[0] <- or(and(retire_execute, branch.taken), and(stack.retire, or(decoded_pop, and(decoded_push, not(decoded_push_go)))))
+    next_pc.select[1] <- and(stack.retire, decoded_push_go)
     next_pc.option[0] <- pc_add.sum
     next_pc.option[1] <- branch.target
+    next_pc.option[2] <- effective_address
     branch.target -> address_result
-    pc.w_en <- or(retire_execute, retire_mem)
+    pc.w_en <- or(retire_execute, retire_mem, stack.retire)
     pc.in <- next_pc.selected
     address.w_en <- and(active, start_mem)
     address.in <- effective_address
 
     fetch.req_valid <- and(active, request)
     fetch.req_pc <- pc.out
-    fetch.res_ready <- and(active, or(and(executing, not(start_mem)), mem_commit, wait_fault, mem_fault))
+    fetch.res_ready <- and(active, or(and(executing, not(start_mem), not(stack_enter)), mem_commit, wait_fault, mem_fault, stack.retire, stack_fault))
     fetch.res_pc -> OPENED
     fetch.instruction -> OPENED
 
-    memory.req_valid <- and(active, mem_request)
-    memory.address <- address.out
-    memory.store <- decoded_store
-    memory.size <- decoded_memory_size
+    // spill/fill도 같은 메모리 경로를 쓴다. 주소는 rS, 크기는 octa다.
+    memory.req_valid <- and(active, or(mem_request, stack.mem_valid))
+    stack.mem_ready <- memory.req_ready
+    memory_address.select <- stack_active
+    memory_address.option[0] <- address.out
+    memory_address.option[1] <- stack_regs.rS_out
+    memory_address.selected -> memory.address
+    memory.store <- or(decoded_store, stack.mem_store)
+    memory.size[0] <- or(decoded_memory_size[0], stack_active)
+    memory.size[1] <- or(decoded_memory_size[1], stack_active)
     memory.zero_extend <- decoded_load_unsigned
     memory.write_data <- store_data
-    memory.res_ready <- and(active, or(mem_commit, mem_fault))
-    memory.read_data -> OPENED // CPU가 결과 쓰기 mux에서 별도로 사용
-    memory_active <- or(mem_request, mem_wait, mem_commit)
+    memory.res_ready <- and(active, or(mem_commit, mem_fault, stack.mem_res_ready))
+    memory.res_valid -> stack.mem_res_valid
+    memory.error -> stack.mem_error
+    memory.read_data -> stack.mem_read_data // CPU도 결과 쓰기 mux에서 별도로 사용
+    memory_active <- or(mem_request, mem_wait, mem_commit, stack_active)
     store_read_x <- and(mem_request, decoded_store, not(decoded_store_constant))
     execute_en <- and(retire_execute, not(non_alu))
     load_write_en <- and(retire_mem, not(decoded_store))
@@ -127,8 +195,8 @@ wire Control {
     special_put_en <- and(retire_execute, decoded_put)
 
     reason.w_en <- enter_fault
-    reason.in[0] <- or(and(fetch.res_valid, fetch.error), mem_fault)
-    reason.in[1] <- and(not(mem_fault), or(and(not(fetch.error), not(decoded_valid)), and(executing, not(fetch.res_valid))))
+    reason.in[0] <- or(and(fetch.res_valid, fetch.error), mem_fault, stack.access_fault)
+    reason.in[1] <- or(stack.range_fault, and(not(mem_fault), not(stack.access_fault), or(and(not(fetch.error), not(decoded_valid)), and(executing, not(fetch.res_valid)))))
     reason.in[2] <- and(executing, response_ok, not(decoded_memory), not(decoded_halt), not(non_alu), trip_req)
     reason.out -> fault_reason
     done <- and(active, completed)

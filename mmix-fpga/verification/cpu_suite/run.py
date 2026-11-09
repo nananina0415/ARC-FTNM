@@ -36,6 +36,9 @@ def prepare(path, output, mmixal, profiles):
     for index,value in image.registers.items(): regs[index]=value
     for key,value in case['initial']['registers'].items():regs[int(key[1:])]=integer(value)
     for key,value in case['initial']['special'].items():spec[SPECIAL.index(key)]=integer(value)
+    if not case['initial'].get('explicit_stack'):
+        # With O=0 this keeps $k in slot k: $0..$126 local, $128..$255 global.
+        spec[SPECIAL.index('rG')]=128;spec[SPECIAL.index('rL')]=127
     for key,value in case['initial']['memory'].items():
         addr=integer(key);byte=int(value,16)
         if addr in image.memory and image.memory[addr]!=byte:raise ValueError(f'Image/fixture memory conflict at {addr:#x}')

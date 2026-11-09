@@ -3,6 +3,8 @@ import json
 
 from .catalog import SPECIAL, RAM_BYTES
 
+DIRECT = ('rA','rD','rH','rM','rR','rJ','rO','rS','rG','rL')
+
 
 def enc(*parts):
     return 's_' + '_'.join(f'{len(str(p))}_{p}' for p in parts)
@@ -25,17 +27,20 @@ def bench(rtl):
         qs = ','.join(path + '.' + inst('buf', b) + '.q' for b in reversed(range(64)))
         lines.append(f'{{{qs}}}=initial_g[{i}];')
     for i, name in enumerate(SPECIAL):
-        path = reg + (inst('direct_'+name) if name in ('rA','rD','rH','rM','rR') else inst('specials', i))
-        width = 4 if name == 'rA' else 64
+        path = reg + (inst('direct_'+name) if name in DIRECT else inst('specials', i))
+        width = 4 if name == 'rA' else 8 if name in ('rG','rL') else 64
         qs = ','.join(path + '.' + inst('buf', b) + '.q' for b in reversed(range(width)))
-        rhs = '{initial_s[21][15:14],initial_s[21][7:6]}' if name == 'rA' else f'initial_s[{i}]'
+        if name == 'rA': rhs = '{initial_s[21][15:14],initial_s[21][7:6]}'
+        elif width == 8: rhs = f'initial_s[{i}][7:0]'
+        else: rhs = f'initial_s[{i}]'
         lines.append(f'{{{qs}}}={rhs};')
     lines += ['end endtask']
     for i in range(256):
         lines.append(f'assign g[{i}]={reg}{inst("generals",i)}.{inst("reg")}.{p("out")};')
     for i, name in enumerate(SPECIAL):
-        path = reg + (inst('direct_'+name) if name in ('rA','rD','rH','rM','rR') else inst('specials', i)) + '.' + p('direct_out')
+        path = reg + (inst('direct_'+name) if name in DIRECT else inst('specials', i)) + '.' + p('direct_out')
         if name == 'rA': path = "{48'b0," + path + "[3:2],6'b0," + path + "[1:0],6'b0}"
+        elif name in ('rG','rL'): path = "{56'b0," + path + "}"
         lines.append(f'assign s[{i}]={path};')
     aliases = {'clk':p('clock'), 'rst':p('reset'), 'calib':p('init_calib_complete'),
                'done':p('done'), 'fault':p('fault'), 'reason':p('fault_reason'),

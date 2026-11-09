@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "id": "pushgo.return_value",
+  "target": {
+    "mnemonic": "PUSHGO",
+    "opcode": "0xbe",
+    "pc": "0x4",
+    "word": "0xbe02fefd",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "return_value"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000010",
+      "$1": "0x0000000000000011",
+      "$2": "0x0000000000000012",
+      "$3": "0x0000000000000013",
+      "$4": "0x0000000000000014"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$2": "0x000000000000005a",
+      "$3": "0x000000000000005a",
+      "$254": "0x000000000000000c"
+    },
+    "special": {
+      "rJ": "0x0000000000000008",
+      "rL": "0x0000000000000003"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 2,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "return_value"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 120
+  }
+}

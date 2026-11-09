@@ -21,6 +21,12 @@ bundle DecodeControl {  // InstructionDecode 입장
     branch_unconditional: Out<bit,1>
     branch_condition: Out<bit,3>
     branch_offset: WordOut
+    writes_x:    Out<bit,1>  // $X가 목적지인 명령. 거짓 조건의 CS*와 PUSH(X<G)도 L을 늘린다
+    push:        Out<bit,1>
+    push_go:     Out<bit,1>  // PUSHGO: 목표는 $Y+$Z, 아니면 PUSHJ의 상대 주소
+    pop:         Out<bit,1>
+    put_g:       Out<bit,1>
+    put_l:       Out<bit,1>
     alu_sel:     Out<bit,3>
     op:          Out<bit,4>
     r1_sel:      Out<bit,8>
@@ -67,6 +73,11 @@ wire InstructionDecode {
     alias is_conditional_branch = and(not(instruction[31]), instruction[30], not(instruction[29]))
     alias is_jump = sel_pair.out[120]
     alias is_branch = or(is_conditional_branch, is_jump)
+    alias is_pushj = sel_pair.out[121]
+    alias is_pushgo = sel_pair.out[95]
+    alias is_push = or(is_pushj, is_pushgo)
+    alias is_pop = and(sel_pair.out[124], not(instruction[24]))
+    alias is_stack = or(is_push, is_pop)
     alias is_constant = and(instruction[31], instruction[30], instruction[29], not(instruction[28]))
     alias const_add = and(is_constant, not(instruction[27]))  // SET/INC -> ADDU
     alias const_set = and(const_add, not(instruction[26]))
@@ -75,11 +86,17 @@ wire InstructionDecode {
     alias default_compare = and(not(supported), not(is_constant))
 
     instruction[25..32] -> sel_pair.in
-    sel_pair.out[0..12,32..48,72..81,82,84,88,89,91..96,104..108,109..120,121,124..127] -> OPENED
+    sel_pair.out[0..12,32..48,72..81,82,84,88,89,91..95,104..108,109..120,125,126] -> OPENED
     alias is_halt = not(or(instruction[0..32]))
-    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special))
+    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack))
     control.halt <- and(instruction_valid, is_halt)
-    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special)))
+    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack)))
+    control.writes_x <- and(instruction_valid, or(supported, is_constant, is_load, is_geta, and(is_special, is_get), is_push))
+    control.push <- and(instruction_valid, is_push)
+    control.push_go <- and(instruction_valid, is_pushgo)
+    control.pop <- and(instruction_valid, is_pop)
+    control.put_g <- and(instruction_valid, is_special, is_put, instruction[16], instruction[17], not(instruction[18]), not(instruction[19]), instruction[20])
+    control.put_l <- and(instruction_valid, is_special, is_put, not(instruction[16]), not(instruction[17]), instruction[18], not(instruction[19]), instruction[20])
     control.memory <- and(instruction_valid, is_memory)
     control.store <- and(instruction_valid, is_store)
     control.store_constant <- and(instruction_valid, is_store_constant)
@@ -109,7 +126,7 @@ wire InstructionDecode {
     instruction[0..8] -> control.r2_sel
     instruction[16..24] -> control.w_sel
     control.arg1_imm <- and(enabled, neg)
-    control.arg2_imm <- and(instruction_valid, or(supported, is_memory), instruction[24])
+    control.arg2_imm <- and(instruction_valid, or(supported, is_memory, is_pushgo), instruction[24])
     control.arg1_zero <- and(instruction_valid, const_set)
     control.arg2_wyde <- and(instruction_valid, is_constant)
     control.imm_y[0..8] <- [ instruction[8..16] ]

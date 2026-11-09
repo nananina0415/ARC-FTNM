@@ -274,11 +274,20 @@ class Checks:
             store = (opcode&~1) in (0xa2,0xa6,0xaa,0xac,0xae,0xb4)
             memory = 0x80<=opcode<=0x8f or store
             store_constant=(opcode&~1)==0xb4
+            push_go=opcode in (0xbe,0xbf)
+            push=push_go or opcode in (0xf2,0xf3)
+            pop=opcode==0xf8
+            stack=push or pop
+            load=0x80<=opcode<=0x8f
             unit, op = table.get(opcode, (3, 0))
             bits=24 if jump else 16
             displacement=(word&((1<<bits)-1))-((opcode&1)<<bits)
-            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special)),
-                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special)),
+            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special or stack)),
+                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special or stack)),
+                        "writes_x": int(input_valid and (supported or constant or load or address_get or (special and special_get) or push)),
+                        "push": int(input_valid and push), "push_go": int(input_valid and push_go), "pop": int(input_valid and pop),
+                        "put_g": int(input_valid and special and special_put and x==19),
+                        "put_l": int(input_valid and special and special_put and x==20),
                         "memory": int(input_valid and memory), "store": int(input_valid and store),
                         "memory_size": 3 if store_constant else (opcode>>2)&3,
                         "load_unsigned": (opcode>>1)&1,
@@ -295,7 +304,7 @@ class Checks:
                         "branch_condition": (opcode>>1)&7,
                         "branch_offset": (4*displacement)&MASK,
                         "arg1_imm": int(input_valid and supported and 0x34 <= opcode <= 0x37),
-                        "arg2_imm": int(input_valid and not constant and (supported or memory) and opcode & 1),
+                        "arg2_imm": int(input_valid and not constant and (supported or memory or push_go) and opcode & 1),
                         "arg1_zero": int(input_valid and 0xe0<=opcode<=0xe3),
                         "arg2_wyde": int(input_valid and constant),
                         "imm_x": x,"imm_y": y, "imm_z": z, "imm_yz": ((y<<8)|z) << (16*(3-(opcode&3)))}

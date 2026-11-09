@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "id": "pushjb.x_global",
+  "target": {
+    "mnemonic": "PUSHJB",
+    "opcode": "0xf3",
+    "pc": "0x8",
+    "word": "0xf3faffff",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "x_global"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000010",
+      "$1": "0x0000000000000011",
+      "$2": "0x0000000000000012",
+      "$3": "0x0000000000000013",
+      "$4": "0x0000000000000014"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x000000000000000c",
+    "registers": {
+      "$5": "0x0000000000000005"
+    },
+    "special": {
+      "rJ": "0x000000000000000c"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "x_global"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 120
+  }
+}

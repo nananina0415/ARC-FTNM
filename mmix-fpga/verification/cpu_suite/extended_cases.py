@@ -1,7 +1,7 @@
 """GETA and GET/PUT operand coverage plus mixed memory/cache programs."""
 import json
 
-from .catalog import ADDRESSES, ISA, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS
+from .catalog import ADDRESSES, ISA, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, SPECIAL_STACK_CHECKED, SPECIAL_STACK_READ_ONLY
 from .reference import execute
 
 
@@ -105,13 +105,15 @@ def generate(root):
         names.append(special_case(root,op,'basic'))
         for gpr in (0,255):names.append(special_case(root,op,f'destination_register{gpr}',value=gpr if op==0xf7 else 0x12345678,gpr=gpr))
         names.append(special_case(root,op,'ra_supported',index=21,value=0xc0c0 if op!=0xf7 else 0xc0))
-        names.append(special_case(root,op,'unsupported_system_register',index=19))
+        names.append(special_case(root,op,'unsupported_system_register',index=8))
         names.append(special_case(root,op,'invalid_y',malformed='y'))
         names.append(special_case(root,op,'invalid_index',malformed='index'))
         if op!=0xfe:names.append(special_case(root,op,'ra_unsupported_bits',index=21,value=1))
         for index in sorted(SPECIAL_IMPLEMENTED):
             for value in ((0,MASK) if op==0xfe else (0,1,255) if op==0xf7 else (0,0x123456789abcdef,MASK)):
                 names.append(special_case(root,op,f'{SPECIAL[index].lower()}_{value:x}',index,value))
-        for index in range(8,21):names.append(special_case(root,op,f'unsupported_{SPECIAL[index].lower()}',index))
+        # stack_cases.py covers the accepted rO/rS reads and rG/rL accesses.
+        accepted=SPECIAL_STACK_CHECKED|(SPECIAL_STACK_READ_ONLY if op==0xfe else set())
+        for index in sorted(set(range(8,21))-accepted):names.append(special_case(root,op,f'unsupported_{SPECIAL[index].lower()}',index))
     names.extend(integrations(root))
     return names

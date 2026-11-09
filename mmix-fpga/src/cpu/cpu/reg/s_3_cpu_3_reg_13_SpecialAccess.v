@@ -5,24 +5,10 @@ module s_3_cpu_3_reg_13_SpecialAccess (
     input wire [0:0] s_4_port_3_put,
     input wire [4:0] s_4_port_5_index,
     input wire [63:0] s_4_port_5_value,
+    input wire [7:0] s_4_port_1_g,
+    input wire [7:0] s_4_port_1_l,
     output wire [0:0] s_4_port_7_allowed
 );
-wire net_77;
-wire net_78;
-wire net_79;
-wire net_80;
-wire net_81;
-wire net_82;
-wire net_83;
-wire net_84;
-wire net_85;
-wire net_86;
-wire net_87;
-wire net_88;
-wire net_89;
-wire net_90;
-wire net_91;
-wire net_92;
 wire net_93;
 wire net_94;
 wire net_95;
@@ -46,17 +32,94 @@ wire net_112;
 wire net_113;
 wire net_114;
 wire net_115;
-assign net_109 = (s_4_port_3_get[0] | s_4_port_3_put[0]);
-assign net_110 = ~(net_109);
-assign net_111 = (net_77 | net_78 | net_79 | net_80 | net_81 | net_82 | net_83 | net_84 | net_98 | net_99 | net_100 | net_101 | net_102 | net_103 | net_104 | net_105 | net_106 | net_107 | net_108);
-assign net_112 = (s_4_port_5_value[0] | s_4_port_5_value[1] | s_4_port_5_value[2] | s_4_port_5_value[3] | s_4_port_5_value[4] | s_4_port_5_value[5] | s_4_port_5_value[8] | s_4_port_5_value[9] | s_4_port_5_value[10] | s_4_port_5_value[11] | s_4_port_5_value[12] | s_4_port_5_value[13] | s_4_port_5_value[16] | s_4_port_5_value[17] | s_4_port_5_value[18] | s_4_port_5_value[19] | s_4_port_5_value[20] | s_4_port_5_value[21] | s_4_port_5_value[22] | s_4_port_5_value[23] | s_4_port_5_value[24] | s_4_port_5_value[25] | s_4_port_5_value[26] | s_4_port_5_value[27] | s_4_port_5_value[28] | s_4_port_5_value[29] | s_4_port_5_value[30] | s_4_port_5_value[31] | s_4_port_5_value[32] | s_4_port_5_value[33] | s_4_port_5_value[34] | s_4_port_5_value[35] | s_4_port_5_value[36] | s_4_port_5_value[37] | s_4_port_5_value[38] | s_4_port_5_value[39] | s_4_port_5_value[40] | s_4_port_5_value[41] | s_4_port_5_value[42] | s_4_port_5_value[43] | s_4_port_5_value[44] | s_4_port_5_value[45] | s_4_port_5_value[46] | s_4_port_5_value[47] | s_4_port_5_value[48] | s_4_port_5_value[49] | s_4_port_5_value[50] | s_4_port_5_value[51] | s_4_port_5_value[52] | s_4_port_5_value[53] | s_4_port_5_value[54] | s_4_port_5_value[55] | s_4_port_5_value[56] | s_4_port_5_value[57] | s_4_port_5_value[58] | s_4_port_5_value[59] | s_4_port_5_value[60] | s_4_port_5_value[61] | s_4_port_5_value[62] | s_4_port_5_value[63]);
-assign net_113 = (s_4_port_3_put[0] & net_98 & net_112);
-assign net_114 = ~(net_113);
-assign net_115 = (net_111 & net_114);
-assign s_4_port_7_allowed[0] = (net_110 | net_115);
+wire net_116;
+wire net_117;
+wire net_118;
+wire net_119;
+wire net_120;
+wire net_121;
+wire net_122;
+wire net_123;
+wire net_124;
+wire net_133;
+wire net_134;
+wire net_135;
+wire net_136;
+wire net_137;
+wire net_138;
+wire net_139;
+wire net_140;
+wire net_141;
+wire net_142;
+wire net_143;
+wire net_144;
+wire net_145;
+wire net_146;
+wire net_147;
+wire net_148;
+wire net_149;
+wire net_150;
+wire net_160;
+wire net_161;
+wire net_162;
+wire net_163;
+wire net_164;
+wire net_165;
+wire net_166;
+wire net_167;
+wire net_168;
+wire net_169;
+wire net_170;
+wire net_171;
+wire net_172;
+wire net_173;
+wire net_174;
+wire net_175;
+wire net_176;
+wire net_177;
+wire net_178;
+wire net_179;
+wire net_180;
+wire net_181;
+wire net_182;
+wire net_183;
+assign net_141 = 1'd1;
+assign {net_140, net_139, net_138, net_137, net_136, net_135, net_134, net_133} = ~({s_4_port_1_l[7], s_4_port_1_l[6], s_4_port_1_l[5], s_4_port_1_l[4], s_4_port_1_l[3], s_4_port_1_l[2], s_4_port_1_l[1], s_4_port_1_l[0]});
+assign net_160 = (s_4_port_3_get[0] | s_4_port_3_put[0]);
+assign net_161 = ~(net_160);
+assign net_162 = (net_93 | net_94 | net_95 | net_96 | net_97 | net_98 | net_99 | net_100 | net_103 | net_104 | net_112 | net_113 | net_114 | net_115 | net_116 | net_117 | net_118 | net_119 | net_120 | net_121 | net_122 | net_123 | net_124);
+assign net_163 = (s_4_port_3_get[0] & net_162);
+assign net_164 = (net_93 | net_94 | net_95 | net_96 | net_97 | net_98 | net_99 | net_100 | net_114 | net_115 | net_116 | net_117 | net_118 | net_119 | net_120 | net_121 | net_122 | net_123 | net_124);
+assign net_165 = (s_4_port_5_value[0] | s_4_port_5_value[1] | s_4_port_5_value[2] | s_4_port_5_value[3] | s_4_port_5_value[4] | s_4_port_5_value[5] | s_4_port_5_value[8] | s_4_port_5_value[9] | s_4_port_5_value[10] | s_4_port_5_value[11] | s_4_port_5_value[12] | s_4_port_5_value[13] | s_4_port_5_value[16] | s_4_port_5_value[17] | s_4_port_5_value[18] | s_4_port_5_value[19] | s_4_port_5_value[20] | s_4_port_5_value[21] | s_4_port_5_value[22] | s_4_port_5_value[23] | s_4_port_5_value[24] | s_4_port_5_value[25] | s_4_port_5_value[26] | s_4_port_5_value[27] | s_4_port_5_value[28] | s_4_port_5_value[29] | s_4_port_5_value[30] | s_4_port_5_value[31] | s_4_port_5_value[32] | s_4_port_5_value[33] | s_4_port_5_value[34] | s_4_port_5_value[35] | s_4_port_5_value[36] | s_4_port_5_value[37] | s_4_port_5_value[38] | s_4_port_5_value[39] | s_4_port_5_value[40] | s_4_port_5_value[41] | s_4_port_5_value[42] | s_4_port_5_value[43] | s_4_port_5_value[44] | s_4_port_5_value[45] | s_4_port_5_value[46] | s_4_port_5_value[47] | s_4_port_5_value[48] | s_4_port_5_value[49] | s_4_port_5_value[50] | s_4_port_5_value[51] | s_4_port_5_value[52] | s_4_port_5_value[53] | s_4_port_5_value[54] | s_4_port_5_value[55] | s_4_port_5_value[56] | s_4_port_5_value[57] | s_4_port_5_value[58] | s_4_port_5_value[59] | s_4_port_5_value[60] | s_4_port_5_value[61] | s_4_port_5_value[62] | s_4_port_5_value[63]);
+assign net_166 = (net_114 & net_165);
+assign net_167 = ~(net_166);
+assign net_168 = (s_4_port_3_put[0] & net_164 & net_167);
+assign net_169 = (s_4_port_5_value[8] | s_4_port_5_value[9] | s_4_port_5_value[10] | s_4_port_5_value[11] | s_4_port_5_value[12] | s_4_port_5_value[13] | s_4_port_5_value[14] | s_4_port_5_value[15] | s_4_port_5_value[16] | s_4_port_5_value[17] | s_4_port_5_value[18] | s_4_port_5_value[19] | s_4_port_5_value[20] | s_4_port_5_value[21] | s_4_port_5_value[22] | s_4_port_5_value[23] | s_4_port_5_value[24] | s_4_port_5_value[25] | s_4_port_5_value[26] | s_4_port_5_value[27] | s_4_port_5_value[28] | s_4_port_5_value[29] | s_4_port_5_value[30] | s_4_port_5_value[31] | s_4_port_5_value[32] | s_4_port_5_value[33] | s_4_port_5_value[34] | s_4_port_5_value[35] | s_4_port_5_value[36] | s_4_port_5_value[37] | s_4_port_5_value[38] | s_4_port_5_value[39] | s_4_port_5_value[40] | s_4_port_5_value[41] | s_4_port_5_value[42] | s_4_port_5_value[43] | s_4_port_5_value[44] | s_4_port_5_value[45] | s_4_port_5_value[46] | s_4_port_5_value[47] | s_4_port_5_value[48] | s_4_port_5_value[49] | s_4_port_5_value[50] | s_4_port_5_value[51] | s_4_port_5_value[52] | s_4_port_5_value[53] | s_4_port_5_value[54] | s_4_port_5_value[55] | s_4_port_5_value[56] | s_4_port_5_value[57] | s_4_port_5_value[58] | s_4_port_5_value[59] | s_4_port_5_value[60] | s_4_port_5_value[61] | s_4_port_5_value[62] | s_4_port_5_value[63]);
+assign net_170 = ~(net_169);
+assign net_171 = (s_4_port_5_value[5] | s_4_port_5_value[6] | s_4_port_5_value[7]);
+assign net_172 = (s_4_port_5_value[7] ^ s_4_port_1_g[7]);
+assign net_173 = (s_4_port_5_value[7] | s_4_port_5_value[6]);
+assign net_174 = (s_4_port_1_g[7] | s_4_port_1_g[6]);
+assign net_175 = (net_173 ^ net_174);
+assign net_176 = (net_172 | net_175);
+assign net_177 = ~(net_176);
+assign net_178 = (s_4_port_1_l[0] | s_4_port_1_l[1] | s_4_port_1_l[2] | s_4_port_1_l[3] | s_4_port_1_l[4] | s_4_port_1_l[5] | s_4_port_1_l[6] | s_4_port_1_l[7]);
+assign net_179 = ~(net_178);
+assign net_180 = (net_177 | net_179);
+assign net_181 = (net_170 & net_171 & net_150 & net_180);
+assign net_182 = (s_4_port_3_put[0] & net_112 & net_181);
+assign net_183 = (s_4_port_3_put[0] & net_113);
+assign s_4_port_7_allowed[0] = (net_161 | net_163 | net_168 | net_182 | net_183);
 s_8_$builtin_7_Decoder_args_e1b0472986822197d404393331c02a551cfe5cdfedcb0427b0ce780dd10953c9 s_8_instance_6_select (
     .s_4_port_2_in({s_4_port_5_index[4], s_4_port_5_index[3], s_4_port_5_index[2], s_4_port_5_index[1], s_4_port_5_index[0]}),
-    .s_4_port_3_out({net_108, net_107, net_106, net_105, net_104, net_103, net_102, net_101, net_100, net_99, net_98, net_97, net_96, net_95, net_94, net_93, net_92, net_91, net_90, net_89, net_88, net_87, net_86, net_85, net_84, net_83, net_82, net_81, net_80, net_79, net_78, net_77})
+    .s_4_port_3_out({net_124, net_123, net_122, net_121, net_120, net_119, net_118, net_117, net_116, net_115, net_114, net_113, net_112, net_111, net_110, net_109, net_108, net_107, net_106, net_105, net_104, net_103, net_102, net_101, net_100, net_99, net_98, net_97, net_96, net_95, net_94, net_93})
+);
+s_8_$builtin_5_Adder_args_8c98d396d4e298913f14ad3186e933dcf7c381317bff365d582835405c2c45dc s_8_instance_10_value_vs_l (
+    .s_4_port_1_a({s_4_port_5_value[7], s_4_port_5_value[6], s_4_port_5_value[5], s_4_port_5_value[4], s_4_port_5_value[3], s_4_port_5_value[2], s_4_port_5_value[1], s_4_port_5_value[0]}),
+    .s_4_port_1_b({net_140, net_139, net_138, net_137, net_136, net_135, net_134, net_133}),
+    .s_4_port_4_c_in(net_141),
+    .s_4_port_3_sum({net_149, net_148, net_147, net_146, net_145, net_144, net_143, net_142}),
+    .s_4_port_5_c_out(net_150)
 );
 endmodule
 `default_nettype wire
