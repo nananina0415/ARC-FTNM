@@ -50,13 +50,13 @@ object Special {
   // 통하는 로컬 번호(그룹 포트의 addr) 변환 테이블. Reg.scala의 그룹 포트 주석에 적힌
   // 배정과 정확히 일치해야 한다.
   val divMapping   = Seq(REG_CODE_D -> 0, REG_CODE_R -> 1)
-  val jumpMapping  = Seq(
+  val jumpWriteMapping = Seq(
     REG_CODE_J -> 0, REG_CODE_B -> 1, REG_CODE_BB -> 2, REG_CODE_K -> 3, REG_CODE_Q -> 4,
     REG_CODE_T -> 5, REG_CODE_TT -> 6, REG_CODE_W -> 7, REG_CODE_WW -> 8, REG_CODE_X -> 9,
-    REG_CODE_XX -> 10, REG_CODE_Y -> 11, REG_CODE_YY -> 12, REG_CODE_Z -> 13, REG_CODE_ZZ -> 14
+    REG_CODE_XX -> 10, REG_CODE_Y -> 11, REG_CODE_YY -> 12, REG_CODE_Z -> 13, REG_CODE_ZZ -> 14,
+    REG_CODE_G -> 15, REG_CODE_L -> 16
   )
-  val memReadMapping  = Seq(REG_CODE_P -> 0, REG_CODE_G -> 1, REG_CODE_L -> 2, REG_CODE_O -> 4, REG_CODE_S -> 5)
-  val memWriteMapping = Seq(REG_CODE_P -> 0, REG_CODE_G -> 1, REG_CODE_L -> 2)  // rO/rS는 쓰기 금지라 제외
+  val jumpReadMapping = jumpWriteMapping ++ Seq(REG_CODE_O -> 32, REG_CODE_S -> 33)  // rO/rS는 쓰기 금지라 제외
   val elseReadMapping  = Seq(
     REG_CODE_E -> 0, REG_CODE_F -> 1, REG_CODE_I -> 2, REG_CODE_U -> 3, REG_CODE_V -> 4,
     REG_CODE_C -> 8, REG_CODE_N -> 9
@@ -119,14 +119,13 @@ object Special {
     divPort.set_=(isGet && inGroup(z, divMapping))
     mulPort.set_=(isGet && (z === REG_CODE_H))
     aPort.set_=(isGet && (z === REG_CODE_A))
-    jumpPort.set_=(isGet && inGroup(z, jumpMapping))
-    memPort.set_=(isGet && inGroup(z, memReadMapping))
+    jumpPort.set_=(isGet && inGroup(z, jumpReadMapping))
+    memPort.set_=(isGet && (z === REG_CODE_P))
     maskPort.set_=(isGet && (z === REG_CODE_M))
     elsePort.set_=(isGet && inGroup(z, elseReadMapping))
 
     divR.addr  := groupAddr(z, divMapping, 1)
-    jumpR.addr := groupAddr(z, jumpMapping, 4)
-    memR.addr  := groupAddr(z, memReadMapping, 3)
+    jumpR.addr := groupAddr(z, jumpReadMapping, 6)
     elseR.addr := groupAddr(z, elseReadMapping, 4)
 
     // 7개 중 z가 속한 그룹 하나만 무장되므로, 무장 안 된 나머지는 항상 ack=true라
@@ -138,8 +137,8 @@ object Special {
       inGroup(z, divMapping)      -> divR.data,
       (z === REG_CODE_H)          -> mulR.data,
       (z === REG_CODE_A)          -> aR.data,
-      inGroup(z, jumpMapping)     -> jumpR.data,
-      inGroup(z, memReadMapping)  -> memR.data,
+      inGroup(z, jumpReadMapping) -> jumpR.data,
+      (z === REG_CODE_P)          -> memR.data,
       (z === REG_CODE_M)          -> maskR.data,
       inGroup(z, elseReadMapping) -> elseR.data
     ))
@@ -172,13 +171,12 @@ object Special {
     aW.data     := putVal
     aW.write    := putWrite && (x === REG_CODE_A)
 
-    jumpW.addr  := groupAddr(x, jumpMapping, 4)
+    jumpW.addr  := groupAddr(x, jumpWriteMapping, 5)
     jumpW.data  := putVal
-    jumpW.write := putWrite && inGroup(x, jumpMapping)
+    jumpW.write := putWrite && inGroup(x, jumpWriteMapping)
 
-    memW.addr   := groupAddr(x, memWriteMapping, 2)
     memW.data   := putVal
-    memW.write  := putWrite && inGroup(x, memWriteMapping)
+    memW.write  := putWrite && (x === REG_CODE_P)
 
     maskW.data  := putVal
     maskW.write := putWrite && (x === REG_CODE_M)

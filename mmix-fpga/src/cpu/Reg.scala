@@ -229,12 +229,17 @@ class SpecialRegReadPortFactory {
 //               — 1개뿐이라 addr 없음
 //   A     그룹: rA                                                            (거의 모든 파이프)
 //               — 1개뿐이라 addr 없음
-//   Jump  그룹: rJ=0,rB=1,rBB=2,rK=3,rQ=4,rT=5,rTT=6,rW=7,rWW=8,rX=9,rXX=10,
-//               rY=11,rYY=12,rZ=13,rZZ=14                                     (Jump: TRAP/TRIP/RESUME)
-//               — 15개 다 쓰기 가능, addr 4비트(읽기/쓰기 동일)
-//   Mem   그룹: 쓰기가능 rP=0,rG=1,rL=2 / 쓰기금지 rO=4,rS=5                    (Mem: CSWAP, SAVE/UNSAVE)
-//               — 읽기 addr 3비트(5개), 쓰기 addr 2비트(3개만 — 100/101은 2비트로 표현 불가)
-//   Mask  그룹: rM                                                            (Bitwise: MOR/MXOR)
+//   Jump  그룹: 쓰기가능 rJ=0,rB=1,rBB=2,rK=3,rQ=4,rT=5,rTT=6,rW=7,rWW=8,rX=9,
+//               rXX=10,rY=11,rYY=12,rZ=13,rZZ=14,rG=15,rL=16 / 쓰기금지 rO=32,rS=33
+//               (Jump: TRAP/TRIP/RESUME, PUSHJ/PUSHGO/POP — rG/rL은 push/pop 개수 범위
+//               계산에 쓰임. rG는 PUSHJ/PUSHGO/POP 자신은 읽기만 하고, 쓰기는 PUT을 통해
+//               Special만 함 — 그래도 포트 타입 자체엔 쓰기 능력이 있어야 Special이 씀)
+//               — 읽기 addr 6비트(34개 표현), 쓰기 addr 5비트(17개만 — 17~31은 예비슬롯,
+//                 32/33은 5비트로 표현 불가)
+//   Mem   그룹: rP                                                            (Mem: CSWAP, SAVE/UNSAVE)
+//               — 1개뿐이라 addr 없음
+//   Mask  그룹: rM                                                            (MUX가 씀 — 아직 어느
+//               파이프에도 구현 안 됨)
 //               — 1개뿐이라 addr 없음
 //   else  그룹: 쓰기가능 rE=0,rF=1,rI=2,rU=3,rV=4 / 쓰기금지 rC=8,rN=9          (아직 어떤 파이프도 안 씀)
 //               — 읽기 addr 4비트(일부러 넓힘, 7개인데 8비트공간 씀), 쓰기 addr 3비트(5개만)
@@ -277,34 +282,50 @@ case class SpecialRegPort_A_W() extends Bundle {
   val write = Output(Bool())
 }
 
-/** Jump 그룹(rJ, rB, rBB, rK, rQ, rT, rTT, rW, rWW, rX, rXX, rY, rYY, rZ, rZZ —
- * TRAP/TRIP/RESUME 전체) 읽기 포트. 15개 다 쓰기 가능이라 addr 폭이 읽기/쓰기 동일.
+/** Jump 그룹(rJ, rB, rBB, rK, rQ, rT, rTT, rW, rWW, rX, rXX, rY, rYY, rZ, rZZ, rG, rL, rO, rS —
+ * TRAP/TRIP/RESUME + PUSHJ/PUSHGO/POP) 읽기 포트. 19개 전부 addr로 고른다.
  */
 case class SpecialRegPort_Jump_R() extends Bundle {
-  val addr = Output(UInt(4.W))
+  val addr = Output(UInt(6.W))
   val data = Input(UInt(64.W))
   val ack  = Input(Bool())
   val req  = Output(Bool())
 }
-/** Jump 그룹 쓰기 포트. */
+/** Jump 그룹 쓰기 포트 — rO/rS(쓰기금지)는 로컬번호가 32/33이라 5비트로는 표현이 안 돼서
+ * 애초에 이 addr로 못 고른다.
+ */
 case class SpecialRegPort_Jump_W() extends Bundle {
-  val addr  = Output(UInt(4.W))
+  val addr  = Output(UInt(5.W))
   val data  = Output(UInt(64.W))
   val write = Output(Bool())
 }
 
-/** Mem 그룹(rP, rO, rS, rG, rL — CSWAP + SAVE/UNSAVE) 읽기 포트. 5개 전부 addr로 고른다. */
+/** 트립뱅크(rX,rY,rZ,rB,rW)/트랩뱅크(rXX,rYY,rZZ,rBB,rWW) 접근 경로 — 설계/파이프/점프
+ * "트립뱅크/트랩뱅크 접근 경로" 참고. 이 10개는 위 SpecialRegPort_Jump_R/W(일반
+ * arbitrated 포트, GET/PUT이 한 번에 하나씩 접근)에도 그대로 남아있다 — 이 포트는 그와
+ * 별개로, TRIP/TRAP이 5개를 한 사이클에 같이 쓰고 RESUME이 5개를 한 사이클에 같이
+ * 읽기 위한 **추가** 경로다(저장소는 안 합침, 접근 경로만 공유).
+ *
+ * 파이프는 한 사이클에 TRIP/TRAP/RESUME 중 하나만 처리하므로 5워드 데이터선을 공유해도
+ * 안전하다. TRIP/TRAP은 항상 write, RESUME은 항상 read라 실제로 방향이 섞이는 일은 없다.
+ * wdata/rdata 순서는 두 뱅크 다 [X,Y,Z,B,W] 자리(트랩뱅크면 XX,YY,ZZ,BB,WW)로 고정.
+ */
+case class TrapBankPort() extends Bundle {
+  val active = Output(Bool())              // 이번 사이클에 뱅크 동작이 있는지(TRIP/TRAP/RESUME일 때만 1)
+  val bank   = Output(Bool())              // false=트립뱅크, true=트랩뱅크
+  val write  = Output(Bool())              // true=write(TRIP/TRAP), false=read(RESUME)
+  val wdata  = Output(Vec(5, UInt(64.W)))  // write일 때 5워드
+  val rdata  = Input(Vec(5, UInt(64.W)))   // read일 때 5워드
+}
+
+/** Mem 그룹(rP — CSWAP + SAVE/UNSAVE) 읽기 포트 — 레지스터가 하나뿐이라 addr 없음. */
 case class SpecialRegPort_Mem_R() extends Bundle {
-  val addr = Output(UInt(3.W))
   val data = Input(UInt(64.W))
   val ack  = Input(Bool())
   val req  = Output(Bool())
 }
-/** Mem 그룹 쓰기 포트 — rO/rS(쓰기금지)는 로컬번호가 4/5라 2비트로는 표현이 안 돼서
- * 애초에 이 addr로 못 고른다.
- */
+/** Mem 그룹 쓰기 포트. */
 case class SpecialRegPort_Mem_W() extends Bundle {
-  val addr  = Output(UInt(2.W))
   val data  = Output(UInt(64.W))
   val write = Output(Bool())
 }

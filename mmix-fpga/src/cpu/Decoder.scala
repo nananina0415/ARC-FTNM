@@ -267,8 +267,7 @@ class Decoder extends Module
     is(0x90.U, 0x91.U) { io.illegal := true.B }  // 0x90~0x91: 단정밀도 실수 로드 (미구현)
     is(0x92.U) { memOut(LOAD | HIGH32 | U32)        }  // LDHT
     is(0x93.U) { memOut(LOAD | HIGH32 | U32 | IMM)  }  // LDHTI
-    is(0x94.U) { compOut(ATOMIC_SET)                }  // CSWAP
-    is(0x95.U) { compOut(ATOMIC_SET | IMM)          }  // CSWAPI
+    is(0x94.U, 0x95.U) { io.illegal := true.B       }  // 0x94~0x95: CSWAP/CSWAPI, 원자적 메모리 연산 (미구현)
     is(0x96.U) { memOut(LOAD | NOCACHE | U64)       }  // LDUNC
     is(0x97.U) { memOut(LOAD | NOCACHE | U64 | IMM) }  // LDUNCI
     is(0x98.U, 0x99.U) { io.illegal := true.B       }  // 0x98~0x99: 가상주소 관련 (미구현)
@@ -301,8 +300,8 @@ class Decoder extends Module
     is(0xB5.U) { memOut(STORE | CONST | U64 | IMM)   }  // STCOI
     is(0xB6.U) { memOut(STORE | NOCACHE | U64)       }  // STUNC
     is(0xB7.U) { memOut(STORE | NOCACHE | U64 | IMM) }  // STUNCI
-    is(0xB8.U) { memOut(SYNC)                        }  // SYNC
-    is(0xB9.U) { memOut(SYNC | IMM)                  }  // SYNCI
+    is(0xB8.U) { memOut(SYNCD)                       }  // SYNCD
+    is(0xB9.U) { memOut(SYNCD | IMM)                 }  // SYNCDI
     is(0xBA.U) { memOut(PRESTORE)                    }  // PREST
     is(0xBB.U) { memOut(PRESTORE | IMM)              }  // PRESTI
     is(0xBC.U, 0xBD.U) { io.illegal := true.B        }  // 0xBC~0xBD: icache 플러시 (미구현)
@@ -356,7 +355,7 @@ class Decoder extends Module
     is(0xF9.U) { jumpOut(SYSCALL | RET)      }  // RESUME
     is(0xFA.U) { memOut(SAVE)                }  // SAVE
     is(0xFB.U) { memOut(UNSAVE)              }  // UNSAVE
-    is(0xFC.U) { specialOut(WAIT)            }  // SWYM
+    is(0xFC.U) { io.illegal := true.B        }  // SYNC
     is(0xFD.U) { specialOut(NO_OP)           }  // SWYM (NO_OP)
     is(0xFE.U) { specialOut(GET_REG)         }  // GET
     is(0xFF.U) { jumpOut(TRIP)               }  // TRIP

@@ -85,8 +85,14 @@ class BranchExec(f: BranchFetchResult) {
   ))
   private val actualTaken = Mux(f.condInv, !baseSatisfied, baseSatisfied)
 
-  private val fwd    = (f.yz << 2).pad(64)
-  private val offset = Mux(f.back, fwd - 262144.U(64.W), fwd)
+  private val fwd = (f.yz << 2).pad(64)
+
+  private val NEG_262144 = ((BigInt(1) << 64) - 262144).U(64.W)  // -262144의 2의 보수
+  private val backAdder = Module(new SimpleAdder64())
+  backAdder.io.a := fwd
+  backAdder.io.b := NEG_262144
+
+  private val offset = Mux(f.back, backAdder.io.res, fwd)
 
   val res = Wire(BranchResult())
   res.storeMethod := Mux(actualTaken, 2.U, 0.U)
