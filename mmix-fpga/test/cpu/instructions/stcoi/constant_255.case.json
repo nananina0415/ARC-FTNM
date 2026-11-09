@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "id": "stcoi.constant_255",
+  "target": {
+    "mnemonic": "STCOI",
+    "opcode": "0xb5",
+    "pc": "0x0",
+    "word": "0xb5ff0100",
+    "executions": 1
+  },
+  "tags": [
+    "constant_255",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000100",
+      "$255": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {},
+    "special": {},
+    "memory": {
+      "0x100": "00",
+      "0x101": "00",
+      "0x102": "00",
+      "0x103": "00",
+      "0x104": "00",
+      "0x105": "00",
+      "0x106": "00",
+      "0x107": "ff"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "constant_255"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

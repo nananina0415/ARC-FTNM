@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "stwui.value_zero",
+  "target": {
+    "mnemonic": "STWUI",
+    "opcode": "0xa7",
+    "pc": "0x0",
+    "word": "0xa7030100",
+    "executions": 1
+  },
+  "tags": [
+    "value_zero",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000100"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x100": "5a",
+      "0x101": "5a"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {},
+    "special": {},
+    "memory": {
+      "0x100": "00",
+      "0x101": "00"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "value_zero"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

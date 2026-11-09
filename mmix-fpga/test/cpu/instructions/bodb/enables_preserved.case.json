@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "bodb.enables_preserved",
+  "target": {
+    "mnemonic": "BODB",
+    "opcode": "0x47",
+    "pc": "0x20",
+    "word": "0x4701fffc",
+    "executions": 1
+  },
+  "tags": [
+    "branch",
+    "enables_preserved"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000001",
+      "$4": "0x0000000000000007",
+      "$255": "0x5555555555555555",
+      "$252": "0x5555555555555555"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0",
+      "rH": "0x1122334455667788",
+      "rR": "0x8877665544332211"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000010",
+    "registers": {},
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "enables_preserved"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "id": "stbui.value_sign_bit",
+  "target": {
+    "mnemonic": "STBUI",
+    "opcode": "0xa3",
+    "pc": "0x0",
+    "word": "0xa3030100",
+    "executions": 1
+  },
+  "tags": [
+    "value_sign_bit",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000100",
+      "$3": "0x0000000000000080"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x100": "5a"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {},
+    "special": {},
+    "memory": {
+      "0x100": "80"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "value_sign_bit"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

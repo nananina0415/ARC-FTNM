@@ -1,15 +1,38 @@
 # CPU 어셈블리 회귀 테스트 설계
 
-상태: 명령어별 프로그램 테스트를 구현했다. 현재 99개 지원 항목(ALU 90 opcode,
-메모리 8 opcode, 정확한 HALT 인코딩)에 대해 2,079개 `.mms`/`.case.json` 쌍이 있다.
+상태: 명령어별 프로그램 테스트를 구현했다. 현재 174개 구현 항목(ALU/상수 106 opcode,
+메모리 28 opcode, 분기 34 opcode, GETA 2 opcode, GET/PUT 3 opcode, 정확한 HALT)에 대해
+3,684개 `.mms`/`.case.json` 쌍이 있다. 분기 및 이번 확장 프로그램은 아직 실행하지 않았다.
 아래의 번호별 절은 확장 설계이며, 아직 구현하지 않은 기능은 아래 현황과 구분한다.
 
-최근 전체 실행(2026-11-02): **2,079개 프로그램 × 2 profile = 4,158회 PASS,
-0 FAIL, 필수 커버리지 누락 0**. 실제 실행 시간은 약 18분이었다.
+분기 추가 전, 상수 명령까지의 115개 항목 전체 실행(2026-11-02):
+**2,432개 프로그램 × 2 profile = 4,864회 PASS,
+0 FAIL, 필수 커버리지 누락 0**. 실제 실행 시간은 약 28분이었다.
 실행 명령은 `python -m verification.cpu_suite --all --batch-size 512 --jobs 4`다.
-별도 디코더 520개 검사(전체 256 opcode), 생성 소스 일치 검사(76개 산출물),
-명세 검증 적용 후 대표 8회 재실행과 잘못된 기대값/이미지 거부 검사도 통과했다.
-현재 CPU RTL을 테스트에 맞춰 수정하지 않았다.
+ALU 7,380개 벡터, 디코더 520개 검사(전체 256 opcode), 캐시 검사,
+CPU 7개 시나리오, 생성 소스 일치 검사(77개 산출물)도 통과했다.
+상수 명령의 새 353개 프로그램은 두 profile에서 706회 모두 통과했다.
+이 결과는 분기와 공통 조건 모듈을 추가하기 전의 RTL 결과이며,
+분기 추가 후 현재 RTL의 검증 결과가 아니다.
+
+분기 케이스는 B*/PB*/JMP의 앞/뒤 변형, 조건의 참/거짓, 0/부호/홀짝 경계,
+16/24비트 오프셋 경계, 다음 명령/다음 캐시라인/충돌 index로의 이동,
+목표 fetch 오류와 64비트 PC wraparound, counted loop를 다룬다.
+범용·특수 레지스터 보존과 의도적으로 건너뛴 명령의 부작용도 비교한다.
+`expect.pc`는 최종 PC를 검증하는 선택 항목이다. 잘못된 목표 주소가 같은 fetch
+오류를 일으키더라도 올바른 주소 계산으로 오인하지 않도록 분기 케이스에 사용한다.
+새 상태 덤프 header의 마지막 필드는 PC이며, 이전 9필드 덤프도 PC 기대값이
+없는 기존 케이스에서는 읽을 수 있다.
+
+상수 케이스는 16비트 즉치의 0/255/256/32767/32768/65535 경계,
+기존 $X 읽기, Y/Z 바이트와 X 번호의 중복, SET의 나머지 비트 초기화,
+INC의 wyde 사이 carry와 64비트 wraparound, 특수 레지스터 보존을 다룬다.
+`seth.compose_64bit`는 SETH/ORMH/ORML/ORL을 연속 실행해 실제 프로그램 안에서
+64비트 상수를 구성하는 사례다. 실행을 원할 때 사용할 명령은 다음과 같다.
+
+```powershell
+python -m verification.cpu_suite --instruction SETH --instruction SETMH --instruction SETML --instruction SETL --instruction INCH --instruction INCMH --instruction INCML --instruction INCL --instruction ORH --instruction ORMH --instruction ORML --instruction ORL --instruction ANDNH --instruction ANDNMH --instruction ANDNML --instruction ANDNL
+```
 
 ## 실행 가능한 도구
 
@@ -55,14 +78,15 @@ MMIXAL의 종료 코드 외에 진단 메시지도 검사한다. 경고도 실�
 
 - `.mms → MMIXAL → MMO v1 loader → RAM → 실제 생성 CPU RTL` 경로를 실행한다.
 - fixture는 reset 후 실행 전에 플립플롭 저장 상태에 한 번 주입한다. 실행 중
-  `force`나 기대값 주입은 없다. 미지원 SET/GET/PUT 명령을 초기화에 사용하지 않는다.
+  `force`나 기대값 주입은 없다. 대상 명령의 지원 여부와 무관하게 초기 상태는 fixture로 주입한다.
 - GPR 256개, 특수 레지스터 32개, 테스트 RAM 4,128바이트를 최종 덤프하여
   초기 상태와 명세의 차이만 반영한 기대 상태와 전부 비교한다.
 - RAM은 `0..4095`와 마지막 32바이트 `0x3fffffe0..0x3fffffff`를 sparse mapping한다.
   초기화하지 않은 바이트는 A5다. rA는 구현된 비트 6/7/14/15만 주입할 수 있다.
 - 대상 PC가 실제 EXECUTE에 도달한 횟수, GPR 쓰기 횟수, store와 B 응답 횟수,
-  HALT/fault 및 원인, 정지 후 추가 활동도 검사한다. 현재 명령어별 케이스는 대상
-  명령과 HALT로 구성되며 부작용 횟수는 프로그램 전체를 대상으로 비교한다.
+  HALT/fault 및 원인, 정지 후 추가 활동도 검사한다. 기본 케이스는 대상 명령과
+  HALT로 구성되며 연속 상수 구성과 분기/반복문 프로그램도 포함한다. 부작용 횟수는 프로그램
+  전체를 대상으로 비교한다.
 - `no_stall`은 READY를 즉시 제공하고 짧은 응답을 보낸다. `backpressure`는
   AR/AW/W에 서로 다른 주기(4/5/7)의 READY와 R/B 지연을 준다. VALID 정지 중
   주소·쓰기 데이터·strobe 유지, 단일 32바이트 AXI 전송 형식도 검사한다.
@@ -395,7 +419,8 @@ cache/performance 케이스에서만 해당 정책의 miss/transaction 수를 �
 
 ## 9. 지원 목록과 커버리지
 
-현재 대상은 ALU 90개 opcode, LDO/STO 계열 8개 opcode와 정확한 HALT 인코딩이다.
+현재 대상은 ALU/상수 106개 opcode, LDO/STO 계열 8개 opcode, 분기 34개 opcode와
+정확한 HALT 인코딩이다.
 HALT 하나를 지원한다고 일반 TRAP 전체를 지원한다고 기록하지 않는다.
 부동소수점과 가상주소 등 제외 범위는 catalog에 명시한다.
 
@@ -460,3 +485,19 @@ fault나 process 비정상 종료는 별도 실패다. clock timeout과 wall tim
 원인을 좁히는 데 활용한다. CPU 프로그램 검증만으로 단위 검사를 대체하지 않는다.
 
 현재 구현 현황은 문서 맨 위를 따른다. 이 절의 나머지 항목은 향후 확장 순서다.
+
+## 작은 정수·부분 저장·주소·특수 레지스터 확장
+
+폭별 load의 0/부호 경계/최대 양수/전부 1, 부호·0 확장, 접근 폭 내 비정렬 주소,
+라인 경계, 마지막 유효 주소, 64비트 주소 합 wraparound를 케이스로 추가했다.
+부분 store는 주변 바이트 보존과 상위 비트 절단을 명세에 반영하며 STCO의 X 값은
+0/1/127/128/255를 다룬다. 연속 load→부분 store→같은 라인 load 프로그램도 포함한다.
+
+GETA는 앞/뒤 오프셋 경계와 레지스터 보존을 다룬다. GET/PUT/PUTI는 지원 19개 레지스터,
+미지원 13개 시스템/스택 레지스터, 형식 오류, rA 비트 제한을 다룬다. PUT rD→DIVU→GET rR,
+PUT rM→MUX→GET rD 연속 프로그램으로 기존 ALU 저장 상태와의 연결을 명세화했다.
+WAIT에서 거부되는 무효 명령은 `target.executions=0`을 사용한다. 이는 expected fault인
+케이스에만 허용하며, 최종 상태와 쓰기 횟수도 그대로 비교한다.
+
+케이스 파일과 참조 모델·디코더 검사 기대값을 갱신했으나 이번 변경 뒤 테스트와
+시뮬레이션은 실행하지 않았다. 위 4,864회 PASS는 분기 추가 전 RTL의 과거 결과다.

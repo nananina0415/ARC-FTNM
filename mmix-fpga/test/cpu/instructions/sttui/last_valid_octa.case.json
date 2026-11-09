@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "id": "sttui.last_valid_octa",
+  "target": {
+    "mnemonic": "STTUI",
+    "opcode": "0xab",
+    "pc": "0x0",
+    "word": "0xab030100",
+    "executions": 1
+  },
+  "tags": [
+    "last_valid_octa",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x000000003ffffffc",
+      "$3": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x3ffffffc": "01",
+      "0x3ffffffd": "02",
+      "0x3ffffffe": "03",
+      "0x3fffffff": "04"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {},
+    "special": {},
+    "memory": {
+      "0x3ffffffc": "89",
+      "0x3ffffffd": "ab",
+      "0x3ffffffe": "cd",
+      "0x3fffffff": "ef"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "last_valid_octa"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

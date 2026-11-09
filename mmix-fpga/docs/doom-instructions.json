@@ -1,0 +1,3211 @@
+{
+  "schema": 1,
+  "build": {
+    "repository": "nananina0415/ARC-FTNM",
+    "commit": "ea4e8130950e10244650282e8ef671e845da89bf",
+    "source_url": "https://github.com/nananina0415/ARC-FTNM/tree/ea4e8130950e10244650282e8ef671e845da89bf/apps/doom",
+    "compiler": "mmix-gcc.exe (GCC) 4.8.5",
+    "target": "mmix",
+    "binutils": "GNU ld (GNU Binutils) 2.25.1",
+    "cflags": [
+      "-D__BIG_ENDIAN__",
+      "-ffreestanding",
+      "-nostdlib",
+      "-fomit-frame-pointer",
+      "-fno-jump-tables",
+      "-O0",
+      "-std=gnu11"
+    ],
+    "adaptations": [
+      "커밋에 없는 루트 CMakeLists.txt를 분석용 wrapper로 만들어 Doom 하위 프로젝트를 추가했다.",
+      "실제 파일명 main,c를 CMake가 요구하는 main.c로 내용 변경 없이 복사했다.",
+      "crt0.s가 참조하는 _args_init/_crt_argc/_crt_argv를 제공하도록 기존 libc/args.c를 링크 목록에 추가했다.",
+      "0인자 함수 선언에 맞춰 doom_get_sound_buffer(AUDIO_BUF_BYTES)를 doom_get_sound_buffer()로 변경했다.",
+      "I_Error는 단일 문자열 함수이므로 잘못된 두 인자 호출을 I_Error(\"W_Init: IWAD not found\")로 변경했다. IWAD 미존재 오류의 파일명 표시는 생략되며 정상 경로는 바꾸지 않았다.",
+      "원본의 기본 무최적화 빌드를 -O0으로 명시하고 C99 이후 문법을 위해 -std=gnu11을 사용했다.",
+      "원본 RAW 링커 스크립트로 doom.bin을 만들고 동일 객체/순서/스크립트에 출력 형식만 ELF로 지정한 동반 파일을 만들었다. 분석기는 코드 바이트 일치를 요구한다.",
+      "Windows MMIX 배포의 GCC 4.8.5 / Binutils 2.25.1을 사용했다. 원본 Linux 경로의 컴파일러 버전은 저장소에 고정돼 있지 않다."
+    ],
+    "commands": [
+      "git clone --filter=blob:none --no-checkout --single-branch --branch main https://github.com/nananina0415/ARC-FTNM.git .tools/doom-audit/ARC-FTNM",
+      "git -C .tools/doom-audit/ARC-FTNM sparse-checkout init --no-cone",
+      "git -C .tools/doom-audit/ARC-FTNM sparse-checkout set '/apps/doom/*' '!/apps/doom/freedoom-0.13.0/' '/nnix-os/' '/drivers/' '/tools/' '/README.md' '/.gitmodules'",
+      "git -C .tools/doom-audit/ARC-FTNM checkout --detach ea4e8130950e10244650282e8ef671e845da89bf",
+      "download https://mmix.cs.hm.edu/exe/gcc-4.8.5.zip and extract to .tools/doom-audit/prebuilt",
+      "python verification\\build_doom_audit.py --tools .tools/doom-audit/prebuilt/mmix/bin --compiler .tools/doom-audit/prebuilt/mmix/bin/mmix-gcc.exe"
+    ],
+    "analysis_command": "python verification/doom_audit.py --elf build/doom-audit/doom.elf --raw build/doom-audit/doom.bin --manifest build/doom-audit/manifest.json",
+    "references": {
+      "Doom CMake": "https://github.com/nananina0415/ARC-FTNM/blob/ea4e8130950e10244650282e8ef671e845da89bf/apps/doom/CMakeLists.txt",
+      "RAW linker script": "https://github.com/nananina0415/ARC-FTNM/blob/ea4e8130950e10244650282e8ef671e845da89bf/apps/doom/link.ld",
+      "startup": "https://github.com/nananina0415/ARC-FTNM/blob/ea4e8130950e10244650282e8ef671e845da89bf/nnix-os/libc/crt0.s",
+      "FPGA main": "https://github.com/nananina0415/ARC-FTNM/blob/ea4e8130950e10244650282e8ef671e845da89bf/apps/doom/src/main,c",
+      "MMIO address layout": "https://github.com/nananina0415/ARC-FTNM/blob/ea4e8130950e10244650282e8ef671e845da89bf/nnix-os/src/device/types.h",
+      "MMIX Windows compiler distribution": "https://mmix.cs.hm.edu/exe/index.html"
+    },
+    "compiler_archive_sha256": "e642b9d658f8f78d99700f9d4bca2c255314b5b82e4674ee39ba7a71a2b91599"
+  },
+  "entry": 0,
+  "instruction_words": 118949,
+  "code_sections": [
+    {
+      "name_offset": 27,
+      "type": 1,
+      "flags": 6,
+      "address": 0,
+      "offset": 256,
+      "size": 475796,
+      "link": 0,
+      "info": 0,
+      "align": 4,
+      "entry_size": 0,
+      "index": 1,
+      "name": ".text",
+      "sha256": "1fd64b1bd8fd30c31e68cb40c9d3402020db4be597b8c3bc828fe66a3142354c",
+      "object_bytes_excluded": 0,
+      "trailing_bytes": 0
+    }
+  ],
+  "excluded_objects": [],
+  "initial_global_registers": [
+    {
+      "register": 130,
+      "value": "0x000000000007ae48"
+    },
+    {
+      "register": 131,
+      "value": "0x000000000007af48"
+    },
+    {
+      "register": 132,
+      "value": "0x000000000007b068"
+    },
+    {
+      "register": 133,
+      "value": "0x000000000007b198"
+    },
+    {
+      "register": 134,
+      "value": "0x000000000007b2c8"
+    },
+    {
+      "register": 135,
+      "value": "0x000000000007b418"
+    },
+    {
+      "register": 136,
+      "value": "0x000000000007b5a8"
+    },
+    {
+      "register": 137,
+      "value": "0x000000000007b778"
+    },
+    {
+      "register": 138,
+      "value": "0x000000000007b8f0"
+    },
+    {
+      "register": 139,
+      "value": "0x000000000007b9f0"
+    },
+    {
+      "register": 140,
+      "value": "0x000000000007bc10"
+    },
+    {
+      "register": 141,
+      "value": "0x000000000007bdf0"
+    },
+    {
+      "register": 142,
+      "value": "0x000000000007bef0"
+    },
+    {
+      "register": 143,
+      "value": "0x000000000007c0d8"
+    },
+    {
+      "register": 144,
+      "value": "0x000000000007c3d8"
+    },
+    {
+      "register": 145,
+      "value": "0x000000000007c8d8"
+    },
+    {
+      "register": 146,
+      "value": "0x000000000007d438"
+    },
+    {
+      "register": 147,
+      "value": "0x000000000007d780"
+    },
+    {
+      "register": 148,
+      "value": "0x000000000007e970"
+    },
+    {
+      "register": 149,
+      "value": "0x000000000007ea88"
+    },
+    {
+      "register": 150,
+      "value": "0x0000000000089c60"
+    },
+    {
+      "register": 151,
+      "value": "0x0000000000089db4"
+    },
+    {
+      "register": 152,
+      "value": "0x000000000008a25c"
+    },
+    {
+      "register": 153,
+      "value": "0x000000000008a7c0"
+    },
+    {
+      "register": 154,
+      "value": "0x000000000008cd9c"
+    },
+    {
+      "register": 155,
+      "value": "0x000000000008cea0"
+    },
+    {
+      "register": 156,
+      "value": "0x000000000008d56c"
+    },
+    {
+      "register": 157,
+      "value": "0x000000000008d670"
+    },
+    {
+      "register": 158,
+      "value": "0x000000000008d7f0"
+    },
+    {
+      "register": 159,
+      "value": "0x000000000008d918"
+    },
+    {
+      "register": 160,
+      "value": "0x000000000008da20"
+    },
+    {
+      "register": 161,
+      "value": "0x000000000008db28"
+    },
+    {
+      "register": 162,
+      "value": "0x000000000008dc98"
+    },
+    {
+      "register": 163,
+      "value": "0x000000000008ddd0"
+    },
+    {
+      "register": 164,
+      "value": "0x000000000008df88"
+    },
+    {
+      "register": 165,
+      "value": "0x000000000008e098"
+    },
+    {
+      "register": 166,
+      "value": "0x000000000008e818"
+    },
+    {
+      "register": 167,
+      "value": "0x000000000008e91c"
+    },
+    {
+      "register": 168,
+      "value": "0x000000000008ec40"
+    },
+    {
+      "register": 169,
+      "value": "0x000000000008ef74"
+    },
+    {
+      "register": 170,
+      "value": "0x000000000008f0fc"
+    },
+    {
+      "register": 171,
+      "value": "0x000000000008f9b8"
+    },
+    {
+      "register": 172,
+      "value": "0x0000000000090e28"
+    },
+    {
+      "register": 173,
+      "value": "0x0000000000090f48"
+    },
+    {
+      "register": 174,
+      "value": "0x0000000000091098"
+    },
+    {
+      "register": 175,
+      "value": "0x00000000000911a0"
+    },
+    {
+      "register": 176,
+      "value": "0x00000000000912f0"
+    },
+    {
+      "register": 177,
+      "value": "0x0000000000091418"
+    },
+    {
+      "register": 178,
+      "value": "0x0000000000091538"
+    },
+    {
+      "register": 179,
+      "value": "0x0000000000091658"
+    },
+    {
+      "register": 180,
+      "value": "0x0000000000091758"
+    },
+    {
+      "register": 181,
+      "value": "0x0000000000094758"
+    },
+    {
+      "register": 182,
+      "value": "0x0000000000095758"
+    },
+    {
+      "register": 183,
+      "value": "0x000000000009f758"
+    },
+    {
+      "register": 184,
+      "value": "0x00000000000a1c5c"
+    },
+    {
+      "register": 185,
+      "value": "0x00000000000a2488"
+    },
+    {
+      "register": 186,
+      "value": "0x00000000000a25a8"
+    },
+    {
+      "register": 187,
+      "value": "0x00000000000a26b8"
+    },
+    {
+      "register": 188,
+      "value": "0x00000000000a27d8"
+    },
+    {
+      "register": 189,
+      "value": "0x00000000000a28f8"
+    },
+    {
+      "register": 190,
+      "value": "0x00000000000a29f8"
+    },
+    {
+      "register": 191,
+      "value": "0x00000000000a2b08"
+    },
+    {
+      "register": 192,
+      "value": "0x00000000000bb2a0"
+    },
+    {
+      "register": 193,
+      "value": "0x00000000000bb3c8"
+    },
+    {
+      "register": 194,
+      "value": "0x00000000000bdc78"
+    },
+    {
+      "register": 195,
+      "value": "0x00000000000c1c88"
+    },
+    {
+      "register": 196,
+      "value": "0x00000000000c1e98"
+    },
+    {
+      "register": 197,
+      "value": "0x00000000000c20c8"
+    },
+    {
+      "register": 198,
+      "value": "0x00000000000c21c8"
+    },
+    {
+      "register": 199,
+      "value": "0x00000000000c22d8"
+    },
+    {
+      "register": 200,
+      "value": "0x00000000000c62fc"
+    },
+    {
+      "register": 201,
+      "value": "0x00000000000c6468"
+    },
+    {
+      "register": 202,
+      "value": "0x00000000000db090"
+    },
+    {
+      "register": 203,
+      "value": "0x00000000000db648"
+    },
+    {
+      "register": 204,
+      "value": "0x00000000000dcce0"
+    },
+    {
+      "register": 205,
+      "value": "0x00000000000dce60"
+    },
+    {
+      "register": 206,
+      "value": "0x00000000000dcf64"
+    },
+    {
+      "register": 207,
+      "value": "0x00000000000dd37c"
+    },
+    {
+      "register": 208,
+      "value": "0x00000000000ddbb0"
+    },
+    {
+      "register": 209,
+      "value": "0x00000000000ddcd8"
+    },
+    {
+      "register": 210,
+      "value": "0x00000000000de210"
+    },
+    {
+      "register": 211,
+      "value": "0x00000000000e8238"
+    },
+    {
+      "register": 212,
+      "value": "0x00000000000e8568"
+    },
+    {
+      "register": 213,
+      "value": "0x00000000000e87e8"
+    },
+    {
+      "register": 214,
+      "value": "0x00000000000e8920"
+    },
+    {
+      "register": 215,
+      "value": "0x00000000000e8d50"
+    },
+    {
+      "register": 216,
+      "value": "0x00000000000e8ee0"
+    },
+    {
+      "register": 217,
+      "value": "0x00000000000e9778"
+    },
+    {
+      "register": 218,
+      "value": "0x00000000000e99c0"
+    },
+    {
+      "register": 219,
+      "value": "0x00000000000e9bfc"
+    },
+    {
+      "register": 220,
+      "value": "0x00000000000e9ec0"
+    },
+    {
+      "register": 221,
+      "value": "0x00000000000ea278"
+    },
+    {
+      "register": 222,
+      "value": "0x00000000000ea598"
+    },
+    {
+      "register": 223,
+      "value": "0x00000000000ea834"
+    },
+    {
+      "register": 224,
+      "value": "0x00000000000eaa4c"
+    },
+    {
+      "register": 225,
+      "value": "0x00000000000eab50"
+    },
+    {
+      "register": 226,
+      "value": "0x00000000000ec550"
+    },
+    {
+      "register": 227,
+      "value": "0x00000000000ec700"
+    },
+    {
+      "register": 228,
+      "value": "0x00000000000ecb30"
+    },
+    {
+      "register": 229,
+      "value": "0x00000000000ecc30"
+    },
+    {
+      "register": 230,
+      "value": "0x00000000000ed048"
+    },
+    {
+      "register": 231,
+      "value": "0x00000000000ed1d8"
+    },
+    {
+      "register": 232,
+      "value": "0x00000000000ed430"
+    },
+    {
+      "register": 233,
+      "value": "0x00000000000ed7f0"
+    },
+    {
+      "register": 234,
+      "value": "0x00000000000ee810"
+    },
+    {
+      "register": 235,
+      "value": "0x00000000000eeb34"
+    },
+    {
+      "register": 236,
+      "value": "0x00000000000eecec"
+    },
+    {
+      "register": 237,
+      "value": "0x00000000000ef020"
+    },
+    {
+      "register": 238,
+      "value": "0x00000000000ef228"
+    },
+    {
+      "register": 239,
+      "value": "0x00000000000ef430"
+    },
+    {
+      "register": 240,
+      "value": "0x00000000000ef758"
+    },
+    {
+      "register": 241,
+      "value": "0x00000000000f0908"
+    },
+    {
+      "register": 242,
+      "value": "0x00000000001009bc"
+    },
+    {
+      "register": 243,
+      "value": "0x0000000000100d14"
+    },
+    {
+      "register": 244,
+      "value": "0x0000000000104d18"
+    },
+    {
+      "register": 245,
+      "value": "0x0000000000124dfc"
+    },
+    {
+      "register": 246,
+      "value": "0x000000000012511c"
+    },
+    {
+      "register": 247,
+      "value": "0x00000000001253b4"
+    },
+    {
+      "register": 248,
+      "value": "0x0000000000125908"
+    },
+    {
+      "register": 249,
+      "value": "0x0000000000125a20"
+    },
+    {
+      "register": 250,
+      "value": "0x0000000000125f34"
+    },
+    {
+      "register": 251,
+      "value": "0x0000000000126280"
+    },
+    {
+      "register": 252,
+      "value": "0x00000000001263d0"
+    },
+    {
+      "register": 253,
+      "value": "0x0000000000126578"
+    },
+    {
+      "register": 254,
+      "value": "0x80000000007fffff"
+    }
+  ],
+  "isa_constraints": {
+    "f6": {
+      "special_registers": [
+        "rB",
+        "rD",
+        "rE",
+        "rH",
+        "rJ",
+        "rM",
+        "rR",
+        "rBB",
+        "rA",
+        "rF",
+        "rP",
+        "rW",
+        "rX",
+        "rY",
+        "rZ",
+        "rWW",
+        "rXX",
+        "rYY",
+        "rZZ"
+      ],
+      "ra_mask": "0xc0c0"
+    },
+    "f7": {
+      "special_registers": [
+        "rB",
+        "rD",
+        "rE",
+        "rH",
+        "rJ",
+        "rM",
+        "rR",
+        "rBB",
+        "rA",
+        "rF",
+        "rP",
+        "rW",
+        "rX",
+        "rY",
+        "rZ",
+        "rWW",
+        "rXX",
+        "rYY",
+        "rZZ"
+      ],
+      "ra_mask": "0xc0c0"
+    },
+    "fe": {
+      "special_registers": [
+        "rB",
+        "rD",
+        "rE",
+        "rH",
+        "rJ",
+        "rM",
+        "rR",
+        "rBB",
+        "rA",
+        "rF",
+        "rP",
+        "rW",
+        "rX",
+        "rY",
+        "rZ",
+        "rWW",
+        "rXX",
+        "rYY",
+        "rZZ"
+      ],
+      "ra_mask": "0xc0c0"
+    }
+  },
+  "opcodes": [
+    {
+      "opcode": 0,
+      "mnemonic": "TRAP",
+      "count": 19,
+      "unsupported_words": 17,
+      "status": "HALT만 지원 / 일반 TRAP 미구현",
+      "checklist": {
+        "line": 9,
+        "mnemonic": "TRAP",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 160,
+      "first_unsupported_address": 453964,
+      "examples": [
+        {
+          "address": 160,
+          "word": 0,
+          "function": null
+        },
+        {
+          "address": 520,
+          "word": 0,
+          "function": null
+        },
+        {
+          "address": 453964,
+          "word": 69120,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 26,
+      "mnemonic": "MULU",
+      "count": 89,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 35,
+        "mnemonic": "MULU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 18348,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 18348,
+          "word": 436207872,
+          "function": null
+        },
+        {
+          "address": 19880,
+          "word": 436405251,
+          "function": null
+        },
+        {
+          "address": 20128,
+          "word": 436405251,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 27,
+      "mnemonic": "MULUI",
+      "count": 47,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 36,
+        "mnemonic": "MULUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 8380,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 8380,
+          "word": 452985032,
+          "function": null
+        },
+        {
+          "address": 9268,
+          "word": 452985032,
+          "function": null
+        },
+        {
+          "address": 22800,
+          "word": 453050712,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 30,
+      "mnemonic": "DIVU",
+      "count": 138,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 39,
+        "mnemonic": "DIVU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 4928,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 4928,
+          "word": 503514117,
+          "function": null
+        },
+        {
+          "address": 5112,
+          "word": 503513860,
+          "function": null
+        },
+        {
+          "address": 5228,
+          "word": 503448836,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 31,
+      "mnemonic": "DIVUI",
+      "count": 7,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 40,
+        "mnemonic": "DIVUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 114968,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 114968,
+          "word": 520093744,
+          "function": null
+        },
+        {
+          "address": 269116,
+          "word": 520093708,
+          "function": null
+        },
+        {
+          "address": 270828,
+          "word": 520093722,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 33,
+      "mnemonic": "ADDI",
+      "count": 1,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 42,
+        "mnemonic": "ADDI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 56,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 56,
+          "word": 553713928,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 34,
+      "mnemonic": "ADDU",
+      "count": 3756,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 43,
+        "mnemonic": "ADDU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1992,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1992,
+          "word": 570425856,
+          "function": null
+        },
+        {
+          "address": 2348,
+          "word": 570425600,
+          "function": null
+        },
+        {
+          "address": 2400,
+          "word": 570491136,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 35,
+      "mnemonic": "ADDUI",
+      "count": 16120,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 44,
+        "mnemonic": "ADDUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 180,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 180,
+          "word": 587267588,
+          "function": null
+        },
+        {
+          "address": 188,
+          "word": 587267588,
+          "function": null
+        },
+        {
+          "address": 212,
+          "word": 587267588,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 38,
+      "mnemonic": "SUBU",
+      "count": 542,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 47,
+        "mnemonic": "SUBU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 2768,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 2768,
+          "word": 637600257,
+          "function": null
+        },
+        {
+          "address": 3104,
+          "word": 637600257,
+          "function": null
+        },
+        {
+          "address": 3620,
+          "word": 637600513,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 39,
+      "mnemonic": "SUBUI",
+      "count": 1158,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 48,
+        "mnemonic": "SUBUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 172,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 172,
+          "word": 671022600,
+          "function": null
+        },
+        {
+          "address": 324,
+          "word": 671022600,
+          "function": null
+        },
+        {
+          "address": 432,
+          "word": 671022600,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 48,
+      "mnemonic": "CMP",
+      "count": 1080,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 57,
+        "mnemonic": "CMP",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 44,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 44,
+          "word": 805503234,
+          "function": null
+        },
+        {
+          "address": 1572,
+          "word": 805306624,
+          "function": null
+        },
+        {
+          "address": 1784,
+          "word": 805306624,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 49,
+      "mnemonic": "CMPI",
+      "count": 3153,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 58,
+        "mnemonic": "CMPI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1888,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1888,
+          "word": 822083584,
+          "function": null
+        },
+        {
+          "address": 2072,
+          "word": 822083584,
+          "function": null
+        },
+        {
+          "address": 2228,
+          "word": 822083584,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 50,
+      "mnemonic": "CMPU",
+      "count": 73,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 59,
+        "mnemonic": "CMPU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 60472,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 60472,
+          "word": 838861056,
+          "function": null
+        },
+        {
+          "address": 66432,
+          "word": 838861056,
+          "function": null
+        },
+        {
+          "address": 66680,
+          "word": 838861056,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 51,
+      "mnemonic": "CMPUI",
+      "count": 91,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 60,
+        "mnemonic": "CMPUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 28116,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 28116,
+          "word": 855769345,
+          "function": null
+        },
+        {
+          "address": 36552,
+          "word": 855769345,
+          "function": null
+        },
+        {
+          "address": 38324,
+          "word": 855769345,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 54,
+      "mnemonic": "NEGU",
+      "count": 696,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 63,
+        "mnemonic": "NEGU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 4728,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 4728,
+          "word": 905969664,
+          "function": null
+        },
+        {
+          "address": 4912,
+          "word": 906166277,
+          "function": null
+        },
+        {
+          "address": 4920,
+          "word": 906166276,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 55,
+      "mnemonic": "NEGUI",
+      "count": 187,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 64,
+        "mnemonic": "NEGUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 2856,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 2856,
+          "word": 922812417,
+          "function": null
+        },
+        {
+          "address": 3244,
+          "word": 922812417,
+          "function": null
+        },
+        {
+          "address": 3708,
+          "word": 922812417,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 58,
+      "mnemonic": "SLU",
+      "count": 7,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 67,
+        "mnemonic": "SLU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 241928,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 241928,
+          "word": 973079296,
+          "function": null
+        },
+        {
+          "address": 283568,
+          "word": 973079296,
+          "function": null
+        },
+        {
+          "address": 340952,
+          "word": 973079296,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 59,
+      "mnemonic": "SLUI",
+      "count": 11428,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 68,
+        "mnemonic": "SLUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 196,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 196,
+          "word": 989855776,
+          "function": null
+        },
+        {
+          "address": 220,
+          "word": 989855776,
+          "function": null
+        },
+        {
+          "address": 264,
+          "word": 989855752,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 60,
+      "mnemonic": "SR",
+      "count": 4,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 69,
+        "mnemonic": "SR",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 343132,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 343132,
+          "word": 1006699009,
+          "function": null
+        },
+        {
+          "address": 350600,
+          "word": 1006699009,
+          "function": null
+        },
+        {
+          "address": 367356,
+          "word": 1006633216,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 61,
+      "mnemonic": "SRI",
+      "count": 7882,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 70,
+        "mnemonic": "SRI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 556,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 556,
+          "word": 1023410208,
+          "function": null
+        },
+        {
+          "address": 836,
+          "word": 1023410208,
+          "function": null
+        },
+        {
+          "address": 952,
+          "word": 1023410208,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 63,
+      "mnemonic": "SRUI",
+      "count": 2096,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 72,
+        "mnemonic": "SRUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 200,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 200,
+          "word": 1056964640,
+          "function": null
+        },
+        {
+          "address": 204,
+          "word": 1056964632,
+          "function": null
+        },
+        {
+          "address": 224,
+          "word": 1056964640,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 64,
+      "mnemonic": "BN",
+      "count": 204,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 73,
+        "mnemonic": "BN",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 15904,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 15904,
+          "word": 1073872940,
+          "function": null
+        },
+        {
+          "address": 17144,
+          "word": 1073807382,
+          "function": null
+        },
+        {
+          "address": 19408,
+          "word": 1073807363,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 65,
+      "mnemonic": "BNB",
+      "count": 123,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 74,
+        "mnemonic": "BNB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1576,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1576,
+          "word": 1090584551,
+          "function": null
+        },
+        {
+          "address": 1788,
+          "word": 1090584546,
+          "function": null
+        },
+        {
+          "address": 2496,
+          "word": 1090584533,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 66,
+      "mnemonic": "BZ",
+      "count": 1522,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 75,
+        "mnemonic": "BZ",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 3160,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 3160,
+          "word": 1107296270,
+          "function": null
+        },
+        {
+          "address": 4064,
+          "word": 1107296270,
+          "function": null
+        },
+        {
+          "address": 7476,
+          "word": 1107296260,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 67,
+      "mnemonic": "BZB",
+      "count": 21,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 76,
+        "mnemonic": "BZB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 70536,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 70536,
+          "word": 1124138984,
+          "function": null
+        },
+        {
+          "address": 114472,
+          "word": 1124138988,
+          "function": null
+        },
+        {
+          "address": 114508,
+          "word": 1124138975,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 68,
+      "mnemonic": "BP",
+      "count": 377,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 77,
+        "mnemonic": "BP",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 3368,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 3368,
+          "word": 1140850694,
+          "function": null
+        },
+        {
+          "address": 4500,
+          "word": 1140850699,
+          "function": null
+        },
+        {
+          "address": 6420,
+          "word": 1140850690,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 69,
+      "mnemonic": "BPB",
+      "count": 62,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 78,
+        "mnemonic": "BPB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 7532,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 7532,
+          "word": 1157693422,
+          "function": null
+        },
+        {
+          "address": 34748,
+          "word": 1157758938,
+          "function": null
+        },
+        {
+          "address": 45148,
+          "word": 1157693385,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 72,
+      "mnemonic": "BNN",
+      "count": 293,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 81,
+        "mnemonic": "BNN",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 48,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 48,
+          "word": 1208156164,
+          "function": null
+        },
+        {
+          "address": 2848,
+          "word": 1207959557,
+          "function": null
+        },
+        {
+          "address": 3236,
+          "word": 1207959557,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 73,
+      "mnemonic": "BNNB",
+      "count": 18,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 82,
+        "mnemonic": "BNNB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 140044,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 140044,
+          "word": 1224802250,
+          "function": null
+        },
+        {
+          "address": 151204,
+          "word": 1224802107,
+          "function": null
+        },
+        {
+          "address": 155588,
+          "word": 1224802025,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 74,
+      "mnemonic": "BNZ",
+      "count": 1094,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 83,
+        "mnemonic": "BNZ",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 2368,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 2368,
+          "word": 1241513986,
+          "function": null
+        },
+        {
+          "address": 2796,
+          "word": 1241513992,
+          "function": null
+        },
+        {
+          "address": 3132,
+          "word": 1241514005,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 75,
+      "mnemonic": "BNZB",
+      "count": 129,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 84,
+        "mnemonic": "BNZB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1892,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1892,
+          "word": 1258356722,
+          "function": null
+        },
+        {
+          "address": 2076,
+          "word": 1258356718,
+          "function": null
+        },
+        {
+          "address": 2232,
+          "word": 1258356718,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 76,
+      "mnemonic": "BNP",
+      "count": 350,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 85,
+        "mnemonic": "BNP",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 2888,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 2888,
+          "word": 1275068420,
+          "function": null
+        },
+        {
+          "address": 3276,
+          "word": 1275068420,
+          "function": null
+        },
+        {
+          "address": 3344,
+          "word": 1275068428,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 77,
+      "mnemonic": "BNPB",
+      "count": 203,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 86,
+        "mnemonic": "BNPB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 8048,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 8048,
+          "word": 1291911118,
+          "function": null
+        },
+        {
+          "address": 8284,
+          "word": 1291911114,
+          "function": null
+        },
+        {
+          "address": 9128,
+          "word": 1291911053,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 96,
+      "mnemonic": "CSN",
+      "count": 358,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 105,
+        "mnemonic": "CSN",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 4916,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 4916,
+          "word": 1610941699,
+          "function": null
+        },
+        {
+          "address": 4924,
+          "word": 1610875907,
+          "function": null
+        },
+        {
+          "address": 4936,
+          "word": 1610874628,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 104,
+      "mnemonic": "CSNN",
+      "count": 41,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 113,
+        "mnemonic": "CSNN",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 5124,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 5124,
+          "word": 1744961284,
+          "function": null
+        },
+        {
+          "address": 12416,
+          "word": 1744961284,
+          "function": null
+        },
+        {
+          "address": 17020,
+          "word": 1744961283,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 108,
+      "mnemonic": "CSNP",
+      "count": 1,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 117,
+        "mnemonic": "CSNP",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 470160,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 470160,
+          "word": 1811940353,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 128,
+      "mnemonic": "LDB",
+      "count": 5,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 137,
+        "mnemonic": "LDB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 417608,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 417608,
+          "word": 2147549697,
+          "function": null
+        },
+        {
+          "address": 463528,
+          "word": 2147484160,
+          "function": null
+        },
+        {
+          "address": 463936,
+          "word": 2147484416,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 129,
+      "mnemonic": "LDBI",
+      "count": 454,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 138,
+        "mnemonic": "LDBI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1676,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1676,
+          "word": 2164326400,
+          "function": null
+        },
+        {
+          "address": 1876,
+          "word": 2164260864,
+          "function": null
+        },
+        {
+          "address": 2044,
+          "word": 2164326656,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 133,
+      "mnemonic": "LDWI",
+      "count": 627,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 142,
+        "mnemonic": "LDWI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 344,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 344,
+          "word": 2231369728,
+          "function": null
+        },
+        {
+          "address": 372,
+          "word": 2231369728,
+          "function": null
+        },
+        {
+          "address": 22988,
+          "word": 2231435544,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 137,
+      "mnemonic": "LDTI",
+      "count": 10064,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 146,
+        "mnemonic": "LDTI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 192,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 192,
+          "word": 2298478592,
+          "function": null
+        },
+        {
+          "address": 216,
+          "word": 2298478592,
+          "function": null
+        },
+        {
+          "address": 260,
+          "word": 2298478592,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 141,
+      "mnemonic": "LDOI",
+      "count": 9586,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 150,
+        "mnemonic": "LDOI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 468,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 468,
+          "word": 2365915136,
+          "function": null
+        },
+        {
+          "address": 620,
+          "word": 2365849600,
+          "function": null
+        },
+        {
+          "address": 688,
+          "word": 2365915392,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 143,
+      "mnemonic": "LDOUI",
+      "count": 2,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 152,
+        "mnemonic": "LDOUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 128,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 128,
+          "word": 2399142656,
+          "function": null
+        },
+        {
+          "address": 148,
+          "word": 2399208192,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 162,
+      "mnemonic": "STBU",
+      "count": 8,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 171,
+        "mnemonic": "STBU",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 146072,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 146072,
+          "word": 2718106113,
+          "function": null
+        },
+        {
+          "address": 146144,
+          "word": 2718106113,
+          "function": null
+        },
+        {
+          "address": 146344,
+          "word": 2718106113,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 163,
+      "mnemonic": "STBUI",
+      "count": 254,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 172,
+        "mnemonic": "STBUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 1496,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 1496,
+          "word": 2734751744,
+          "function": null
+        },
+        {
+          "address": 1688,
+          "word": 2734751744,
+          "function": null
+        },
+        {
+          "address": 2048,
+          "word": 2734751744,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 167,
+      "mnemonic": "STWUI",
+      "count": 282,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 176,
+        "mnemonic": "STWUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 336,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 336,
+          "word": 2801860608,
+          "function": null
+        },
+        {
+          "address": 44244,
+          "word": 2801860618,
+          "function": null
+        },
+        {
+          "address": 44264,
+          "word": 2801860620,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 171,
+      "mnemonic": "STTUI",
+      "count": 5292,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 180,
+        "mnemonic": "STTUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 184,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 184,
+          "word": 2868969472,
+          "function": null
+        },
+        {
+          "address": 516,
+          "word": 2868969472,
+          "function": null
+        },
+        {
+          "address": 540,
+          "word": 2869035008,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 175,
+      "mnemonic": "STOUI",
+      "count": 2190,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 184,
+        "mnemonic": "STOUI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 52,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 52,
+          "word": 2936013056,
+          "function": null
+        },
+        {
+          "address": 84,
+          "word": 2936668160,
+          "function": null
+        },
+        {
+          "address": 104,
+          "word": 2936733696,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 181,
+      "mnemonic": "STCOI",
+      "count": 77,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 190,
+        "mnemonic": "STCOI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 33572,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 33572,
+          "word": 3036676352,
+          "function": null
+        },
+        {
+          "address": 82748,
+          "word": 3036676288,
+          "function": null
+        },
+        {
+          "address": 99148,
+          "word": 3036676576,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 191,
+      "mnemonic": "PUSHGOI",
+      "count": 469,
+      "unsupported_words": 469,
+      "status": "미구현",
+      "checklist": {
+        "line": 200,
+        "mnemonic": "PUSHGOI",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 488,
+      "first_unsupported_address": 488,
+      "examples": [
+        {
+          "address": 488,
+          "word": 3204710144,
+          "function": null
+        },
+        {
+          "address": 580,
+          "word": 3204710144,
+          "function": null
+        },
+        {
+          "address": 640,
+          "word": 3204710144,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 192,
+      "mnemonic": "OR",
+      "count": 55,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 201,
+        "mnemonic": "OR",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 248,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 248,
+          "word": 3221225728,
+          "function": null
+        },
+        {
+          "address": 284,
+          "word": 3221225728,
+          "function": null
+        },
+        {
+          "address": 308,
+          "word": 3221225728,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 193,
+      "mnemonic": "ORI",
+      "count": 13487,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 202,
+        "mnemonic": "ORI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 0,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 0,
+          "word": 3238723072,
+          "function": null
+        },
+        {
+          "address": 4,
+          "word": 3238788352,
+          "function": null
+        },
+        {
+          "address": 64,
+          "word": 3254651648,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 197,
+      "mnemonic": "NORI",
+      "count": 2,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 206,
+        "mnemonic": "NORI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 95028,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 95028,
+          "word": 3305111552,
+          "function": null
+        },
+        {
+          "address": 340084,
+          "word": 3305177344,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 198,
+      "mnemonic": "XOR",
+      "count": 110,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 207,
+        "mnemonic": "XOR",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 4908,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 4908,
+          "word": 3338601477,
+          "function": null
+        },
+        {
+          "address": 5208,
+          "word": 3338601732,
+          "function": null
+        },
+        {
+          "address": 8412,
+          "word": 3338601734,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 199,
+      "mnemonic": "XORI",
+      "count": 21,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 208,
+        "mnemonic": "XORI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 7664,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 7664,
+          "word": 3338665985,
+          "function": null
+        },
+        {
+          "address": 28328,
+          "word": 3338731976,
+          "function": null
+        },
+        {
+          "address": 28444,
+          "word": 3338731976,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 200,
+      "mnemonic": "AND",
+      "count": 125,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 209,
+        "mnemonic": "AND",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 240,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 240,
+          "word": 3355443202,
+          "function": null
+        },
+        {
+          "address": 276,
+          "word": 3355443202,
+          "function": null
+        },
+        {
+          "address": 18624,
+          "word": 3355639809,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 201,
+      "mnemonic": "ANDI",
+      "count": 232,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 210,
+        "mnemonic": "ANDI",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 5288,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 5288,
+          "word": 3372286223,
+          "function": null
+        },
+        {
+          "address": 5352,
+          "word": 3372220431,
+          "function": null
+        },
+        {
+          "address": 5436,
+          "word": 3372220431,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 226,
+      "mnemonic": "SETML",
+      "count": 288,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 235,
+        "mnemonic": "SETML",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 272,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 272,
+          "word": 3791782143,
+          "function": null
+        },
+        {
+          "address": 12192,
+          "word": 3791978497,
+          "function": null
+        },
+        {
+          "address": 12992,
+          "word": 3791716384,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 227,
+      "mnemonic": "SETL",
+      "count": 5862,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 236,
+        "mnemonic": "SETL",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 8,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 8,
+          "word": 3808428032,
+          "function": null
+        },
+        {
+          "address": 12,
+          "word": 3808504832,
+          "function": null
+        },
+        {
+          "address": 28,
+          "word": 3808585232,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 228,
+      "mnemonic": "INCH",
+      "count": 1001,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 237,
+        "mnemonic": "INCH",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 24,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 24,
+          "word": 3825270784,
+          "function": null
+        },
+        {
+          "address": 40,
+          "word": 3825336320,
+          "function": null
+        },
+        {
+          "address": 80,
+          "word": 3825205248,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 229,
+      "mnemonic": "INCMH",
+      "count": 988,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 238,
+        "mnemonic": "INCMH",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 20,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 20,
+          "word": 3842048000,
+          "function": null
+        },
+        {
+          "address": 36,
+          "word": 3842113536,
+          "function": null
+        },
+        {
+          "address": 76,
+          "word": 3841982464,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 230,
+      "mnemonic": "INCML",
+      "count": 1286,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 239,
+        "mnemonic": "INCML",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 16,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 16,
+          "word": 3858825226,
+          "function": null
+        },
+        {
+          "address": 32,
+          "word": 3858890770,
+          "function": null
+        },
+        {
+          "address": 72,
+          "word": 3858759698,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 231,
+      "mnemonic": "INCL",
+      "count": 161,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 240,
+        "mnemonic": "INCL",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 14960,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 14960,
+          "word": 3892183304,
+          "function": null
+        },
+        {
+          "address": 43488,
+          "word": 3892183560,
+          "function": null
+        },
+        {
+          "address": 43808,
+          "word": 3875537152,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 232,
+      "mnemonic": "ORH",
+      "count": 3,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 241,
+        "mnemonic": "ORH",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 458312,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 458312,
+          "word": 3892314113,
+          "function": null
+        },
+        {
+          "address": 459168,
+          "word": 3892314113,
+          "function": null
+        },
+        {
+          "address": 460100,
+          "word": 3892314113,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 234,
+      "mnemonic": "ORML",
+      "count": 4,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 243,
+        "mnemonic": "ORML",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 160280,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 160280,
+          "word": 3925868576,
+          "function": null
+        },
+        {
+          "address": 175812,
+          "word": 3925868800,
+          "function": null
+        },
+        {
+          "address": 192420,
+          "word": 3925934084,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 235,
+      "mnemonic": "ORL",
+      "count": 18,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 244,
+        "mnemonic": "ORL",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 112500,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 112500,
+          "word": 3942647728,
+          "function": null
+        },
+        {
+          "address": 115524,
+          "word": 3942677424,
+          "function": null
+        },
+        {
+          "address": 117260,
+          "word": 3942676656,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 238,
+      "mnemonic": "ANDNML",
+      "count": 6,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 247,
+        "mnemonic": "ANDNML",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 79760,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 79760,
+          "word": 3993042948,
+          "function": null
+        },
+        {
+          "address": 160536,
+          "word": 3992977440,
+          "function": null
+        },
+        {
+          "address": 207876,
+          "word": 3993108736,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 239,
+      "mnemonic": "ANDNL",
+      "count": 27,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 248,
+        "mnemonic": "ANDNL",
+        "excluded": false,
+        "cycle": true,
+        "unit": true
+      },
+      "first_address": 17664,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 17664,
+          "word": 4009885695,
+          "function": null
+        },
+        {
+          "address": 17804,
+          "word": 4009885695,
+          "function": null
+        },
+        {
+          "address": 43668,
+          "word": 4009754879,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 240,
+      "mnemonic": "JMP",
+      "count": 2530,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 249,
+        "mnemonic": "JMP",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 164,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 164,
+          "word": 4026650568,
+          "function": null
+        },
+        {
+          "address": 168,
+          "word": 4026645499,
+          "function": null
+        },
+        {
+          "address": 1472,
+          "word": 4026531857,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 241,
+      "mnemonic": "JMPB",
+      "count": 828,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 250,
+        "mnemonic": "JMPB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 60,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 60,
+          "word": 4060086268,
+          "function": null
+        },
+        {
+          "address": 21700,
+          "word": 4060086237,
+          "function": null
+        },
+        {
+          "address": 21876,
+          "word": 4060086237,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 242,
+      "mnemonic": "PUSHJ",
+      "count": 1783,
+      "unsupported_words": 1783,
+      "status": "미구현",
+      "checklist": {
+        "line": 251,
+        "mnemonic": "PUSHJ",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 108,
+      "first_unsupported_address": 108,
+      "examples": [
+        {
+          "address": 108,
+          "word": 4060086286,
+          "function": null
+        },
+        {
+          "address": 152,
+          "word": 4060217348,
+          "function": null
+        },
+        {
+          "address": 7340,
+          "word": 4060441871,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 243,
+      "mnemonic": "PUSHJB",
+      "count": 1752,
+      "unsupported_words": 1752,
+      "status": "미구현",
+      "checklist": {
+        "line": 252,
+        "mnemonic": "PUSHJB",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 1368,
+      "first_unsupported_address": 1368,
+      "examples": [
+        {
+          "address": 1368,
+          "word": 4077125416,
+          "function": null
+        },
+        {
+          "address": 1960,
+          "word": 4077191130,
+          "function": null
+        },
+        {
+          "address": 3540,
+          "word": 4077191110,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 244,
+      "mnemonic": "GETA",
+      "count": 4,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 253,
+        "mnemonic": "GETA",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 163312,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 163312,
+          "word": 4093659214,
+          "function": null
+        },
+        {
+          "address": 176496,
+          "word": 4093655918,
+          "function": null
+        },
+        {
+          "address": 178904,
+          "word": 4093655316,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 245,
+      "mnemonic": "GETAB",
+      "count": 82,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 254,
+        "mnemonic": "GETAB",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 7012,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 7012,
+          "word": 4110481811,
+          "function": null
+        },
+        {
+          "address": 7032,
+          "word": 4110547365,
+          "function": null
+        },
+        {
+          "address": 7052,
+          "word": 4110481843,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 246,
+      "mnemonic": "PUT",
+      "count": 4002,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 255,
+        "mnemonic": "PUT",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 492,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 492,
+          "word": 4127457281,
+          "function": null
+        },
+        {
+          "address": 584,
+          "word": 4127457281,
+          "function": null
+        },
+        {
+          "address": 644,
+          "word": 4127457281,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 248,
+      "mnemonic": "POP",
+      "count": 823,
+      "unsupported_words": 823,
+      "status": "미구현",
+      "checklist": {
+        "line": 257,
+        "mnemonic": "POP",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 320,
+      "first_unsupported_address": 320,
+      "examples": [
+        {
+          "address": 320,
+          "word": 4160815104,
+          "function": null
+        },
+        {
+          "address": 428,
+          "word": 4160815104,
+          "function": null
+        },
+        {
+          "address": 500,
+          "word": 4160749568,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 253,
+      "mnemonic": "SWYM",
+      "count": 116,
+      "unsupported_words": 116,
+      "status": "미구현",
+      "checklist": {
+        "line": 262,
+        "mnemonic": "SWYM",
+        "excluded": false,
+        "cycle": false,
+        "unit": false
+      },
+      "first_address": 6424,
+      "first_unsupported_address": 6424,
+      "examples": [
+        {
+          "address": 6424,
+          "word": 4244635648,
+          "function": null
+        },
+        {
+          "address": 17320,
+          "word": 4244635648,
+          "function": null
+        },
+        {
+          "address": 28556,
+          "word": 4244635648,
+          "function": null
+        }
+      ]
+    },
+    {
+      "opcode": 254,
+      "mnemonic": "GET",
+      "count": 673,
+      "unsupported_words": 0,
+      "status": "지원 경로 있음",
+      "checklist": {
+        "line": 263,
+        "mnemonic": "GET",
+        "excluded": false,
+        "cycle": false,
+        "unit": true
+      },
+      "first_address": 436,
+      "first_unsupported_address": null,
+      "examples": [
+        {
+          "address": 436,
+          "word": 4261478404,
+          "function": null
+        },
+        {
+          "address": 528,
+          "word": 4261478404,
+          "function": null
+        },
+        {
+          "address": 604,
+          "word": 4261478404,
+          "function": null
+        }
+      ]
+    }
+  ],
+  "operands": {
+    "TRAP": {
+      "0,0,0": 2,
+      "1,14,0": 1,
+      "1,16,0": 1,
+      "1,13,1": 1,
+      "1,1,3": 1,
+      "1,1,0": 1,
+      "1,1,4": 1,
+      "1,1,1": 1,
+      "1,1,5": 1,
+      "1,1,2": 1,
+      "1,2,0": 1,
+      "1,3,0": 1,
+      "1,6,0": 1,
+      "1,9,0": 1,
+      "1,9,1": 1,
+      "1,9,2": 1,
+      "1,10,0": 1,
+      "1,17,0": 1
+    },
+    "GET": {
+      "rJ": 631,
+      "rR": 42
+    },
+    "PUT": {
+      "rJ": 4002
+    }
+  },
+  "artifacts": {
+    "ELF": {
+      "path": "build\\doom-audit\\doom.elf",
+      "sha256": "ce14efde091c0d4fdebd944bfd4ad9fe62ab7572036875f43ca35a72624e8f38"
+    },
+    "RAW": {
+      "path": "build\\doom-audit\\doom.bin",
+      "sha256": "4b22a14cd5d9b9abf986b1f3aa3c5630c13795c14acdbc6d347b5a8b1e72792b"
+    },
+    "checklist": {
+      "path": "op체크리스트.md",
+      "sha256": "9a1a9574c077f55f28613a2af5069b4d0b6d6c0f2631adc2c3654f238b543888"
+    },
+    "ISA": {
+      "path": "test\\cpu\\isa.json",
+      "sha256": "1722a070e45dc87e1e31495e0aacd7b9ada40f952048fc300e0b7dc0bbd398c9"
+    },
+    "opcode_source": {
+      "path": ".tools\\mmix\\mmix-sim.w",
+      "sha256": "b05457068a19702d817b72e3a4b0b517fcbeb1a05d72102dc1ae2c13f8495724"
+    }
+  },
+  "floating_point_words": 0
+}

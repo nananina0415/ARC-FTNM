@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "getab.destination_register255",
+  "target": {
+    "mnemonic": "GETAB",
+    "opcode": "0xf5",
+    "pc": "0x20",
+    "word": "0xf5ff1234",
+    "executions": 1
+  },
+  "tags": [
+    "destination_register255"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$255": "0xdeadbeef12345678",
+      "$18": "0xffffffffffffffff",
+      "$52": "0xffffffffffffffff"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000024",
+    "registers": {
+      "$255": "0xfffffffffffc48f0"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "destination_register255"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

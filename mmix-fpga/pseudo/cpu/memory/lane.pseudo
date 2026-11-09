@@ -1,0 +1,150 @@
+// Common 1/2/4/8-byte lane formatters. AXI byte lane 0 is the lowest address.
+comb AlignLane { pub address: In<bit,5>
+    pub size: In<bit,2>
+    pub out: Out<bit,5>
+}
+wire AlignLane {
+    out[0] <- and(address[0], not(or(size[0], size[1])))
+    out[1] <- and(address[1], not(size[1]))
+    out[2] <- and(address[2], not(and(size[0], size[1])))
+    out[3..5] <- address[3..5]
+}
+comb LaneShiftStep<N,K> {
+    pub value: In<bit,N>
+    pub right: In<bit,1>
+    pub enable: In<bit,1>
+    pub out: Out<bit,N>
+    direction: Mux<2,N>
+    result: Mux<2,N>
+}
+wire LaneShiftStep<N,K> {
+    direction.select <- right
+    { direction.option[0][0..K] } <= 0
+    direction.option[0][K..N] <- value[0..N-K]
+    direction.option[1][0..N-K] <- value[K..N]
+    { direction.option[1][N-K..N] } <= 0
+    result.select <- enable
+    result.option[0] <- value
+    result.option[1] <- direction.selected
+    result.selected -> out
+}
+comb LaneShift<N,S> {
+    pub value: In<bit,N>
+    pub amount: In<bit,5>
+    pub right: In<bit,1>
+    pub out: Out<bit,N>
+    step0: LaneShiftStep<N,1*S>
+    step1: LaneShiftStep<N,2*S>
+    step2: LaneShiftStep<N,4*S>
+    step3: LaneShiftStep<N,8*S>
+    step4: LaneShiftStep<N,16*S>
+}
+wire LaneShift<N,S> {
+    amount[0] -> step0.enable
+    right -> step0.right
+    value -> step0.value
+    amount[1] -> step1.enable
+    right -> step1.right
+    step0.out -> step1.value
+    amount[2] -> step2.enable
+    right -> step2.right
+    step1.out -> step2.value
+    amount[3] -> step3.enable
+    right -> step3.right
+    step2.out -> step3.value
+    amount[4] -> step4.enable
+    right -> step4.right
+    step3.out -> step4.value
+    step4.out -> out
+}
+comb LoadLane {
+    pub line: In<bit,256>
+    pub address: In<bit,5>
+    pub size: In<bit,2>
+    pub zero_extend: In<bit,1>
+    pub out: WordOut
+    align: AlignLane
+    bytes: LaneShift<256,8>
+    result: Mux<4,WORD_SIZE>
+}
+wire LoadLane {
+    address -> align.address
+    size -> align.size
+    align.out -> bytes.amount
+    line -> bytes.value
+    bytes.right <- 1
+    size -> result.select
+    alias sign = and(not(zero_extend), bytes.out[7])
+    result.option[0][0..8] <- bytes.out[0..8]
+    { result.option[0][8..WORD_SIZE] } <= sign
+    result.option[1][0..8] <- bytes.out[8..16]
+    result.option[1][8..16] <- bytes.out[0..8]
+    { result.option[1][16..WORD_SIZE] } <= sign
+    result.option[2][0..8] <- bytes.out[24..32]
+    result.option[2][8..16] <- bytes.out[16..24]
+    result.option[2][16..24] <- bytes.out[8..16]
+    result.option[2][24..32] <- bytes.out[0..8]
+    { result.option[2][32..WORD_SIZE] } <= sign
+    result.option[3][0..8] <- bytes.out[56..64]
+    result.option[3][8..16] <- bytes.out[48..56]
+    result.option[3][16..24] <- bytes.out[40..48]
+    result.option[3][24..32] <- bytes.out[32..40]
+    result.option[3][32..40] <- bytes.out[24..32]
+    result.option[3][40..48] <- bytes.out[16..24]
+    result.option[3][48..56] <- bytes.out[8..16]
+    result.option[3][56..64] <- bytes.out[0..8]
+    bytes.out[64..256] -> OPENED
+    result.selected -> out
+}
+comb StoreLane {
+    pub value: WordIn
+    pub address: In<bit,5>
+    pub size: In<bit,2>
+    pub data: Out<bit,256>
+    pub mask: Out<bit,32>
+    align: AlignLane
+    word: Mux<4,WORD_SIZE>
+    strobes: Mux<4,32>
+    data_shift: LaneShift<256,8>
+    mask_shift: LaneShift<32,1>
+}
+wire StoreLane {
+    address -> align.address
+    size -> align.size
+    size -> word.select
+    size -> strobes.select
+    align.out => { data_shift.amount, mask_shift.amount }
+    data_shift.right <- 0
+    mask_shift.right <- 0
+    word.selected -> data_shift.value[0..WORD_SIZE]
+    { data_shift.value[WORD_SIZE..256] } <= 0
+    strobes.selected -> mask_shift.value
+    data_shift.out -> data
+    mask_shift.out -> mask
+    word.option[0][0..8] <- value[0..8]
+    { word.option[0][8..WORD_SIZE] } <= 0
+    { strobes.option[0][0..1] } <= 1
+    { strobes.option[0][1..32] } <= 0
+    word.option[1][0..8] <- value[8..16]
+    word.option[1][8..16] <- value[0..8]
+    { word.option[1][16..WORD_SIZE] } <= 0
+    { strobes.option[1][0..2] } <= 1
+    { strobes.option[1][2..32] } <= 0
+    word.option[2][0..8] <- value[24..32]
+    word.option[2][8..16] <- value[16..24]
+    word.option[2][16..24] <- value[8..16]
+    word.option[2][24..32] <- value[0..8]
+    { word.option[2][32..WORD_SIZE] } <= 0
+    { strobes.option[2][0..4] } <= 1
+    { strobes.option[2][4..32] } <= 0
+    word.option[3][0..8] <- value[56..64]
+    word.option[3][8..16] <- value[48..56]
+    word.option[3][16..24] <- value[40..48]
+    word.option[3][24..32] <- value[32..40]
+    word.option[3][32..40] <- value[24..32]
+    word.option[3][40..48] <- value[16..24]
+    word.option[3][48..56] <- value[8..16]
+    word.option[3][56..64] <- value[0..8]
+    { strobes.option[3][0..8] } <= 1
+    { strobes.option[3][8..32] } <= 0
+}

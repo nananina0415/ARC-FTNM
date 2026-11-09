@@ -28,10 +28,14 @@ seq Cpu {
     read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
     read1_mux: Mux<2,8>
-    writeback_mux: Mux<2,WORD_SIZE>
+    writeback_mux: Mux<4,WORD_SIZE>
+    store_data_mux: Mux<2,WORD_SIZE>
+    special_source: Mux<2,WORD_SIZE>
+    special_access: ::reg::SpecialAccess
+    special_driver: TriState
     decode: InstructionDecode
-    arg1_mux: Mux<2,WORD_SIZE>
-    arg2_mux: Mux<2,WORD_SIZE>
+    arg1_mux: Mux<3,WORD_SIZE>  // $r1 / unsigned Y / 0
+    arg2_mux: Mux<3,WORD_SIZE>  // $Z / unsigned Z / shifted YZ
 }
 
 wire Cpu {
@@ -42,25 +46,56 @@ wire Cpu {
     control.done -> done
     control.fault -> fault
     control.fault_reason -> fault_reason
-    decode.control.valid -> control.decoded_valid
+    control.decoded_valid <- and(decode.control.valid, special_access.allowed)
     decode.control.halt -> control.decoded_halt
     decode.control.memory -> control.decoded_memory
     decode.control.store -> control.decoded_store
+    decode.control.store_constant -> control.decoded_store_constant
+    decode.control.memory_size -> control.decoded_memory_size
+    decode.control.load_unsigned -> control.decoded_load_unsigned
+    decode.control.address_get -> control.decoded_geta
+    decode.control.special_get -> control.decoded_get
+    decode.control.special_put -> control.decoded_put
+    decode.control.branch -> control.decoded_branch
+    decode.control.branch_unconditional -> control.branch_unconditional
+    decode.control.branch_condition -> control.branch_condition
+    decode.control.branch_offset -> control.branch_offset
+    reg.general.r1_data -> control.branch_value
     alu.trip_req -> control.trip_req
 
-    // GET/PUT 경로만 비활성화. ALU의 rA/rH/rR 직접 쓰기는 아래에서 유지.
-    reg.special.enable <- 0
-    reg.special.sel <- 0
-    reg.special.rw <- 1
-    reg.special.data <- OPENED
+    special_source.select <- decode.control.special_immediate
+    special_source.option[0] <- reg.general.r2_data
+    special_source.option[1] <- decode.control.imm_z
+    decode.control.special_get -> special_access.get
+    decode.control.special_put -> special_access.put
+    decode.control.special_index -> special_access.index
+    special_source.selected -> special_access.value
+    reg.special.enable <- or(control.special_get_en, control.special_put_en)
+    decode.control.special_index -> reg.special.sel
+    reg.special.rw <- not(decode.control.special_put)
+    special_driver.enable <- control.special_put_en
+    special_source.selected -> special_driver.in
+    special_driver.out -> reg.special.data
 
     fetch.control.instruction -> decode.instruction
     decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
-    decode.control.valid -> decoded.valid
-    decode.control.unsupported -> decoded.unsupported
+    decoded.valid <- and(decode.control.valid, special_access.allowed)
+    decoded.unsupported <- or(decode.control.unsupported, and(decode.control.valid, not(special_access.allowed)))
     decode.control.halt -> decoded.halt
     decode.control.memory -> decoded.memory
     decode.control.store -> decoded.store
+    decode.control.memory_size -> decoded.memory_size
+    decode.control.load_unsigned -> decoded.load_unsigned
+    decode.control.store_constant -> decoded.store_constant
+    decode.control.address_get -> decoded.address_get
+    decode.control.special_get -> decoded.special_get
+    decode.control.special_put -> decoded.special_put
+    decode.control.special_immediate -> decoded.special_immediate
+    decode.control.special_index -> decoded.special_index
+    decode.control.branch -> decoded.branch
+    decode.control.branch_unconditional -> decoded.branch_unconditional
+    decode.control.branch_condition -> decoded.branch_condition
+    decode.control.branch_offset -> decoded.branch_offset
     decode.control.alu_sel -> decoded.alu_sel
     decode.control.op -> decoded.op
     decode.control.r1_sel -> decoded.r1_sel
@@ -68,8 +103,12 @@ wire Cpu {
     decode.control.w_sel -> decoded.w_sel
     decode.control.arg1_imm -> decoded.arg1_imm
     decode.control.arg2_imm -> decoded.arg2_imm
+    decode.control.arg1_zero -> decoded.arg1_zero
+    decode.control.arg2_wyde -> decoded.arg2_wyde
     decode.control.imm_y -> decoded.imm_y
     decode.control.imm_z -> decoded.imm_z
+    decode.control.imm_yz -> decoded.imm_yz
+    decode.control.imm_x -> decoded.imm_x
 
     decode.control.alu_sel -> alu.alu_sel
     decode.control.op -> alu.op
@@ -81,13 +120,17 @@ wire Cpu {
     decode.control.w_sel -> reg.general.w_sel
 
     // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
-    arg1_mux.select <- decode.control.arg1_imm
+    arg1_mux.select[0] <- decode.control.arg1_imm
+    arg1_mux.select[1] <- decode.control.arg1_zero
     arg1_mux.option[0] <- reg.general.r1_data
     arg1_mux.option[1] <- decode.control.imm_y
+    arg1_mux.option[2] <- 0
     arg1_mux.selected -> alu.arg1
-    arg2_mux.select <- decode.control.arg2_imm
+    arg2_mux.select[0] <- decode.control.arg2_imm
+    arg2_mux.select[1] <- decode.control.arg2_wyde
     arg2_mux.option[0] <- reg.general.r2_data
     arg2_mux.option[1] <- decode.control.imm_z
+    arg2_mux.option[2] <- decode.control.imm_yz
     arg2_mux.selected -> alu.arg2
 
     // 명령 없음/페치 오류/미지원 명령/reset에서는 저장하지 않음.
@@ -98,12 +141,18 @@ wire Cpu {
     address_add.c_in <- 0
     address_add.c_out -> OPENED
     address_add.sum -> control.effective_address
-    reg.general.r1_data -> control.store_data
-    writeback_mux.select <- control.load_write_en
+    store_data_mux.select <- decode.control.store_constant
+    store_data_mux.option[0] <- reg.general.r1_data
+    store_data_mux.option[1] <- decode.control.imm_x
+    store_data_mux.selected -> control.store_data
+    writeback_mux.select[0] <- or(control.load_write_en, control.special_get_en)
+    writeback_mux.select[1] <- or(control.address_write_en, control.special_get_en)
     writeback_mux.option[0] <- alu.res
     writeback_mux.option[1] <- memory.control.read_data
+    writeback_mux.option[2] <- control.address_result
+    writeback_mux.option[3] <- reg.special.data
     writeback_mux.selected -> reg.general.w_data
-    reg.general.w_en <- or(alu.res_w_en, control.load_write_en)
+    reg.general.w_en <- or(alu.res_w_en, control.load_write_en, control.address_write_en, control.special_get_en)
 
     reg.alu_direct.rA_in -> alu.spec_direct.rA_in
     reg.alu_direct.rD_in -> alu.spec_direct.rD_in
@@ -128,6 +177,8 @@ wire Cpu {
     control.memory.req_valid -> memory.control.req_valid
     control.memory.address -> memory.control.address
     control.memory.store -> memory.control.store
+    control.memory.size -> memory.control.size
+    control.memory.zero_extend -> memory.control.zero_extend
     control.memory.write_data -> memory.control.write_data
     control.memory.res_ready -> memory.control.res_ready
     memory.control.req_ready -> control.memory.req_ready

@@ -253,21 +253,52 @@ class Checks:
         for opcode in range(0x60, 0x80): table[opcode] = (6, (opcode - 0x60) // 2)
         for opcode in range(0xc0, 0xd0): table[opcode] = (4, (opcode - 0xc0) // 2)
         table[0xd8] = table[0xd9] = (4, 12)
+        for opcode in range(0xe0,0xf0):
+            group=(opcode-0xe0)//4
+            table[opcode]=(0,1) if group<2 else (4,0 if group==2 else 5)
         vectors = [(opcode << 24 | 0xa55ac3, valid) for opcode in range(256) for valid in (0, 1)]
         vectors += [(word, valid) for word in (0, 1, 0x100, 0x10000) for valid in (0, 1)]
+        vectors += [(word,valid) for index in range(33) for word in (
+            0xfe030000|index,0xf6000002|(index<<16),0xf70000c0|(index<<16)) for valid in (0,1)]
         for index, (word, input_valid) in enumerate(vectors):
             opcode, x, y, z = word >> 24, (word >> 16) & 255, (word >> 8) & 255, word & 255
+            constant=0xe0<=opcode<=0xef
+            jump=opcode in (0xf0,0xf1)
+            conditional=0x40<=opcode<=0x5f
+            branch=jump or conditional
+            address_get=opcode in (0xf4,0xf5)
+            special_get=opcode==0xfe
+            special_put=opcode in (0xf6,0xf7)
+            special=(special_get or special_put) and y==0 and (z<32 if special_get else x<32)
             supported, halt = opcode in table, word == 0
-            memory = 0x8c <= opcode <= 0x8f or 0xac <= opcode <= 0xaf
-            store = 0xac <= opcode <= 0xaf
+            store = (opcode&~1) in (0xa2,0xa6,0xaa,0xac,0xae,0xb4)
+            memory = 0x80<=opcode<=0x8f or store
+            store_constant=(opcode&~1)==0xb4
             unit, op = table.get(opcode, (3, 0))
-            expected = {"valid": int(input_valid and (supported or halt or memory)),
-                        "unsupported": int(input_valid and not(supported or halt or memory)),
+            bits=24 if jump else 16
+            displacement=(word&((1<<bits)-1))-((opcode&1)<<bits)
+            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special)),
+                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special)),
                         "memory": int(input_valid and memory), "store": int(input_valid and store),
+                        "memory_size": 3 if store_constant else (opcode>>2)&3,
+                        "load_unsigned": (opcode>>1)&1,
+                        "store_constant": int(input_valid and store_constant),
+                        "address_get": int(input_valid and address_get),
+                        "special_get": int(input_valid and special and special_get),
+                        "special_put": int(input_valid and special and special_put),
+                        "special_immediate": int(input_valid and special and opcode==0xf7),
+                        "special_index": (x if special_put else z)&31,
                         "halt": int(input_valid and halt), "alu_sel": unit, "op": op,
-                        "r1_sel": y, "r2_sel": z, "w_sel": x,
+                        "r1_sel": x if constant or conditional else y, "r2_sel": z, "w_sel": x,
+                        "branch": int(input_valid and branch),
+                        "branch_unconditional": int(input_valid and jump),
+                        "branch_condition": (opcode>>1)&7,
+                        "branch_offset": (4*displacement)&MASK,
                         "arg1_imm": int(input_valid and supported and 0x34 <= opcode <= 0x37),
-                        "arg2_imm": int(input_valid and (supported or memory) and opcode & 1), "imm_y": y, "imm_z": z}
+                        "arg2_imm": int(input_valid and not constant and (supported or memory) and opcode & 1),
+                        "arg1_zero": int(input_valid and 0xe0<=opcode<=0xe3),
+                        "arg2_wyde": int(input_valid and constant),
+                        "imm_x": x,"imm_y": y, "imm_z": z, "imm_yz": ((y<<8)|z) << (16*(3-(opcode&3)))}
             lines += [f"{enc('port','instruction')}=32'h{word:08x};{enc('port','instruction_valid')}=1'b{input_valid};#1;"]
             for key, value in expected.items():
                 width = next(p["width"] for p in module["ports"] if p["path"] == ["control", key])

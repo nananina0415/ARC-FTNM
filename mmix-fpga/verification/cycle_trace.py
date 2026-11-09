@@ -70,12 +70,16 @@ def instrumentation(path):
     return lines
 
 
-def render(trace, output):
+def load_frames(trace):
     frames = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines() if line.strip()]
     if not frames or any(len(f["registers"]) != 256 or len(f["special"]) != 32 or len(f["memory"]) != 256 for f in frames):
         raise RuntimeError("Incomplete cycle dumps")
-    if frames[-1]["done"] != "1" or int(''.join(frames[-1]["memory"][96:104]), 16) != 579:
-        raise RuntimeError("Trace does not show the expected HALT and stored result")
+    return frames
+
+
+def render(trace, output, program, focus_words):
+    """Embed a trace in the viewer. program: [{address, text}]; focus_words: highlighted RAM word numbers."""
+    frames = load_frames(trace)
     changes = []
     for index, frame in enumerate(frames):
         previous = frames[index - 1] if index else None
@@ -84,9 +88,7 @@ def render(trace, output):
         if frame["edge"]["write"] or frame["changed"]["memory"] or (previous and (frame["pc"],frame["state"]) != (previous["pc"],previous["state"])):
             changes.append(index)
     payload = {"frames": frames, "events": changes, "states": STATES, "specialNames": SPECIAL_NAMES,
-               "program": [{"address": 0, "text": "LDO $1,$0,80"}, {"address": 4, "text": "LDO $2,$0,88"},
-                           {"address": 8, "text": "ADD $3,$1,$2"}, {"address": 12, "text": "STO $3,$0,96"},
-                           {"address": 16, "text": "TRAP 0,Halt,0"}]}
+               "program": program, "focusWords": focus_words}
     template = Path(__file__).with_name("cycle_viewer.html").read_text(encoding="utf-8")
     embedded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
     output.write_text(template.replace("__TRACE_DATA__", embedded), encoding="utf-8", newline="\n")

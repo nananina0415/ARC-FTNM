@@ -1,0 +1,21 @@
+// 실제 의미가 있는 저장형 특수 레지스터만 허용한다.
+// 8..20의 시스템/스택 레지스터는 해당 서브시스템 구현 전까지 미지원.
+comb SpecialAccess {
+    pub get: In<bit,1>
+    pub put: In<bit,1>
+    pub index: In<bit,5>
+    pub value: WordIn
+    pub allowed: Out<bit,1>
+    select: Decoder<5,32>
+}
+
+wire SpecialAccess {
+    index -> select.in
+    alias implemented = or(select.out[0..8,21..32])
+    alias unsupported_ra_bits = or(value[0..6,8..14,16..WORD_SIZE])
+    allowed <- or(
+        not(or(get, put)),
+        and(implemented, not(and(put, select.out[21], unsupported_ra_bits))),
+    )
+    select.out[8..21] -> OPENED
+}

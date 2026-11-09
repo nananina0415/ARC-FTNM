@@ -94,7 +94,7 @@ always @(posedge @clk@) begin
  end end
 task dump;begin
  fd=$fopen({directory,"/actual.txt"},"w");
- $fwrite(fd,"%0d %0d %0d %0d %0d %0d %0d %0d %0d\n",@done@,@fault@,@reason@,cycles,attempts,writes,stores,reads,acks);
+ $fwrite(fd,"%0d %0d %0d %0d %0d %0d %0d %0d %0d %016h\n",@done@,@fault@,@reason@,cycles,attempts,writes,stores,reads,acks,@pc@);
  for(j=0;j<256;j=j+1) $fwrite(fd,"%016h\n",g[j]);
  for(j=0;j<32;j=j+1) $fwrite(fd,"%016h\n",s[j]);
  for(j=0;j<4128;j=j+1) $fwrite(fd,"%02h\n",memory[j]);

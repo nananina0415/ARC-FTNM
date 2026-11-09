@@ -19,9 +19,11 @@ def validate(case):
     require(ISA.get(opcode)==target['mnemonic'],'Target is absent from supported ISA or mnemonic mismatches opcode')
     require(integer(target['word'])>>24==opcode,'Target word/opcode mismatch')
     if opcode==0:require(integer(target['word'])==0,'Only exact TRAP 0,Halt,0 is supported')
-    require(type(target['executions']) is int and target['executions']>0,'Invalid target execution count')
+    require(type(target['executions']) is int and target['executions']>=0,'Invalid target execution count')
     for i in range(4):ram_index(integer(target['pc'])+i)
     initial,expect=case['initial'],case['expect']
+    require(target['executions']>0 or expect['stop']=='fault','Zero executions requires an expected fault')
+    if 'pc' in expect:number(expect['pc'],64)
     number(initial['entry'],64)
     require(expect['unchanged_other_state'] is True,'Requires unchanged_other_state=true')
     require(expect['stop'] in ('halt','fault'),'Unknown stop condition')

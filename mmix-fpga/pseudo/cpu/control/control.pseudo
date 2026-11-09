@@ -8,11 +8,26 @@ seq Control {
     pub decoded_halt: In<bit,1>
     pub decoded_memory: In<bit,1>
     pub decoded_store: In<bit,1>
+    pub decoded_store_constant: In<bit,1>
+    pub decoded_memory_size: In<bit,2>
+    pub decoded_load_unsigned: In<bit,1>
+    pub decoded_geta: In<bit,1>
+    pub decoded_get: In<bit,1>
+    pub decoded_put: In<bit,1>
+    pub decoded_branch: In<bit,1>
+    pub branch_unconditional: In<bit,1>
+    pub branch_condition: In<bit,3>
+    pub branch_value: WordIn
+    pub branch_offset: WordIn
     pub effective_address: WordIn
     pub store_data: WordIn
     pub trip_req: In<bit,1>
     pub execute_en: Out<bit,1>
     pub load_write_en: Out<bit,1>
+    pub address_write_en: Out<bit,1>
+    pub special_get_en: Out<bit,1>
+    pub special_put_en: Out<bit,1>
+    pub address_result: WordOut
     pub memory_active: Out<bit,1>
     pub store_read_x: Out<bit,1>
     pub done: Out<bit,1>
@@ -24,6 +39,8 @@ seq Control {
     mut reason: reg::ValueReg<3>
     sel: Decoder<3,8>
     pc_add: Adder<WORD_SIZE>
+    branch: Branch
+    next_pc: Mux<2,WORD_SIZE>
 }
 wire Control {
     alias {
@@ -46,8 +63,9 @@ wire Control {
     alias mem_wait=sel.out[MEMORY_WAIT]
     alias mem_commit=sel.out[MEMORY_COMMIT]
     alias response_ok=and(fetch.res_valid, not(fetch.error), decoded_valid)
-    alias success=and(response_ok, or(decoded_halt, decoded_memory, not(trip_req)))
-    alias retire_alu=and(active, executing, success, not(decoded_halt), not(decoded_memory))
+    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put)
+    alias success=and(response_ok, or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
+    alias retire_execute=and(active, executing, success, not(decoded_halt), not(decoded_memory))
     alias retire_mem=and(active, mem_commit)
     alias halt_now=and(executing, success, decoded_halt)
     alias start_mem=and(executing, success, decoded_memory)
@@ -71,8 +89,18 @@ wire Control {
     pc_add.b[2] <- 1
     pc_add.c_in <- 0
     pc_add.c_out -> OPENED
-    pc.w_en <- or(retire_alu, retire_mem)
-    pc.in <- pc_add.sum
+    decoded_branch -> branch.enable
+    branch_unconditional -> branch.unconditional
+    branch_condition -> branch.condition_select
+    branch_value -> branch.value
+    pc.out -> branch.pc
+    branch_offset -> branch.offset
+    next_pc.select <- and(retire_execute, branch.taken)
+    next_pc.option[0] <- pc_add.sum
+    next_pc.option[1] <- branch.target
+    branch.target -> address_result
+    pc.w_en <- or(retire_execute, retire_mem)
+    pc.in <- next_pc.selected
     address.w_en <- and(active, start_mem)
     address.in <- effective_address
 
@@ -85,18 +113,23 @@ wire Control {
     memory.req_valid <- and(active, mem_request)
     memory.address <- address.out
     memory.store <- decoded_store
+    memory.size <- decoded_memory_size
+    memory.zero_extend <- decoded_load_unsigned
     memory.write_data <- store_data
     memory.res_ready <- and(active, or(mem_commit, mem_fault))
     memory.read_data -> OPENED // CPU가 결과 쓰기 mux에서 별도로 사용
     memory_active <- or(mem_request, mem_wait, mem_commit)
-    store_read_x <- and(mem_request, decoded_store)
-    execute_en <- retire_alu
+    store_read_x <- and(mem_request, decoded_store, not(decoded_store_constant))
+    execute_en <- and(retire_execute, not(non_alu))
     load_write_en <- and(retire_mem, not(decoded_store))
+    address_write_en <- and(retire_execute, decoded_geta)
+    special_get_en <- and(retire_execute, decoded_get)
+    special_put_en <- and(retire_execute, decoded_put)
 
     reason.w_en <- enter_fault
     reason.in[0] <- or(and(fetch.res_valid, fetch.error), mem_fault)
     reason.in[1] <- and(not(mem_fault), or(and(not(fetch.error), not(decoded_valid)), and(executing, not(fetch.res_valid))))
-    reason.in[2] <- and(executing, response_ok, not(decoded_memory), not(decoded_halt), trip_req)
+    reason.in[2] <- and(executing, response_ok, not(decoded_memory), not(decoded_halt), not(non_alu), trip_req)
     reason.out -> fault_reason
     done <- and(active, completed)
     fault <- and(active, failed)

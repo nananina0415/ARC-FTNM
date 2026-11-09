@@ -65,13 +65,17 @@ def compare(run):
     path=run['directory']/'actual.txt'
     if not path.exists():raise RuntimeError('Simulator did not produce final state')
     lines=path.read_text().splitlines()
-    done,fault,reason,cycles,attempts,writes,stores,reads,acks=map(int,lines[0].split())
+    header=lines[0].split()
+    if len(header) not in (9,10):raise ValueError('Malformed state dump header')
+    done,fault,reason,cycles,attempts,writes,stores,reads,acks=map(int,header[:9])
+    pc=int(header[9],16) if len(header)==10 else None
     if len(lines)!=1+256+32+RAM_BYTES:raise ValueError('Incomplete state dump')
     values=[int(x,16) for x in lines[1:]]
     errors=[];case=run['case'];expect=case['expect']
     if (done,fault,reason)!=(int(expect['stop']=='halt'),int(expect['stop']=='fault'),expect['reason']):
         errors.append(f'stop done/fault/reason={done}/{fault}/{reason}')
     if attempts!=case['target']['executions']:errors.append(f'target executions={attempts}')
+    if 'pc' in expect and pc!=integer(expect['pc']):errors.append(f'final PC={pc!r}, expected {expect["pc"]}')
     effects=expect['subject_effects']
     if writes!=effects['register_writes']:errors.append(f'register writes={writes}, expected {effects["register_writes"]}')
     if stores!=effects['memory_writes'] or acks!=stores:errors.append(f'stores/acks={stores}/{acks}')
@@ -81,7 +85,7 @@ def compare(run):
             if a!=b:errors.append(f'{label}[{i}]: actual=0x{a:x}, expected=0x{b:x}')
         offset+=len(expected)
     if errors:raise AssertionError('; '.join(errors[:12]))
-    return {'cycles':cycles,'axi_reads':reads,'stores':stores}
+    return {'cycles':cycles,'axi_reads':reads,'stores':stores,'final_pc':None if pc is None else f'0x{pc:016x}'}
 
 
 def main():

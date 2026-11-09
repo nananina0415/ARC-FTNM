@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "id": "stwui.masked_store_then_cached_loads",
+  "target": {
+    "mnemonic": "STWUI",
+    "opcode": "0xa7",
+    "pc": "0xc",
+    "word": "0xa7030102",
+    "executions": 1
+  },
+  "tags": [
+    "masked_store_then_cached_loads"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {},
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {
+      "0x100": "01",
+      "0x101": "02",
+      "0x102": "03",
+      "0x103": "04",
+      "0x104": "05",
+      "0x105": "06",
+      "0x106": "07",
+      "0x107": "08"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000020",
+    "registers": {
+      "$1": "0x0000000000000100",
+      "$2": "0x0102030405060708",
+      "$3": "0x000000000000abcd",
+      "$4": "0x0102abcd05060708",
+      "$5": "0xffffffffffffffab",
+      "$6": "0x000000000000abcd",
+      "$7": "0x000000000102abcd"
+    },
+    "special": {},
+    "memory": {
+      "0x102": "ab",
+      "0x103": "cd"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 7,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "masked_store_then_cached_loads"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

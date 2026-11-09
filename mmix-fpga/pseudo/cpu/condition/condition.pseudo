@@ -1,0 +1,24 @@
+// CS/ZS와 조건 분기가 각각 인스턴스화하는 순수 조건 판정 모듈.
+comb Condition {
+    pub select: In<bit,3>
+    pub value: WordIn
+    pub matched: Out<bit,1>
+    sel: Decoder<3,8>
+}
+
+wire Condition {
+    alias neg = value[WORD_MSB]
+    alias zero = not(or(value[0..WORD_SIZE]))
+    alias odd = value[0]
+    select -> sel.in
+    matched <- or(
+        and(sel.out[0], neg),                  // N
+        and(sel.out[1], zero),                 // Z
+        and(sel.out[2], not(or(neg, zero))),    // P
+        and(sel.out[3], odd),                  // OD
+        and(sel.out[4], not(neg)),             // NN
+        and(sel.out[5], not(zero)),            // NZ
+        and(sel.out[6], or(neg, zero)),         // NP
+        and(sel.out[7], not(odd)),             // EV
+    )
+}

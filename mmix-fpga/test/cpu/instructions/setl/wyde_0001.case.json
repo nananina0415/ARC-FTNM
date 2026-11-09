@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "setl.wyde_0001",
+  "target": {
+    "mnemonic": "SETL",
+    "opcode": "0xe3",
+    "pc": "0x0",
+    "word": "0xe3030001",
+    "executions": 1
+  },
+  "tags": [
+    "wyde_0001",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$0": "0x8765432112345678",
+      "$1": "0x8765432112345678",
+      "$3": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x0000000000000001"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "wyde_0001"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

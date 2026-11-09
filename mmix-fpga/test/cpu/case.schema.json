@@ -14,7 +14,7 @@
         "opcode": {"type": "string", "pattern": "^0x[0-9a-f]{2}$"},
         "pc": {"$ref": "#/$defs/integer"},
         "word": {"type": "string", "pattern": "^0x[0-9a-f]{8}$"},
-        "executions": {"type": "integer", "minimum": 1}
+        "executions": {"type": "integer", "minimum": 0}
       },
       "additionalProperties": false
     },
@@ -35,6 +35,7 @@
       "properties": {
         "stop": {"enum": ["halt", "fault"]},
         "reason": {"type": "integer", "minimum": 0, "maximum": 7},
+        "pc": {"$ref": "#/$defs/integer"},
         "registers": {"$ref": "#/$defs/registers"},
         "special": {"$ref": "#/$defs/special"},
         "memory": {"$ref": "#/$defs/memory"},

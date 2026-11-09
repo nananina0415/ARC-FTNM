@@ -1,0 +1,20 @@
+// 부호는 YZ/XYZ의 최상위 비트가 아니라 opcode의 backward 비트다.
+// narrow: (YZ - backward*2^16)*4, wide: (XYZ - backward*2^24)*4.
+comb RelativeOffset {
+    pub value: In<bit,24>
+    pub wide: In<bit,1>
+    pub backward: In<bit,1>
+    pub out: WordOut
+    form: Mux<2,WORD_SIZE>
+}
+
+wire RelativeOffset {
+    wide -> form.select
+    { form.option[0][0..2] } <= 0
+    form.option[0][2..18] <- value[0..16]
+    { form.option[0][18..WORD_SIZE] } <= backward
+    { form.option[1][0..2] } <= 0
+    form.option[1][2..26] <- value
+    { form.option[1][26..WORD_SIZE] } <= backward
+    form.selected -> out
+}

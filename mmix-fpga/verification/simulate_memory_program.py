@@ -115,8 +115,14 @@ def main():
     checks.simulate("memory_program", "\n".join(lines))
     (output / "results.json").write_text(json.dumps(checks.results, indent=2), encoding="utf-8")
     if args.trace:
-        from cycle_trace import render
-        render(output / "cycles.jsonl", output / "cycles.html")
+        from cycle_trace import load_frames, render
+        last = load_frames(output / "cycles.jsonl")[-1]
+        if last["done"] != "1" or int("".join(last["memory"][96:104]), 16) != 579:
+            raise RuntimeError("Trace does not show the expected HALT and stored result")
+        program = [{"address": 0, "text": "LDO $1,$0,80"}, {"address": 4, "text": "LDO $2,$0,88"},
+                   {"address": 8, "text": "ADD $3,$1,$2"}, {"address": 12, "text": "STO $3,$0,96"},
+                   {"address": 16, "text": "TRAP 0,Halt,0"}]
+        render(output / "cycles.jsonl", output / "cycles.html", program, [10, 11, 12])
 
 
 if __name__ == "__main__":

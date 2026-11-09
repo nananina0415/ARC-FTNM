@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "pbnpb.condition_2",
+  "target": {
+    "mnemonic": "PBNPB",
+    "opcode": "0x5d",
+    "pc": "0x20",
+    "word": "0x5d01fffc",
+    "executions": 1
+  },
+  "tags": [
+    "branch",
+    "condition_2"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000002",
+      "$4": "0x0000000000000007",
+      "$255": "0x5555555555555555",
+      "$252": "0x5555555555555555"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0",
+      "rH": "0x1122334455667788",
+      "rR": "0x8877665544332211"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000028",
+    "registers": {
+      "$4": "0x0000000000000008"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "condition_2"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

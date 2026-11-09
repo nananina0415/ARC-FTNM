@@ -7,16 +7,44 @@ PAIRS = {
     0x38: "SL", 0x3a: "SLU", 0x3c: "SR", 0x3e: "SRU",
     **{0x60+2*i: n for i,n in enumerate(["CSN","CSZ","CSP","CSOD","CSNN","CSNZ","CSNP","CSEV",
                                          "ZSN","ZSZ","ZSP","ZSOD","ZSNN","ZSNZ","ZSNP","ZSEV"])},
-    0x8c: "LDO", 0x8e: "LDOU", 0xac: "STO", 0xae: "STOU",
+    0x80: 'LDB',0x82:'LDBU',0x84:'LDW',0x86:'LDWU',0x88:'LDT',0x8a:'LDTU',
+    0x8c: "LDO", 0x8e: "LDOU",0xa2:'STBU',0xa6:'STWU',0xaa:'STTU',
+    0xac: "STO", 0xae: "STOU",0xb4:'STCO',
     **{0xc0+2*i: n for i,n in enumerate(["OR","ORN","NOR","XOR","AND","ANDN","NAND","NXOR"])},
     0xd8: "MUX",
 }
 ISA = {op+imm: name+("I" if imm else "") for op,name in PAIRS.items() for imm in (0,1)}
+CONSTANTS = {0xe0+i:name for i,name in enumerate([
+    'SETH','SETMH','SETML','SETL','INCH','INCMH','INCML','INCL',
+    'ORH','ORMH','ORML','ORL','ANDNH','ANDNMH','ANDNML','ANDNL'])}
+ISA.update(CONSTANTS)
+CONDITIONS = ['N','Z','P','OD','NN','NZ','NP','EV']
+BRANCHES = {0x40+16*hint+2*i+back:('PB' if hint else 'B')+name+('B' if back else '')
+            for hint in (0,1) for i,name in enumerate(CONDITIONS) for back in (0,1)}
+BRANCHES.update({0xf0:'JMP',0xf1:'JMPB'})
+ISA.update(BRANCHES)
+ADDRESSES={0xf4:'GETA',0xf5:'GETAB'}
+SPECIAL_OPS={0xf6:'PUT',0xf7:'PUTI',0xfe:'GET'}
+ISA.update(ADDRESSES)
+ISA.update(SPECIAL_OPS)
 ISA[0] = "HALT"
 SPECIAL = ["rB","rD","rE","rH","rJ","rM","rR","rBB","rC","rN","rO","rS","rI","rT","rTT","rK",
            "rQ","rU","rV","rG","rL","rA","rF","rP","rW","rX","rY","rZ","rWW","rXX","rYY","rZZ"]
 RAM_BYTES = 4096 + 32
 MASK = (1 << 64)-1
+LOAD_BASES=set(range(0x80,0x90,2))
+STORE_BASES={0xa2,0xa6,0xaa,0xac,0xae,0xb4}
+SPECIAL_IMPLEMENTED=set(range(8))|set(range(21,32))
+
+
+def memory_shape(op):
+    base=op&~1
+    if base in LOAD_BASES:
+        width=1<<((base-0x80)//4)
+        return width,bool(base&2),False
+    if base in STORE_BASES:
+        return (8 if base==0xb4 else 1<<((base-0xa0)//4)),True,True
+    raise ValueError(f'Not a memory opcode: {op:02x}')
 
 
 def ram_index(address):
@@ -36,9 +64,28 @@ def integer(value):
 def required_coverage(op):
     """Mandatory semantic boundaries, independent of executed-case discovery."""
     if not op:return ['stop']
+    if op in ADDRESSES:
+        return ['basic','destination_register0','destination_register255','zero','one','sign_before','sign_boundary','max_wyde','enables_preserved']
+    if op in SPECIAL_OPS:
+        return ['basic','destination_register0','destination_register255','ra_supported',
+                'unsupported_system_register','invalid_y','invalid_index'] + (['ra_unsupported_bits'] if op!=0xfe else [])
+    if op in BRANCHES:
+        tags=['basic','destination_register0','destination_register255','enables_preserved',
+              'offset_extreme','offset_sign_boundary','offset_before_sign_boundary','offset_near']
+        if op<0xf0:
+            tags += ['not_taken']+[f'condition_{n}' for n in range(7)]
+            if not op&1:tags += ['zero_not_taken']
+        if not op&1:tags += ['next_line','cache_conflict','next_instruction']
+        if op in (0x4b,0x5b,0xf1):tags += ['counted_loop']
+        return tags
+    if op in CONSTANTS:
+        return (['compose_64bit'] if op==0xe0 else []) + ['basic','zero','destination_register0','destination_register255',
+                'destination_alias_y','destination_alias_z','sticky_events','enables_preserved',
+                'carry_between_wydes','wraparound'] + [f'wyde_{n:04x}' for n in (0,1,0xff,0x100,0x7fff,0x8000,0xffff,0x1234)] + [
+                'old_zero','old_ones','old_sign_bit','old_signed_max']
     base=op&~1
-    if base in (0x8c,0x8e,0xac,0xae):
-        return ['address_'+str(n) for n in (0,1,7,8,15,16,23,24,31,32)]+['range_error','last_valid_octa','destination_alias_y']+([] if op&1 else ['destination_alias_z'])
+    if base in LOAD_BASES|STORE_BASES:
+        return ['address_'+str(n) for n in (0,1,7,8,15,16,23,24,31,32)]+['range_error','last_valid_octa','address_wrap','destination_alias_y']+([] if op&1 else ['destination_alias_z'])+['value_zero','value_sign_bit','value_max_positive','value_ones']
     tags=['basic','zero','max_plus_one','min_one','minus_one_one','min_minus_one','opposite_sign','alternating',
           'destination_alias_y','destination_register0','destination_register255','sticky_events']
     if op&1:tags += ['immediate_'+str(n) for n in (0,1,127,128,255)]
