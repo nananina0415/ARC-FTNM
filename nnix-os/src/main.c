@@ -1,5 +1,6 @@
 #include "fatfs/ff.h"
 #include "proc.h"
+#include "sys.h"
 #include "device/hdmi.h"
 #include "device/usb.h"
 #include <stdint.h>
@@ -265,9 +266,9 @@ static void exec_app(app_entry_t* e)
 /* ── 진입점 ─────────────────────────────────────────────────── */
 int main(void)
 {
-    static FATFS fs;
-    f_mount(&fs, "", 1);
-    hdmi_init();
+    // 커널이 마운트한 파일 시스템을 앱 목록 탐색에도 쓴다. 따로 마운트하면 커널 쪽 작업 영역이 바뀐다.
+    kernel_init_fs();
+    kernel_init_video();
     scan_apps();
 
     sel = 0;

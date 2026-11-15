@@ -1,5 +1,5 @@
-#include "../../nnix-os/src/device/types.h"
-#include "../../nnix-os/src/device/usb.h"
+#include "../../nnix-os/kernel/device/types.h"
+#include "../../nnix-os/kernel/device/usb.h"
 #include <stdint.h>
 
 /*

@@ -1,6 +1,6 @@
-#include "../../nnix-os/src/device/types.h"
-#include "../../nnix-os/src/device/audio.h"
-#include "../../nnix-os/src/device/opl.h"
+#include "../../nnix-os/kernel/device/types.h"
+#include "../../nnix-os/kernel/device/audio.h"
+#include "../../nnix-os/kernel/device/opl.h"
 #include <stdint.h>
 
 /* OPL3 레지스터 레이아웃 (FPGA_BLOCK_OPL) */

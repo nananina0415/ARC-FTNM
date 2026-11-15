@@ -17,7 +17,7 @@ typedef struct {
 
 extern MMIX_FILE file_table[MAX_FILES];
 
-// trap.c에서 TRAP 디스패치 후 호출하는 함수들
+// sys.c의 파일 함수가 호출한다
 int  file_open (int handle, const char* path, const char* mode);
 int  file_close(int handle);
 long file_read (int handle, void* buf, long size, long count);

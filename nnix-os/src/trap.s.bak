@@ -1,0 +1,41 @@
+	.global trap_handler
+
+	.text
+trap_handler	IS @
+	! TRAP은 레지스터 창을 옮기지 않으므로 여기의 $0 이상은 사용자 로컬이다.
+	! X>=G인 PUSHJ로 사용자 로컬을 전부 숨겨 L=0에서 핸들러를 시작한다.
+	! $255에는 TRAP이 백업한 트랩 전 rJ가 있다.
+	PUSHJ	$255,_trap_entry
+
+	! POP으로 사용자 로컬이 복원됐다. _trap_entry가 $255에 트랩 전 rJ를 되돌려 놓았다.
+	PUT	rJ,$255
+
+	! rK 복원값 준비 — 전체 인터럽트 활성화(전부 1). RESUME 1이 이 $255를 rK로 옮긴다.
+	SETL	$255,0
+	SUBU	$255,$255,1
+
+	RESUME	1
+
+_trap_entry	IS @
+	GET	$0,rJ		! 위 PUT rJ 줄로 돌아올 주소
+	SET	$1,$255		! 트랩 전 rJ. 컴파일된 C 코드는 $255를 임시로 쓴다
+
+	! rYY,rZZ는 $Y,$Z의 레지스터 내용이라 즉치로 넣은 syscall번호/옵션이 아니다 —
+	! rXX(이 TRAP 명령 인코딩 그대로: opcode:8,X:8,Y:8,Z:8)에서 Y,Z 바이트를 직접 뽑는다.
+	! PUSHJ $3의 인자는 호출 번호 뒤인 $4,$5,$6에 놓는다. 호출된 함수의 $0,$1,$2가 된다.
+	GET	$7,rXX
+	SETL	$8,0xFF
+	AND	$5,$7,$8	! opt = Z바이트 = rXX & 0xFF
+	SRU	$4,$7,8
+	AND	$4,$4,$8	! sc  = Y바이트 = (rXX>>8) & 0xFF
+	GET	$6,rBB		! r255 = 사용자 $255(인자)
+
+	! trap_dispatch(sc, opt, r255)
+	PUSHJ	$3,trap_dispatch
+
+	! 반환값 → rBB; RESUME 1 이 rBB를 $255로 복원
+	PUT	rBB,$3
+
+	PUT	rJ,$0
+	SET	$255,$1
+	POP	0,0

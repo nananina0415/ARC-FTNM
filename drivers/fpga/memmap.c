@@ -1,4 +1,4 @@
-#include "../../nnix-os/src/device/types.h"
+#include "../../nnix-os/kernel/device/types.h"
 
 // FPGA 내부 장치 MMIO 블록 (상위 주소에서 할당, 보드 MMIO와 충돌 없음)
 #define FPGA_BLOCK_OPL       0xFFFF

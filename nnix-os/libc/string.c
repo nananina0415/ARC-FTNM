@@ -64,3 +64,12 @@ int strncmp(const char* a, const char* b, size_t n) {
     if (!n) return 0;
     return (unsigned char)*a - (unsigned char)*b;
 }
+
+// c를 char로 바꿔 비교한다. c가 '\0'이면 문자열 끝을 가리키는 포인터를 반환한다.
+char* strchr(const char* s, int c) {
+    const char ch = (char)c;
+    for (;; s++) {
+        if (*s == ch) return (char*)s;
+        if (!*s) return (char*)0;
+    }
+}

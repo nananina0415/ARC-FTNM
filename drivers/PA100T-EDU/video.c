@@ -1,6 +1,6 @@
-#include "../../nnix-os/src/device/types.h"
-#include "../../nnix-os/src/device/hdmi.h"
-#include "../../nnix-os/src/device/lcd.h"
+#include "../../nnix-os/kernel/device/types.h"
+#include "../../nnix-os/kernel/device/hdmi.h"
+#include "../../nnix-os/kernel/device/lcd.h"
 #include <stdint.h>
 
 #ifndef MMIX_SIM
@@ -52,7 +52,7 @@ int hdmi_present(const uint8_t* buf, int width, int height) {
 
 #endif /* MMIX_SIM */
 
-/* LCD 미지원 — trap dispatch가 대안을 찾거나 -1 반환 */
+/* LCD 미지원 — sys_video_present가 대안을 찾거나 -1 반환 */
 void lcd_init(void) {}
 
 int lcd_present(const uint8_t* buf, int width, int height) {

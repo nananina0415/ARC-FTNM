@@ -806,7 +806,13 @@ void D_DoomMain(void)
             char* iwad = myargv[p + 1];
             void* f = doom_open(iwad, "rb");
             if (!f)
-                I_Error("W_Init: IWAD not found: %s", iwad);
+            {
+                // I_Error는 문자열 하나만 받으므로 파일 이름을 붙여 메시지를 만든다.
+                char* msg = doom_malloc(doom_strlen(iwad) + 26);
+                doom_strcpy(msg, "W_Init: IWAD not found: ");
+                doom_concat(msg, iwad);
+                I_Error(msg);
+            }
             doom_close(f);
             const char* name = iwad;
             const char* s    = iwad;

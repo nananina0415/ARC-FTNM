@@ -1,4 +1,7 @@
-#include "../src/syscall.h"
+#include "../kernel/syscall.h"
+#ifndef MMIX_SIM
+#include "../kernel/sys.h"
+#endif
 
 // crt0.s 정의 전역 (BSS). 여기서 채운 후 crt0.s가 main에 전달
 long  _crt_argc = 0;
@@ -17,12 +20,18 @@ void _args_init(void) {
         return;
     }
 
-    struct { long buf; long size; long cluster; } req = {
-        (long)_link_buf, 255, _link_cluster
-    };
-    register long r255 __asm__("$255") = (long)&req;
-    __asm__ volatile("TRAP 1," SC_LINK_READ ",0" : "+r"(r255) : : "memory");
-    long br = r255;
+    // 커널 라이브러리를 직접 호출한다. 주석은 상주 OS에 TRAP으로 요청하던 코드다.
+    // struct { long buf; long size; long cluster; } req = {
+    //     (long)_link_buf, 255, _link_cluster
+    // };
+    // register long r255 __asm__("$255") = (long)&req;
+    // __asm__ volatile("TRAP 1," SC_LINK_READ ",0" : "+r"(r255) : : "memory");
+    // long br = r255;
+#ifdef MMIX_SIM
+    long br = -1;  // mmixware 시뮬레이터에는 링크파일이 없다
+#else
+    long br = sys_link_read(_link_buf, 255, _link_cluster);
+#endif
     if (br <= 0) {
         _crt_argc = 0;
         _crt_argv = 0;

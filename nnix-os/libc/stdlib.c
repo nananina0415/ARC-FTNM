@@ -1,6 +1,11 @@
 #include "stdlib.h"
-#include "../src/mem.h"
+#include "../kernel/mem.h"
 #include "string.h"
+
+void _crt_exit(long status) {
+    exit((int)status);
+    __builtin_unreachable();
+}
 
 void* malloc(size_t size) {
     if (size == 0) size = 1;

@@ -48,7 +48,7 @@ ARC-FTNM/
 ├── apps/
 │   └── doom/                      — DOOM 포팅 (GPL v2)
 │       ├── src/
-│       │   ├── main,c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
+│       │   ├── main.c             — FPGA 빌드 진입점 (입력·오디오·비디오 루프)
 │       │   ├── patch_puredoom.h   — MMIX 빅엔디언 버그 패치
 │       │   ├── test_on_sim.c      — 시뮬레이터 빌드 진입점
 │       │   └── test_stdio.c       — libc stdio 검증 테스트
@@ -66,6 +66,7 @@ ARC-FTNM/
 │   └── PA100T-EDU/                — PA100T-EDU 보드 전용 드라이버
 │       ├── memmap.c               — 보드 MMIO 맵 테이블
 │       ├── video.c                — HDMI·LCD 프레임버퍼 출력
+│       ├── timer.c                — 하드웨어 타이머 (미구현, 항상 0)
 │       └── sd_card.h              — SD 카드 SPI 인터페이스
 ├── mmix-fpga/                     — FPGA RTL (Spade HDL)
 │   ├── swim.toml                  — Spade 프로젝트 설정
@@ -102,9 +103,10 @@ ARC-FTNM/
     │   ├── unistd.h/c
     │   ├── _print.h/c             — 포맷 이터레이터 (printf 내부)
     │   └── sys/time.h
-    ├── src/
-    │   ├── crt1.s                 — OS 스타트업 (rT 설정 후 _start 호출)
-    │   ├── trap.s/c               — 트랩 핸들러 및 디스패처
+    ├── kernel/                    — 커널 정적 라이브러리 (OS와 앱이 함께 링크)
+    │   ├── kernel.cmake           — 라이브러리 정의 (FatFs·보드 드라이버 포함)
+    │   ├── sys.h/c                — 커널 API (파일·앱 실행·장치). 앱이 직접 호출
+    │   ├── syscall.h              — 함수 번호 (시뮬레이터 TRAP과 주석의 옛 TRAP 규약)
     │   ├── device/                — 장치 인터페이스 헤더
     │   │   ├── types.h            — MMIO 맵 구조체·장치 열거형
     │   │   ├── audio.h            — PCM 오디오 믹서
@@ -120,8 +122,12 @@ ARC-FTNM/
     │   │   ├── seg7.h             — 7세그먼트 디스플레이
     │   │   └── bios_rom.h         — BIOS ROM 접근
     │   ├── fs.h/c                 — 파일시스템, 파일 핸들 관리
+    │   ├── diskio.c               — FatFs ↔ SD 카드
     │   ├── mem.h/c                — 메모리 관리
-    │   ├── proc.h/c               — 앱 실행 ($255=exe클러스터, $254=링크클러스터)
+    │   └── proc.h/c               — 앱 실행 ($255=exe클러스터, $254=링크클러스터)
+    ├── src/
+    │   ├── crt1.s                 — OS 스타트업 (_start 호출)
+    │   ├── trap.s.bak / trap.c.bak — 상주 OS용 트랩 핸들러. 빌드하지 않음
     │   └── main.c                 — 부팅 메뉴 TUI
     └── third_party/
         └── fatfs/                 — FatFs (1-clause BSD)

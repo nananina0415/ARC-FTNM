@@ -1,4 +1,4 @@
-// FPGA 전용 — trap.c의 TRAP 핸들러에서 호출
+// FPGA 전용 — sys.c의 파일 함수에서 호출
 #include "fs.h"
 #include "../libc/stdio.h"
 

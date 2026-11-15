@@ -21,9 +21,8 @@ add_custom_command(
 )
 add_custom_target(unifont_h DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/unifont.h)
 
-set(FATFS_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/fatfs)
-set(DRIVER_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/PA100T-EDU)
-set(FPGA_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/fpga)
+# 커널(파일 시스템, 드라이버, 메모리, 앱 실행)은 앱과 같은 정적 라이브러리를 쓴다.
+include(${CMAKE_CURRENT_SOURCE_DIR}/kernel/kernel.cmake)
 
 set(OS_SOURCES
     src/crt1.s
@@ -35,37 +34,17 @@ set(OS_SOURCES
     libc/string.c
     libc/unistd.c
     src/main.c
-    src/trap.s
-    src/trap.c
-    src/fs.c
-    src/mem.c
-    src/proc.c
-    src/diskio.c                  # third_party/fatfs/diskio.c 대신 사용
-
-    # FatFs (diskio.c 제외)
-    ${FATFS_DIR}/ff.c
-    ${FATFS_DIR}/ffunicode.c
-    ${FATFS_DIR}/ffsystem.c
-
-    # 보드 드라이버
-    ${DRIVER_DIR}/memmap.c
-    ${DRIVER_DIR}/video.c
-    ${DRIVER_DIR}/usb.c
-    ${DRIVER_DIR}/sd_card.c
-
-    # FPGA 공통 드라이버
-    ${FPGA_DIR}/memmap.c
-    ${FPGA_DIR}/audio.c
+    # src/trap.s.bak, src/trap.c.bak: 상주 OS의 트랩 핸들러. 빌드하지 않는다.
 )
 
 add_executable(nnix_os ${OS_SOURCES})
 add_dependencies(nnix_os unifont_h)
+target_link_libraries(nnix_os PRIVATE nnix_kernel)
 
 target_include_directories(nnix_os PRIVATE
     src
     libc
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party
     ${CMAKE_CURRENT_SOURCE_DIR}/../drivers
 )
 

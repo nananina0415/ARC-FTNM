@@ -1,5 +1,8 @@
 #include "stdio.h"
-#include "../src/syscall.h"
+#include "../kernel/syscall.h"
+#ifndef MMIX_SIM
+#include "../kernel/sys.h"
+#endif
 #include "_print.h"
 #include <stdarg.h>
 #include <stddef.h>
@@ -139,15 +142,14 @@ int feof(FILE* f) {
 // =============================================================================
 #else   // FPGA
 // =============================================================================
-// 커스텀 TRAP 규약 (X=1):
+// 커널 라이브러리(kernel/sys.h)를 정적 링크해 직접 호출한다.
+// 주석의 FPGA_TRAP 코드는 상주 OS에 TRAP 1,Y,Z로 요청하던 규약이다:
 //   Y = 함수 번호 (mmixware enum과 동일)
 //   Z = 옵션 바이트 (Fopen: 오픈 모드, Fseek: whence, 나머지: 0)
 //   $255 in = 주 인자,  $255 out = 결과
-
-// "+r"(r255): r255를 입출력 레지스터로 지정. TRAP 전 $255에 넣고 후에 꺼냄.
-// 없으면 GCC가 TRAP 결과를 최적화로 버릴 수 있음.
-#define FPGA_TRAP(ystr, zstr) \
-    __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
+//
+// #define FPGA_TRAP(ystr, zstr) \
+//     __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
 
 FILE* fopen(const char* path, const char* mode) {
     int i;
@@ -155,18 +157,27 @@ FILE* fopen(const char* path, const char* mode) {
         if (!_pool[i].used) break;
     if (i == 16) return (FILE*)0;
 
-    register long r255 __asm__("$255") = (long)path;
-
     // FatFs는 항상 바이너리 모드 → t, b 플래그 무시
     // mode[1]이 '\0'이면 mode[2] 접근 UB → 단락 평가로 방지
     int plus = (mode[1] == '+' || (mode[1] != '\0' && mode[2] == '+'));
-    // Z는 즉값이므로 모드별 switch 필요
+
+    // register long r255 __asm__("$255") = (long)path;
+    // switch (mode[0]) {
+    // case 'r': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_RP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_R); break;
+    // case 'w': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_WP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_W); break;
+    // case 'a': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_AP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_A); break;
+    // }
+
+    // 모드 번호는 syscall.h의 SCO_FOPEN_* 와 같다: r=0 w=1 a=2, '+'이면 +3
+    int base;
     switch (mode[0]) {
-    case 'r': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_RP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_R); break;
-    case 'w': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_WP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_W); break;
-    case 'a': if (plus) FPGA_TRAP(SC_FOPEN, SCO_FOPEN_AP); else FPGA_TRAP(SC_FOPEN, SCO_FOPEN_A); break;
+    case 'r': base = 0; break;
+    case 'w': base = 1; break;
+    case 'a': base = 2; break;
+    default:  return (FILE*)0;
     }
-    
+    long r255 = sys_fopen(base + (plus ? 3 : 0), path);
+
     if (r255 < 0) return (FILE*)0;
     _pool[i].handle = (int)r255;
     _pool[i].used   = 1;
@@ -176,8 +187,9 @@ FILE* fopen(const char* path, const char* mode) {
 
 int fclose(FILE* f) {
     if (!f || !f->used || f->handle < 0 || f->handle >= 16) return EOF;
-    register long r255 __asm__("$255") = (long)f->handle;
-    FPGA_TRAP(SC_FCLOSE, "0");
+    // register long r255 __asm__("$255") = (long)f->handle;
+    // FPGA_TRAP(SC_FCLOSE, "0");
+    long r255 = sys_fclose(f->handle);
     f->used = 0;
     return (r255 < 0) ? EOF : 0;
 }
@@ -185,9 +197,10 @@ int fclose(FILE* f) {
 size_t fread(void* buf, size_t size, size_t count, FILE* f) {
     if (!f || !f->used || f->handle < 0 || f->handle >= 16 || !size || !count) return 0;
     long total = (long)size * (long)count;
-    struct { long buf; long total; long handle; } a = { (long)buf, total, (long)f->handle };
-    register long r255 __asm__("$255") = (long)&a;
-    FPGA_TRAP(SC_FREAD, "0");
+    // struct { long buf; long total; long handle; } a = { (long)buf, total, (long)f->handle };
+    // register long r255 __asm__("$255") = (long)&a;
+    // FPGA_TRAP(SC_FREAD, "0");
+    long r255 = sys_fread(f->handle, buf, total);
     // r255 = 읽은 바이트 수, -1이면 오류
     if (r255 < 0) { f->eof = 1; return 0; }
     if (r255 < total) f->eof = 1;
@@ -198,9 +211,10 @@ size_t fread(void* buf, size_t size, size_t count, FILE* f) {
 size_t fwrite(const void* buf, size_t size, size_t count, FILE* f) {
     if (!f || !f->used || f->handle < 0 || f->handle >= 16 || !size || !count) return 0;
     long total = (long)size * (long)count;
-    struct { long buf; long total; long handle; } a = { (long)buf, total, (long)f->handle };
-    register long r255 __asm__("$255") = (long)&a;
-    FPGA_TRAP(SC_FWRITE, "0");
+    // struct { long buf; long total; long handle; } a = { (long)buf, total, (long)f->handle };
+    // register long r255 __asm__("$255") = (long)&a;
+    // FPGA_TRAP(SC_FWRITE, "0");
+    long r255 = sys_fwrite(f->handle, buf, total);
     if (r255 < 0) return 0;
     return (size_t)(r255 / (long)size);
 }
@@ -208,21 +222,22 @@ size_t fwrite(const void* buf, size_t size, size_t count, FILE* f) {
 int fseek(FILE* f, long offset, int whence) {
     if (!f || !f->used || f->handle < 0 || f->handle >= 16) return -1;
     f->eof = 0;
-    struct { long handle; long offset; } a = { (long)f->handle, offset };
-    register long r255 __asm__("$255") = (long)&a;
-    switch (whence) {
-        case SEEK_SET: FPGA_TRAP(SC_FSEEK, SCO_SEEK_SET); break;
-        case SEEK_CUR: FPGA_TRAP(SC_FSEEK, SCO_SEEK_CUR); break;
-        case SEEK_END: FPGA_TRAP(SC_FSEEK, SCO_SEEK_END); break;
-    }
+    // struct { long handle; long offset; } a = { (long)f->handle, offset };
+    // register long r255 __asm__("$255") = (long)&a;
+    // switch (whence) {
+    //     case SEEK_SET: FPGA_TRAP(SC_FSEEK, SCO_SEEK_SET); break;
+    //     case SEEK_CUR: FPGA_TRAP(SC_FSEEK, SCO_SEEK_CUR); break;
+    //     case SEEK_END: FPGA_TRAP(SC_FSEEK, SCO_SEEK_END); break;
+    // }
+    long r255 = sys_fseek(f->handle, offset, whence);
     return (r255 < 0) ? -1 : 0;
 }
 
 long ftell(FILE* f) {
     if (!f || !f->used || f->handle < 0 || f->handle >= 16) return -1L;
-    register long r255 __asm__("$255") = (long)f->handle;
-    FPGA_TRAP(SC_FTELL, "0");
-    return r255;
+    // register long r255 __asm__("$255") = (long)f->handle;
+    // FPGA_TRAP(SC_FTELL, "0");
+    return sys_ftell(f->handle);
 }
 
 int feof(FILE* f) {
@@ -235,7 +250,7 @@ int feof(FILE* f) {
 // SIM/FPGA 공통 — print functions
 // =============================================================================
 
-// 포맷은 fmt_iter_t로, 스트림 출력은 여기서 fwrite() → TRAP
+// 포맷은 fmt_iter_t로, 스트림 출력은 여기서 fwrite() → TRAP(시뮬레이터) 또는 sys_fwrite(FPGA)
 int vsnprintf(char* buf, size_t n, const char* fmt, va_list ap) {
     fmt_iter_t it;
     fmt_init(&it, fmt, ap);
@@ -263,7 +278,7 @@ int sprintf(char* buf, const char* fmt, ...) {
     return i;
 }
 
-// FWRITE 트랩 핸들러에서 0,1,2는 표준 입출력으로 취급
+// 쓰기 처리 쪽(시뮬레이터 TRAP, FPGA sys_fwrite)에서 0,1,2는 표준 입출력으로 취급
 int vfprintf(FILE* stream, const char* fmt, va_list ap) {
     fmt_iter_t it;
     fmt_init(&it, fmt, ap);

@@ -1,4 +1,4 @@
-#include "../../nnix-os/src/device/types.h"
+#include "../../nnix-os/kernel/device/types.h"
 
 // PA100T-EDU 보드 MMIO 맵 (2^48 기준 4KB 블록 단위)
 const mmio_entry_t BOARD_MEMMAP[] = {

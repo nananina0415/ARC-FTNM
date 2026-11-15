@@ -7,11 +7,13 @@
 
 #include <string.h>
 #include "syscall.h"
+#include "sys.h"
 #include "device/audio.h"
 #include "device/usb.h"
 
-#define FPGA_TRAP(ystr, zstr) \
-    __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
+// 커널 라이브러리를 직접 호출한다. 주석의 FPGA_TRAP 코드는 상주 OS에 TRAP으로 요청하던 코드다.
+// #define FPGA_TRAP(ystr, zstr) \
+//     __asm__ volatile("TRAP 1," ystr "," zstr : "+r"(r255) : : "memory")
 
 /* getenv: libc getenv()는 항상 NULL 반환.
  * HOME이 NULL이면 doomrc 읽기 실패 → I_Error → g_exit=1. "."로 오버라이드. */
@@ -30,10 +32,11 @@ static void cb_gettime(int* sec, int* usec) {
 /* 사운드 이펙트: DOOM 내부 믹서 버퍼를 FPGA 오디오 믹서 DMA로 전달 */
 static void do_audio(void)
 {
-    int16_t* buf = doom_get_sound_buffer(AUDIO_BUF_BYTES);
-    struct { long buf; long len; } a = { (long)buf, AUDIO_BUF_BYTES };
-    register long r255 __asm__("$255") = (long)&a;
-    FPGA_TRAP(SC_AUDIO_WRITE, "0");
+    int16_t* buf = doom_get_sound_buffer();  // 버퍼 크기는 AUDIO_BUF_BYTES로 고정
+    // struct { long buf; long len; } a = { (long)buf, AUDIO_BUF_BYTES };
+    // register long r255 __asm__("$255") = (long)&a;
+    // FPGA_TRAP(SC_AUDIO_WRITE, "0");
+    sys_audio_write(buf, AUDIO_BUF_BYTES);
 }
 
 /* 음악: doom_tick_midi() 반환값 (reg<<8)|data 를 FPGA OPL3로 전달.
@@ -42,8 +45,9 @@ static void do_music(void)
 {
     uint32_t msg;
     while ((msg = doom_tick_midi())) {
-        register long r255 __asm__("$255") = (long)msg;
-        FPGA_TRAP(SC_OPL_WRITE, "0");
+        // register long r255 __asm__("$255") = (long)msg;
+        // FPGA_TRAP(SC_OPL_WRITE, "0");
+        sys_opl_write(msg >> 8, msg & 0xFF);
     }
 }
 
@@ -89,8 +93,9 @@ int main(int argc, char** argv)
         
         do_audio();
         do_music();
-        register long r255 __asm__("$255") = (long)doom_get_framebuffer(3 /* RGB */);
-        FPGA_TRAP(SC_VIDEO_PRESENT, SCO_VIDEO_HDMI);
+        // register long r255 __asm__("$255") = (long)doom_get_framebuffer(3 /* RGB */);
+        // FPGA_TRAP(SC_VIDEO_PRESENT, SCO_VIDEO_HDMI);
+        sys_video_present(1 /* SCO_VIDEO_HDMI */, doom_get_framebuffer(3 /* RGB */));
     }
 
     return 0;

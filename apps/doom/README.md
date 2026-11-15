@@ -8,7 +8,7 @@ ARC-FTNM FPGA 컴퓨터에서 DOOM을 실행하는 포팅.
 ```
 apps/doom/
 ├── src/
-│   ├── main,c             — FPGA 빌드 진입점 (HAL 콜백 구현)
+│   ├── main.c             — FPGA 빌드 진입점 (HAL 콜백 구현)
 │   ├── test_on_sim.c      — mmixware 시뮬레이터 빌드 진입점
 │   ├── test_stdio.c       — libc stdio 동작 검증용 독립 테스트
 │   ├── DOOM.c             — PureDOOM 오버라이드 (게임 루프 진입 변경)
@@ -32,7 +32,8 @@ apps/doom/
 
 ### FPGA 빌드 (nnix-os 경유 실행)
 
-루트 CMake로 통합 빌드된다. nnix-os가 `doom.mmix`를 SD 카드에서 로드해 실행한다.
+루트 CMake로 nnix-os와 함께 통합 빌드된다. nnix-os가 `doom.mmix`를 SD 카드에서 로드해 실행한다.
+FPGA 빌드는 커널 라이브러리(`nnix-os/kernel`)를 정적 링크해 파일·장치 함수를 직접 호출한다.
 
 ```sh
 # 루트 디렉토리에서
@@ -102,19 +103,19 @@ HDMI DMA 출력: 640×480 (`DOOM_OUT_WIDTH` / `DOOM_OUT_HEIGHT`)
 
 추후에는 PureDOOM-NoFloat 측에서 지원할 예정
 
-### HAL 콜백 (`src/main,c`)
+### HAL 콜백 (`src/main.c`)
 
 | 콜백 | 구현 방식 |
 |---|---|
 | `getenv` | `HOME` → `"."` 고정 (doomrc 미존재 시 I_Error 방지) |
-| `gettime` | `SC_GETTIME`(12) syscall → `timer_get()` → FPGA 하드웨어 타이머 |
-| 파일 I/O | `DOOM_IMPLEMENT_FILE_IO`: FatFs + SD 카드 SPI (nnix-os syscall) |
-| malloc | `DOOM_IMPLEMENT_MALLOC`: nnix-os 힙 할당기 |
+| `gettime` | 미구현 (0 반환). 커널의 `sys_gettime()` → `timer_get()` 연결 예정 |
+| 파일 I/O | `DOOM_IMPLEMENT_FILE_IO`: libc → 커널 `sys_f*()` → FatFs + SD 카드 SPI |
+| malloc | `DOOM_IMPLEMENT_MALLOC`: 커널 힙 할당기 (`kernel/mem.c`) |
 
 ### 오디오
 
-- **음악 (OPL3):** `doom_tick_midi()` 반환값을 `SC_OPL_WRITE` syscall로 FPGA OPL3에 전달. 게임 루프(35Hz)에서 드레인.
-- **효과음 (PCM):** `doom_get_sound_buffer()`로 믹서 버퍼를 받아 `SC_AUDIO_WRITE` syscall로 FPGA PCM DMA에 전달.
+- **음악 (OPL3):** `doom_tick_midi()` 반환값을 커널 `sys_opl_write()`로 FPGA OPL3에 전달. 게임 루프(35Hz)에서 드레인.
+- **효과음 (PCM):** `doom_get_sound_buffer()`로 믹서 버퍼를 받아 커널 `sys_audio_write()`로 FPGA PCM DMA에 전달.
 
 ### 입력 (USB HID 조이스틱)
 

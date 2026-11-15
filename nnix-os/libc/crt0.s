@@ -33,15 +33,20 @@ _bss_done	IS @
 	! 링크파일에서 argc/argv 파싱 (_crt_argc/_crt_argv에 결과 저장)
 	PUSHJ	$0,_args_init
 
-	! main(argc, argv) 호출
-	GETA	$3,_crt_argc
-	LDOU	$0,$3,0
-	GETA	$3,_crt_argv
-	LDOU	$1,$3,0
+	! main(argc, argv) 호출. PUSHJ $2의 인자는 호출 번호 뒤인 $3,$4에 놓는다.
+	GETA	$5,_crt_argc
+	LDOU	$3,$5,0
+	GETA	$5,_crt_argv
+	LDOU	$4,$5,0
 	PUSHJ	$2,main
 
+	! main 반환값으로 exit. 시뮬레이터는 Halt, FPGA는 nnix.os를 다시 실행한다.
+	! $255는 시뮬레이터 Halt가 종료 코드로 읽는다.
+	! 주석은 TRAP 0,0,0으로 CPU를 멈추던 코드다.
+	!	TRAP	0,0,0
 	SET	$255,$2
-	TRAP	0,0,0
+	SET	$4,$2
+	PUSHJ	$3,_crt_exit
 
 	.section .bss
 	.align 8

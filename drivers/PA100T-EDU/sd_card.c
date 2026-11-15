@@ -1,4 +1,4 @@
-#include "../../nnix-os/src/device/types.h"
+#include "../../nnix-os/kernel/device/types.h"
 #include "sd_card.h"
 #include <stdint.h>
 

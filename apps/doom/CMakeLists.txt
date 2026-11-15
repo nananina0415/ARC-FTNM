@@ -12,36 +12,33 @@ add_custom_target(notice_doom ALL
 )
 
 set(LIBC_DIR   ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/libc)
-set(SRC_DIR    ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/src)
+set(KERNEL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../nnix-os/kernel)
 set(DRIVER_DIR      ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/PA100T-EDU)
-set(FPGA_DRIVER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/fpga)
 
-# 커스텀 libc 소스 목록
+# 커스텀 libc 소스 목록. args.c는 crt0.s가 호출하는 _args_init을 정의한다.
 set(LIBC_SOURCES
     ${LIBC_DIR}/stdio.c
     ${LIBC_DIR}/_print.c
     ${LIBC_DIR}/stdlib.c
     ${LIBC_DIR}/string.c
+    ${LIBC_DIR}/args.c
     ${LIBC_DIR}/crt0.s
-    ${SRC_DIR}/mem.c
 )
 
 # 시뮬레이터 빌드는 test_on_sim.c, FPGA 빌드는 main.c 사용
-# 두 빌드 모두 보드 드라이버 video.c 포함 (MMIX_SIM 분기로 PPM↔MMIO 분리)
+# FPGA 빌드는 커널 라이브러리(파일 시스템, 드라이버, 메모리)를 정적 링크한다.
+# 시뮬레이터 빌드는 mmixware TRAP을 쓰므로 커널 대신 video.c(PPM 출력)와 mem.c만 넣는다.
 if(MMIX_SIM)
-    set(DOOM_SOURCES src/test_on_sim.c ${DRIVER_DIR}/video.c)
+    set(DOOM_SOURCES src/test_on_sim.c ${DRIVER_DIR}/video.c ${KERNEL_DIR}/mem.c)
 else()
-    set(DOOM_SOURCES
-        src/main.c
-        ${DRIVER_DIR}/video.c
-        ${DRIVER_DIR}/memmap.c
-        ${DRIVER_DIR}/usb.c
-        ${FPGA_DRIVER_DIR}/memmap.c
-        ${FPGA_DRIVER_DIR}/audio.c
-    )
+    set(DOOM_SOURCES src/main.c)
+    include(${KERNEL_DIR}/kernel.cmake)
 endif()
 
 add_executable(doom ${DOOM_SOURCES} ${LIBC_SOURCES})
+if(NOT MMIX_SIM)
+    target_link_libraries(doom PRIVATE nnix_kernel)
+endif()
 
 # gen_puredoom_h.py로 PureDOOM.h 재생성: m_swap.h 직후에 src/patch_puredoom.h 삽입
 # (PureDOOM 서브모듈을 수정하지 않고 MMIX 64비트 엔디언 버그를 우회)
@@ -59,7 +56,7 @@ target_include_directories(doom PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}  # 생성된 PureDOOM.h 우선 탐색
     PureDOOM                     # 원본 서브모듈 (나머지 헤더들)
     ${LIBC_DIR}
-    ${SRC_DIR}
+    ${KERNEL_DIR}
 )
 
 target_compile_definitions(doom PRIVATE
