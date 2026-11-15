@@ -1,18 +1,28 @@
 	.global _start
 	.global _link_cluster
-	.global _ram_size
+	.global _mem_size
+	.global _stack_base
+	.global _crash_count
 
 	.section .text.crt0
 _start	IS @
-	! BIOS 전달값: $253=RAM크기, $254=링크파일클러스터, $255=실행파일클러스터
-	! $254는 스택 포인터로 곧 덮어쓰므로 먼저 보존
-	SET	$10,$254
-	SET	$11,$253
+	! 로더 전달값 (UNSAVE로 설정)
+	!   $0 = 실행파일 클러스터, $1 = 링크파일 클러스터, $2 = RAM 크기(mem_size)
+	!   $3 = 연속 크래시 횟수
+	!   rS = 두 스택의 기준점. rS-1부터 아래로 프로그램 스택, rS부터 위로 레지스터 스택
+	! rS는 spill할 때마다 올라가므로 아무 함수도 부르기 전에 읽는다.
+	! 주석은 BIOS가 $253=RAM크기, $254=링크파일클러스터, $255=실행파일클러스터로 넘기던 규약이다.
+	!	SET	$10,$254
+	!	SET	$11,$253
+	SET	$10,$1
+	SET	$11,$2
+	GET	$12,rS
+	SET	$13,$3
 
-	! BSS 초기화
+	! BSS 초기화 (_bss_start ~ _fix_end)
 	SET	$0,0
 	GETA	$1,_bss_start
-	GETA	$2,_heap_start
+	GETA	$2,_fix_end
 _bss_loop	IS @
 	CMP	$3,$1,$2
 	BNN	$3,_bss_done
@@ -21,14 +31,19 @@ _bss_loop	IS @
 	JMP	_bss_loop
 _bss_done	IS @
 
-	! 스택 포인터 초기값 = RAM 크기 (스택은 아래로 자라므로 첫 push 전 SP = 마지막 유효 주소+1)
-	SET	$254,$11
+	! 프로그램 스택 포인터 초기값 = rS. 첫 프레임은 [rS-N, rS)에 놓인다.
+	!	SET	$254,$11
+	SET	$254,$12
 
-	! 힙/스택 경계를 C에서 참조할 수 있도록 저장
+	! 로더 전달값을 C에서 참조할 수 있도록 저장. 커널 mem이 힙 범위 계산에 쓴다.
 	GETA	$0,_link_cluster
 	STOU	$10,$0,0
-	GETA	$0,_ram_size
+	GETA	$0,_mem_size
 	STOU	$11,$0,0
+	GETA	$0,_stack_base
+	STOU	$12,$0,0
+	GETA	$0,_crash_count
+	STOU	$13,$0,0
 
 	! 링크파일에서 argc/argv 파싱 (_crt_argc/_crt_argv에 결과 저장)
 	PUSHJ	$0,_args_init
@@ -52,5 +67,9 @@ _bss_done	IS @
 	.align 8
 _link_cluster:
 	.8byte 0
-_ram_size:
+_mem_size:
+	.8byte 0
+_stack_base:
+	.8byte 0
+_crash_count:
 	.8byte 0

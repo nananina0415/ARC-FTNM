@@ -1,25 +1,52 @@
 #include "mem.h"
+#ifndef MMIX_SIM
+#include "sys.h"
+#endif
 
 #ifdef MMIX_SIM
 /* Pool Segment(0x4000...) 내 heap metadata 시작 주소.
  * 컴파일 타임 상수 대신 런타임 변수로 선언: MMIX GCC가 이 주소를 GREG에 올리면
  * G=253 환경에서 g[254](스택포인터)와 충돌하기 때문. */
-uintptr_t _mem_base = (uintptr_t)0x4000000002000000ULL;
+uintptr_t _heap_start = (uintptr_t)0x4000000002000000ULL;
+uintptr_t _heap_end   = 0;
+#else
+uintptr_t _heap_start = 0;
+uintptr_t _heap_end   = 0;
 #endif
+
+/* 로더가 넘긴 mem_size와 rS로 힙 범위(unfix의 첫 1/2)를 정한다. 배치는 mem.h 참고.
+ * 값이 배치 규약에 맞지 않으면(rS가 RAM 밖이거나 힙이 BSS와 겹치면) 크래시로 처리한다. */
+static void heap_layout_init(void) {
+#ifndef MMIX_SIM
+    uintptr_t mem_size  = (uintptr_t)_mem_size;
+    uintptr_t rs        = (uintptr_t)_stack_base;
+    uintptr_t fix_end   = (uintptr_t)_fix_end;
+    if (rs <= fix_end || rs >= mem_size) kernel_crash();
+    uintptr_t unfix_size  = (mem_size - rs) * 4;
+    uintptr_t unfix_start = mem_size - unfix_size;
+    if (unfix_size > mem_size || unfix_start < fix_end) kernel_crash();
+    _heap_start = unfix_start;
+    _heap_end   = unfix_start + unfix_size / 2;
+#endif
+}
 
 static int heap_initialized = 0;
 
 void heap_init(void) {
     if (heap_initialized) return;
     heap_initialized = 1;
+    heap_layout_init();
 
-    HEAD_FREE  = 1;
     HEAD_ALLOC = NULL_IDX;
     HEAD_POOL  = 2;
 
+    // 힙 영역이 노드 풀보다 작으면 free list가 비어 malloc은 항상 실패한다.
+    uint32_t size = HEAP_BLOCK_SIZE;
+    HEAD_FREE = size ? 1 : NULL_IDX;
+
     node_t* n1 = node_get(1);
-    n1->ptr  = HEAP_BASE;
-    n1->size = HEAP_SIZE;
+    n1->ptr  = HEAP_BLOCK_BASE;
+    n1->size = size;
     n1->next = NULL_IDX;
 
     for (uint32_t i = 2; i < MAX_NODES; i++)

@@ -13,37 +13,57 @@ typedef struct {
     uint32_t size;  // 블록 크기 (바이트)
 } node_t;
 
-// 메모리 관리 영역 전체의 시작 주소 (노드 풀 + 헤더 + 힙 모두 포함)
-// 내부 오프셋은 고정이고 이 베이스만 빌드 타겟에 따라 달라짐
-// - 시뮬 (-DMMIX_SIM): MMIX pool segment 시작. 런타임 변수로 선언해
+// ── 메모리 배치 (FPGA) ──────────────────────────────────────────
+//
+//   0              코드·데이터·BSS
+//   fix_end        BSS 끝. 링커 심볼 _fix_end, 파일 끝 8바이트에도 기록됨
+//                  gap: 뒤쪽 1/4 구간을 캐시 라인에 맞추는 0~127바이트
+//   unfix_start    = heap_start. 노드 풀·헤더(1MiB) 뒤에 블록 할당 영역
+//     +1/2         heap_end. 여기부터 아래로 자라는 프로그램 스택 영역
+//     +3/4         rS. rS-1부터 아래로 프로그램 스택, rS부터 위로 레지스터 스택
+//   mem_size       RAM 끝
+//
+//   gap         = (mem_size - fix_end) mod 128
+//   unfix_size  = mem_size - unfix_start            (128의 배수)
+//   rS          = unfix_start + unfix_size * 3/4     (= mem_size - unfix_size/4)
+//
+// 로더(BIOS)가 이 식으로 rS를 계산해 UNSAVE로 넣고, mem_size와 함께 앱에 넘긴다.
+// 앱은 crt0에서 rS를 _stack_base에 보존하고, 커널은 mem_size와 _stack_base로
+// unfix_size = (mem_size - rS) * 4 를 되살려 힙 범위를 정한다.
+//
+// 시뮬 (-DMMIX_SIM): MMIX pool segment를 heap_start로 쓴다. 런타임 변수로 두어
 //   컴파일러가 pool segment 상수를 GREG에 올리지 않도록 함.
 //   MMIX GCC는 G=253 (g[253..255]만 전역)이라 g[254](스택포인터)와 충돌 방지 필수.
-// - raw binary: 링커가 BSS 끝 직후를 _heap_start로 정의
+
+extern char      _fix_end[];   // 링커: BSS 끝
+extern long      _mem_size;    // crt0: 로더가 넘긴 RAM 크기
+extern long      _stack_base;  // crt0: 로더가 넣은 처음 rS
+extern uintptr_t _heap_start;  // heap_init: unfix_start (시뮬은 pool segment)
+extern uintptr_t _heap_end;    // heap_init: unfix_start + unfix_size/2
+
+// 힙 영역 전체의 시작 주소 (노드 풀 + 헤더 + 블록 할당 영역)
+#define HEAP_START (_heap_start)
+
+#define NODE_SIZE        16                          // 노드 하나의 크기 (바이트)
+#define NODE_POOL_SIZE   0x100000                    // 노드 풀 + 헤더 (1MiB = 65536 × 16)
+#define NODE_BASE        (HEAP_START)                // 노드 풀 시작. node[i] = NODE_BASE + i*NODE_SIZE
+#define HEAP_BLOCK_BASE  (HEAP_START + NODE_POOL_SIZE) // 실제 블록 할당이 일어나는 시작 주소
+#define NULL_IDX   0u                                // 노드 없음을 나타내는 인덱스
 #ifdef MMIX_SIM
-extern uintptr_t _mem_base;
-#  define MEM_BASE (_mem_base)
+// 시뮬: (RAM 크기 - HEAP_BLOCK_BASE) / 2
+#  define HEAP_BLOCK_SIZE ((uint32_t)(((long)_mem_size - (long)HEAP_BLOCK_BASE) / 2))
 #else
-extern char _heap_start[];
-#  define MEM_BASE ((uintptr_t)_heap_start)
+// FPGA: 힙 영역(unfix의 첫 1/2)에서 노드 풀을 뺀 나머지. 힙 영역이 노드 풀보다 작으면 0
+#  define HEAP_BLOCK_SIZE ((uint32_t)(_heap_end > HEAP_BLOCK_BASE ? _heap_end - HEAP_BLOCK_BASE : 0))
 #endif
-
-// crt0.s에서 $253(BIOS 전달 RAM 크기)을 저장하는 BSS 전역 변수
-extern long _ram_size;
-
-#define NODE_SIZE  16                          // 노드 하나의 크기 (바이트)
-#define NODE_BASE  (MEM_BASE)                  // 노드 풀 시작. node[i] = NODE_BASE + i*NODE_SIZE
-#define HEAP_BASE  (MEM_BASE + 0x100000)       // 실제 할당이 일어나는 힙 시작 주소
-#define NULL_IDX   0u                          // 노드 없음을 나타내는 인덱스
-// 힙 크기 = (RAM 끝 - HEAP_BASE) / 2  →  나머지 절반은 스택
-#define HEAP_SIZE  ((uint32_t)(((long)_ram_size - (long)HEAP_BASE) / 2))
 #define MAX_NODES  65535u                      // 최대 노드 수 (인덱스 1~65535)
 
-// MEM_BASE 기준 헤더 오프셋
+// HEAP_START 기준 헤더 오프셋
 // +0x00~0x03: 비워둠 (NULL 포인터 영역)
 // +0x04~0x0F: 세 리스트의 헤드 인덱스
-#define ADDR_HEAD_FREE  (MEM_BASE + (uintptr_t)0x04) // free list 헤드 인덱스 주소
-#define ADDR_HEAD_ALLOC (MEM_BASE + (uintptr_t)0x08) // alloc list 헤드 인덱스 주소
-#define ADDR_HEAD_POOL  (MEM_BASE + (uintptr_t)0x0C) // pool 헤드 인덱스 주소
+#define ADDR_HEAD_FREE  (HEAP_START + (uintptr_t)0x04) // free list 헤드 인덱스 주소
+#define ADDR_HEAD_ALLOC (HEAP_START + (uintptr_t)0x08) // alloc list 헤드 인덱스 주소
+#define ADDR_HEAD_POOL  (HEAP_START + (uintptr_t)0x0C) // pool 헤드 인덱스 주소
 
 // volatile: 컴파일러가 물리 주소 접근을 최적화로 제거하지 못하게 함
 #define HEAD_FREE  (*(volatile uint32_t*)ADDR_HEAD_FREE)  // free list 첫 노드 인덱스

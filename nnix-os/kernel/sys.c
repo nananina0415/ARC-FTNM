@@ -77,13 +77,17 @@ long sys_ftell(int handle) {
 
 // ── 프로그램 ──────────────────────────────────────────────────────
 
-long sys_execve(const char* path) {
+static long _execve(const char* path, long crash_count) {
     kernel_init_fs();
     FIL fil;
     if (f_open(&fil, path, FA_READ) != FR_OK) return -1;
     long exe_cluster = (long)fil.obj.sclust;
     f_close(&fil);
-    return proc_execve(exe_cluster, 0);
+    return proc_execve(exe_cluster, 0, crash_count);
+}
+
+long sys_execve(const char* path) {
+    return _execve(path, 0);
 }
 
 // 링크파일은 클러스터 번호로만 전달되므로 루트 디렉토리에서 같은 클러스터의 파일을 찾는다.
@@ -109,11 +113,25 @@ long sys_link_read(char* buf, long size, long cluster) {
     return (long)br;
 }
 
+// CPU 정지. 보드 전원을 끄는 장치가 없어 HALT로 대신한다.
+__attribute__((noreturn)) static void _halt(void) {
+    __asm__ volatile ("TRAP 0,0,0");
+    for (;;);
+}
+
 // 앱이 끝나면 OS를 다시 올린다. nnix.os를 찾지 못하면 멈춘다.
 void sys_exit(int status) {
     (void)status;
-    sys_execve("nnix.os");
-    for (;;);
+    _execve("nnix.os", 0);
+    _halt();
+}
+
+extern long _crash_count;  // crt0.s: 로더가 넘긴 연속 크래시 횟수
+
+void kernel_crash(void) {
+    if (_crash_count >= 1) _halt();
+    _execve("nnix.os", _crash_count + 1);
+    _halt();
 }
 
 // ── 장치 ──────────────────────────────────────────────────────────

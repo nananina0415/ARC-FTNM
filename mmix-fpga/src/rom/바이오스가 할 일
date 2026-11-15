@@ -6,3 +6,12 @@
 - INT 19h (Bootstrap Loader) 인터럽트
   장치검사 없이 초기화랑 부트로더 로딩만 수행
   이때 특정 레지스터에 디스크 오프셋과 길이를 읽어 램 0번지부터 올림
+  (OS·앱이 넘기는 값: $255=실행파일 클러스터, $254=링크파일 클러스터, $253=연속 크래시 횟수)
+
+앱 실행 직전 (로더)
+- 파일 끝 8바이트 = fix_end (BSS 끝, 링커가 기록). BSS는 파일에 없으므로 이 값으로 배치를 계산
+- gap = (mem_size - fix_end) mod 128, unfix_start = fix_end + gap, unfix_size = mem_size - unfix_start
+- rS = unfix_start + unfix_size * 3/4  (32바이트 정렬)
+- UNSAVE로 rS를 넣고, 로컬 $0=실행파일 클러스터, $1=링크파일 클러스터, $2=mem_size,
+  $3=연속 크래시 횟수($253 그대로)로 넘긴 뒤 0번지로 점프 (hole의 로컬 개수 = 4)
+  (rS는 PUT으로 바꿀 수 없음. 배치 전체는 nnix-os/kernel/mem.h)

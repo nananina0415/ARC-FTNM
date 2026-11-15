@@ -123,7 +123,7 @@ ARC-FTNM/
     │   │   └── bios_rom.h         — BIOS ROM 접근
     │   ├── fs.h/c                 — 파일시스템, 파일 핸들 관리
     │   ├── diskio.c               — FatFs ↔ SD 카드
-    │   ├── mem.h/c                — 메모리 관리
+    │   ├── mem.h/c                — 메모리 배치(힙·두 스택)와 힙 관리
     │   └── proc.h/c               — 앱 실행 ($255=exe클러스터, $254=링크클러스터)
     ├── src/
     │   ├── crt1.s                 — OS 스타트업 (_start 호출)

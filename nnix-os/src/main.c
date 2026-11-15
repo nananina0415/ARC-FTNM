@@ -251,7 +251,7 @@ static void exec_link(app_entry_t* e)
     long exe_cluster = (long)fil.obj.sclust;
     f_close(&fil);
 
-    proc_execve(exe_cluster, link_cluster);
+    proc_execve(exe_cluster, link_cluster, 0);  // 메뉴에서 실행하면 크래시 횟수를 새로 센다
 }
 
 static void exec_app(app_entry_t* e)
@@ -260,7 +260,7 @@ static void exec_app(app_entry_t* e)
     if (f_open(&fil, e->filename, FA_READ) != FR_OK) return;
     long exe_cluster = (long)fil.obj.sclust;
     f_close(&fil);
-    proc_execve(exe_cluster, 0);
+    proc_execve(exe_cluster, 0, 0);
 }
 
 /* ── 진입점 ─────────────────────────────────────────────────── */

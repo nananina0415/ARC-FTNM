@@ -24,6 +24,11 @@ long sys_execve(const char* path);
 long sys_link_read(char* buf, long size, long cluster);  // 링크파일 내용, 읽은 바이트 수
 __attribute__((noreturn)) void sys_exit(int status);    // nnix.os를 다시 실행
 
+// 소프트웨어가 발견한 치명적 오류. 직전 실행이 크래시가 아니면 nnix.os를 다시 실행하고,
+// 연속 두 번째 크래시이거나 nnix.os를 찾지 못하면 CPU를 멈춘다(TRAP 0,0,0).
+// 크래시 횟수는 로더가 $3으로 넘기고 crt0.s가 _crash_count에 보존한다.
+__attribute__((noreturn)) void kernel_crash(void);
+
 // 장치
 long sys_gettime(int* sec, int* usec);
 long sys_video_present(int dev, const void* buf);  // dev: 0=기본 1=HDMI 2=LCD
