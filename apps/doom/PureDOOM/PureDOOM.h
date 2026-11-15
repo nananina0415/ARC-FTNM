@@ -6967,8 +6967,9 @@ typedef struct memblock_s
     if (( (memblock_t *)( (byte *)(p) - sizeof(memblock_t)))->id!=0x1d4a11) \
     { \
         /*I_Error("Error: Z_CT at "__FILE__":%i",__LINE__);*/ \
-        char buf[260]; \
-        doom_strcpy(buf, "Error: Z_CT at " __FILE__ ":"); \
+        /* __FILE__는 빌드 경로(절대 경로)가 이미지에 박히므로 줄 번호만 남긴다. */ \
+        char buf[64]; \
+        doom_strcpy(buf, "Error: Z_CT at line "); \
         doom_concat(buf, doom_itoa(__LINE__, 10)); \
         I_Error(buf); \
     } \
