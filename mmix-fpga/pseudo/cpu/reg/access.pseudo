@@ -1,9 +1,13 @@
 // 실제 의미가 있는 특수 레지스터만 허용한다.
-// 8,9,12..18의 시스템 레지스터는 해당 서브시스템 구현 전까지 미지원.
+// 8,9,12,14,16,17,18의 시스템 레지스터는 해당 서브시스템 구현 전까지 미지원.
+// rT, rK는 TRAP에 필요해 접근을 허용한다. 권한 검사는 아직 없다.
 // rO, rS는 읽기 전용이다. rG, rL은 PUT 값에 사양과 구현 제약을 적용한다.
+// SAVE의 $X는 글로벌이어야 한다.
 comb SpecialAccess {
     pub get: In<bit,1>
     pub put: In<bit,1>
+    pub save: In<bit,1>
+    pub x: In<bit,8>
     pub index: In<bit,5>
     pub value: WordIn
     pub g: In<bit,8>
@@ -11,12 +15,13 @@ comb SpecialAccess {
     pub allowed: Out<bit,1>
     select: Decoder<5,32>
     value_vs_l: Adder<8>
+    x_vs_g: Adder<8>
 }
 
 wire SpecialAccess {
     index -> select.in
-    alias readable = or(select.out[0..8,10,11,19..32])
-    alias writable = or(select.out[0..8,21..32])
+    alias readable = or(select.out[0..8,10,11,13,15,19..32])
+    alias writable = or(select.out[0..8,13,15,21..32])
     alias unsupported_ra_bits = or(value[0..6,8..14,16..WORD_SIZE])
     alias value_high = or(value[8..WORD_SIZE])
     alias value_at_least_32 = or(value[5..8])
@@ -32,12 +37,17 @@ wire SpecialAccess {
     value_vs_l.b <- not(l)
     value_vs_l.c_in <- 1
     value_vs_l.sum -> OPENED
+    x -> x_vs_g.a
+    x_vs_g.b <- not(g)
+    x_vs_g.c_in <- 1
+    x_vs_g.sum -> OPENED
     allowed <- or(
-        not(or(get, put)),
+        not(or(get, put, save)),
+        and(save, x_vs_g.c_out),
         and(get, readable),
         and(put, writable, not(and(select.out[21], unsupported_ra_bits))),
         and(put, select.out[19], put_g_ok),
         and(put, select.out[20]),
     )
-    select.out[8,9,12..19] -> OPENED
+    select.out[8,9,12,14,16,17,18] -> OPENED
 }

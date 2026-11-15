@@ -66,6 +66,14 @@ STACK으로 넘어가고 ALU 쓰기, PC 진행, 메모리 시작을 하지 않�
 | POP_COMMIT | `L←min(k+X',G)`, L>k이면 `l[α-1]←y`, PC←rJ+4YZ, rO−8(k+1) |
 | G_FLUSH, G_CLEAR, G_COMMIT | R이 바뀌면 전부 SPILL, 새로 글로벌이 된 칸을 0으로, G 갱신 |
 
+| SAVE_HOLE, SAVE_FLUSH | hole을 쓰고 L←0, 미저장 칸을 모두 SPILL |
+| SAVE_REQUEST, SAVE_WAIT, SAVE_COMMIT | 글로벌, 특수 레지스터 12개, (rG,rA) 저장. rO←rS, $X←rS−8 |
+| UNSAVE_BASE, UNSAVE_ADDRESS, UNSAVE_REQUEST, UNSAVE_WAIT | rS←($Z 정렬)+8, (rG,rA), 특수 레지스터, 글로벌 순서로 복원 |
+| UNSAVE_HOLE, UNSAVE_LOCALS, UNSAVE_COMMIT | FILL로 hole과 로컬 k개를 읽고 rO←rS, L←k |
+
+특수 레지스터는 GET/PUT 버스로 옮기고 rG만 직접 경로를 쓴다. SAVE의 $X 쓰기는 GETA와 같은
+`address_write_en` 경로라 명령의 레지스터 쓰기로 관찰된다.
+
 X<G인 PUSH는 일반 목적지와 같이 marginal이면 GROW를 거친다. X>=G인 PUSH는 GROW를 한 번
 거쳐 n=L-1로 hole을 쓴다. `$X`가 목적지인 명령은 조건이 거짓인 CS*여도 먼저 L을 늘린다.
 spill/fill은 octa 크기로 MemoryAccess를 사용하며 접근 오류는 fault_reason bit 0이다.
@@ -78,8 +86,8 @@ L이 R에 닿는 경우와 hole 값 k가 R 이상인 경우는 fault_reason bit 
 필요하다. CPU는 I/D-cache를 사용하며 AXI 데이터 쓰기도 활성화되어 있다.
 프로그램 적재는 외부에서 수행한다.
 
-HALT는 정확한 TRAP 0,Halt,0(#00000000) 런타임 관례다. 일반 TRAP/OS 예외 진입은
-미구현이다. enable된 산술 예외는 결과 쓰기 없이 FAULT로 정지한다. ALU의 직접
+HALT는 정확한 TRAP 0,Halt,0(#00000000) 런타임 관례다. XYZ가 0이 아닌 TRAP은 아래의
+trap 진입을 수행한다. enable된 산술 예외는 결과 쓰기 없이 FAULT로 정지한다. ALU의 직접
 특수 레지스터 갱신 경로는 유지하며 GET/PUT 버스는 전용 실행 enable로 제어한다.
 
 fault_reason: bit 0=페치/데이터 접근, bit 1=미지원/무효 명령, bit 2=산술 trip.
@@ -89,6 +97,24 @@ fault_reason: bit 0=페치/데이터 접근, bit 1=미지원/무효 명령, bit 
 CPU 7개 시나리오, ALU/디코더/캐시 검사 및 생성 소스 일치 검사를 통과했다.
 현재 분기 구현과 공통 Condition 분리는 Verilog를 생성했으나 아직 시뮬레이션하지
 않았다. 새 분기 프로그램과 명세는 test/cpu/instructions에 있다.
+
+## TRAP과 SWYM
+
+TRAP은 StackControl의 TRAP_STEP에서 한 클록에 하나씩 수행한다.
+
+| 단계 | 동작 |
+|---|---|
+| 0 | rWW←PC+4 |
+| 1 | rXX←#80000000<<32 \| 명령어 |
+| 2 | rYY←$Y (읽기 포트 1, 논리 번호) |
+| 3 | rZZ←$Z (읽기 포트 2) |
+| 4 | rBB←$255 (읽기 포트 1, 슬롯 255) |
+| 5 | $255←rJ (내부 쓰기) |
+| 6 | rK←0, PC←rT, 명령 완료 |
+
+특수 레지스터는 GET/PUT 버스로 쓴다. 레지스터 창과 L은 바꾸지 않으며 보존은 핸들러의
+책임이다. RESUME은 아직 구현하지 않았으므로 핸들러에서 복귀할 수 없다.
+SWYM은 X, Y, Z와 무관하게 아무 상태도 바꾸지 않고 PC+4로 진행한다. L도 늘리지 않는다.
 
 ## 주소 생성과 특수 레지스터 접근
 

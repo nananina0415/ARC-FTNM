@@ -27,6 +27,10 @@ bundle DecodeControl {  // InstructionDecode 입장
     pop:         Out<bit,1>
     put_g:       Out<bit,1>
     put_l:       Out<bit,1>
+    save:        Out<bit,1>
+    unsave:      Out<bit,1>
+    trap:        Out<bit,1>  // XYZ가 0이 아닌 TRAP. XYZ=0은 halt
+    swym:        Out<bit,1>
     alu_sel:     Out<bit,3>
     op:          Out<bit,4>
     r1_sel:      Out<bit,8>
@@ -77,7 +81,11 @@ wire InstructionDecode {
     alias is_pushgo = sel_pair.out[95]
     alias is_push = or(is_pushj, is_pushgo)
     alias is_pop = and(sel_pair.out[124], not(instruction[24]))
-    alias is_stack = or(is_push, is_pop)
+    alias is_save = and(sel_pair.out[125], not(instruction[24]), not(or(instruction[0..16])))  // Y=Z=0
+    alias is_unsave = and(sel_pair.out[125], instruction[24], not(or(instruction[8..24])))  // X=Y=0
+    alias is_stack = or(is_push, is_pop, is_save, is_unsave)
+    alias is_trap = and(sel_pair.out[0], not(instruction[24]), or(instruction[0..24]))
+    alias is_swym = and(sel_pair.out[126], instruction[24])
     alias is_constant = and(instruction[31], instruction[30], instruction[29], not(instruction[28]))
     alias const_add = and(is_constant, not(instruction[27]))  // SET/INC -> ADDU
     alias const_set = and(const_add, not(instruction[26]))
@@ -86,15 +94,19 @@ wire InstructionDecode {
     alias default_compare = and(not(supported), not(is_constant))
 
     instruction[25..32] -> sel_pair.in
-    sel_pair.out[0..12,32..48,72..81,82,84,88,89,91..95,104..108,109..120,125,126] -> OPENED
+    sel_pair.out[1..12,32..48,72..81,82,84,88,89,91..95,104..108,109..120] -> OPENED
     alias is_halt = not(or(instruction[0..32]))
-    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack))
+    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack, is_trap, is_swym))
     control.halt <- and(instruction_valid, is_halt)
-    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack)))
+    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack, is_trap, is_swym)))
+    control.trap <- and(instruction_valid, is_trap)
+    control.swym <- and(instruction_valid, is_swym)
     control.writes_x <- and(instruction_valid, or(supported, is_constant, is_load, is_geta, and(is_special, is_get), is_push))
     control.push <- and(instruction_valid, is_push)
     control.push_go <- and(instruction_valid, is_pushgo)
     control.pop <- and(instruction_valid, is_pop)
+    control.save <- and(instruction_valid, is_save)
+    control.unsave <- and(instruction_valid, is_unsave)
     control.put_g <- and(instruction_valid, is_special, is_put, instruction[16], instruction[17], not(instruction[18]), not(instruction[19]), instruction[20])
     control.put_l <- and(instruction_valid, is_special, is_put, not(instruction[16]), not(instruction[17]), instruction[18], not(instruction[19]), instruction[20])
     control.memory <- and(instruction_valid, is_memory)

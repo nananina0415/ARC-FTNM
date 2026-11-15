@@ -27,16 +27,16 @@ ADDRESSES={0xf4:'GETA',0xf5:'GETAB'}
 SPECIAL_OPS={0xf6:'PUT',0xf7:'PUTI',0xfe:'GET'}
 ISA.update(ADDRESSES)
 ISA.update(SPECIAL_OPS)
-STACK_OPS={0xbe:'PUSHGO',0xbf:'PUSHGOI',0xf2:'PUSHJ',0xf3:'PUSHJB',0xf8:'POP'}
+STACK_OPS={0xbe:'PUSHGO',0xbf:'PUSHGOI',0xf2:'PUSHJ',0xf3:'PUSHJB',0xf8:'POP',0xfa:'SAVE',0xfb:'UNSAVE',0xfd:'SWYM'}
 ISA.update(STACK_OPS)
-ISA[0] = "HALT"
+ISA[0] = "HALT"  # XYZ=0 stops the CPU; any other XYZ is a general TRAP with the same opcode.
 SPECIAL = ["rB","rD","rE","rH","rJ","rM","rR","rBB","rC","rN","rO","rS","rI","rT","rTT","rK",
            "rQ","rU","rV","rG","rL","rA","rF","rP","rW","rX","rY","rZ","rWW","rXX","rYY","rZZ"]
 RAM_BYTES = 4096 + 32
 MASK = (1 << 64)-1
 LOAD_BASES=set(range(0x80,0x90,2))
 STORE_BASES={0xa2,0xa6,0xaa,0xac,0xae,0xb4}
-SPECIAL_IMPLEMENTED=set(range(8))|set(range(21,32))
+SPECIAL_IMPLEMENTED=set(range(8))|{13,15}|set(range(21,32))  # 13=rT, 15=rK for TRAP
 SPECIAL_STACK_READ_ONLY={10,11}  # rO, rS
 SPECIAL_STACK_CHECKED={19,20}  # rG, rL
 
@@ -67,13 +67,21 @@ def integer(value):
 
 def required_coverage(op):
     """Mandatory semantic boundaries, independent of executed-case discovery."""
-    if not op:return ['stop']
+    if not op:return ['stop','trap_basic','trap_x_field','trap_marginal_operands','trap_global_operands',
+                      'trap_y_255','trap_locals_preserved','trap_rk_cleared']
+    if op==0xfd:return ['swym_zero','swym_fields','swym_no_grow']
     if op in (0xbe,0xbf,0xf2,0xf3):
         return ['basic','x_zero','x_marginal','x_global','x_global_l_zero','return_value','ring_wrap',
                 'spill_fill_r32','spill_fill_r64','spill_fill_r128']
     if op==0xf8:
         return ['pop_zero','pop_one','pop_two','pop_above_l','pop_return_offset','pop_g_clamp_fault',
                 'pop_range_fault','pop_multi_fill']
+    if op==0xfa:
+        return ['save_l_zero','save_locals','save_limit','save_pending','save_x_boundary',
+                'save_special_values','save_x_not_global','save_invalid_z']
+    if op==0xfb:
+        return ['unsave_round_trip','unsave_special_values','unsave_ring_change','unsave_g_below_32',
+                'unsave_z_unaligned','unsave_ra_masked','unsave_count_fault','unsave_invalid_x']
     if op in ADDRESSES:
         return ['basic','destination_register0','destination_register255','zero','one','sign_before','sign_boundary','max_wyde','enables_preserved']
     if op in SPECIAL_OPS:

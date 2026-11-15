@@ -17,6 +17,7 @@ bundle StackDirectIO {  // Registers 입장
     rL_out: Out<bit,8>
     rL_in: In<bit,8>
     rL_w_en: In<bit,1>
+    rT_out: WordOut  // TRAP의 목표 주소
 }
 
 // alpha = (rO/8) mod R, gamma = (rS/8) mod R.

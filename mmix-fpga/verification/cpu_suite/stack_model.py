@@ -6,6 +6,9 @@ power of two not above G. It never reads the RTL or the crosscompiler output.
 from .catalog import MASK, SPECIAL
 
 
+SAVED_SPECIAL = [0, 1, 2, 3, 4, 5, 6, 23, 24, 25, 26, 27]  # rB..rR, rP..rZ
+
+
 class StackFault(Exception):
     def __init__(self, reason, executed=True):
         super().__init__(reason)
@@ -101,6 +104,44 @@ class StackModel:
         self.put('rO', self.get('rO')-8*(k+1))
         self.put('rL', new_l)
 
+    def store_octa(self, value):
+        address = self.get('rS')
+        for i, byte in enumerate(value.to_bytes(8, 'big')): self.memory[address+i] = byte
+        self.put('rS', address+8)
+        self.stores += 1
+
+    def load_octa(self):
+        self.put('rS', self.get('rS')-8)
+        address = self.get('rS')
+        return int.from_bytes(bytes(self.memory.get(address+i, 0xa5) for i in range(8)), 'big')
+
+    def save(self, x):
+        self.increase_l()
+        n = self.get('rL')-1
+        self.slots[self.ring(n)] = n
+        self.put('rO', self.get('rO')+8*(n+1))
+        self.put('rL', 0)
+        while self.pending() != 0: self.spill()
+        for k in range(self.get('rG'), 256): self.store_octa(self.slots[k])
+        for k in SAVED_SPECIAL: self.store_octa(self.spec[k])
+        self.store_octa((self.get('rG') << 56) | self.get('rA'))
+        self.put('rO', self.get('rS'))
+        self.write(x, self.get('rS')-8)
+
+    def unsave(self, z):
+        self.put('rS', (z & ~7 & MASK)+8)
+        word = self.load_octa()
+        self.put('rG', max(word >> 56, 32))
+        self.put('rA', word & 0xc0c0)
+        for k in reversed(SAVED_SPECIAL): self.spec[k] = self.load_octa()
+        for k in range(255, self.get('rG')-1, -1): self.slots[k] = self.load_octa()
+        self.fill()
+        count = self.slots[self.gamma] & 0xff
+        if count >= self.R: raise StackFault(2)
+        for _ in range(count): self.fill()
+        self.put('rO', self.get('rS'))
+        self.put('rL', count)
+
     def put_special(self, name, value):
         if name == 'rL':
             if value < self.get('rL'): self.put('rL', value)
@@ -118,6 +159,18 @@ class StackModel:
 
     def step(self, instruction):
         op = instruction[0]
+        if op == 'RAW' or (op == 'SAVE' and instruction[1] < self.get('rG')):
+            raise StackFault(2, executed=False)
+        if op == 'SAVE':
+            self.visits[self.pc] = self.visits.get(self.pc, 0)+1
+            self.save(instruction[1])
+            self.pc += 4
+            return True
+        if op == 'UNSAVE':
+            self.visits[self.pc] = self.visits.get(self.pc, 0)+1
+            self.unsave(self.read(instruction[1]))
+            self.pc += 4
+            return True
         if op == 'PUT' and instruction[1] == 'rG':
             value = self.operand(instruction[2])
             self.put_special('rG', value)
@@ -125,7 +178,21 @@ class StackModel:
             self.pc += 4
             return True
         self.visits[self.pc] = self.visits.get(self.pc, 0)+1
-        if op == 'TRAP': return False
+        if op == 'TRAP' and len(instruction) == 1: return False
+        if op == 'SWYM':
+            self.pc += 4
+            return True
+        if op == 'TRAP':
+            x, y, z = instruction[1:]
+            self.put('rWW', self.pc+4)
+            self.put('rXX', (1 << 63) | (x << 16) | (y << 8) | z)
+            self.put('rYY', self.read(y))
+            self.put('rZZ', self.read(z))
+            self.put('rBB', self.slots[255])
+            self.slots[255] = self.get('rJ')
+            self.put('rK', 0)
+            self.pc = self.get('rT')
+            return True
         if op == 'PUSHJ':
             self.push(instruction[1], self.labels[instruction[2]])
         elif op == 'PUSHGO':

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "id": "halt.trap_basic",
+  "target": {
+    "mnemonic": "HALT",
+    "opcode": "0x00",
+    "pc": "0x0",
+    "word": "0x00010102",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "trap_basic"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000010",
+      "$1": "0x0000000000000011",
+      "$2": "0x0000000000000022",
+      "$3": "0x0000000000000033",
+      "$4": "0x0000000000000044",
+      "$200": "0x0000000000000200",
+      "$255": "0x00000000000000aa"
+    },
+    "special": {
+      "rJ": "0x0000000000001234",
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rT": "0x0000000000000008",
+      "rK": "0x0000000000005555",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$255": "0x0000000000001234"
+    },
+    "special": {
+      "rBB": "0x00000000000000aa",
+      "rK": "0x0000000000000000",
+      "rWW": "0x0000000000000004",
+      "rXX": "0x8000000000010102",
+      "rYY": "0x0000000000000011",
+      "rZZ": "0x0000000000000022"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "trap_basic"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

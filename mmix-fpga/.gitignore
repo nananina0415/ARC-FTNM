@@ -45,3 +45,9 @@ Desktop.ini
 
 # Generated RTL in src/cpu and .mms/.case.json tests are versioned sources.
 # Do not broadly ignore Verilog, memory images, JSON, or HTML files.
+
+
+/ARC-FTNM/
+
+# 보드 제조사 자료(매뉴얼, 회로도, 예제). 저장소에 넣지 않는다.
+/PA100T-EDU/

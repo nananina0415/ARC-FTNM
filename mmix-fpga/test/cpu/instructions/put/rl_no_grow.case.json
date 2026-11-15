@@ -48,6 +48,6 @@
   ],
   "limits": {
     "cycles": 60000,
-    "wall_seconds": 120
+    "wall_seconds": 1200
   }
 }

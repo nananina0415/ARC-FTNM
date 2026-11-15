@@ -6,7 +6,14 @@
       "opcode": "0x00",
       "supported": true,
       "required_coverage": [
-        "stop"
+        "stop",
+        "trap_basic",
+        "trap_x_field",
+        "trap_marginal_operands",
+        "trap_global_operands",
+        "trap_y_255",
+        "trap_locals_preserved",
+        "trap_rk_cleared"
       ]
     },
     {
@@ -4755,6 +4762,8 @@
         "rM",
         "rR",
         "rBB",
+        "rT",
+        "rK",
         "rA",
         "rF",
         "rP",
@@ -4800,6 +4809,8 @@
         "rM",
         "rR",
         "rBB",
+        "rT",
+        "rK",
         "rA",
         "rF",
         "rP",
@@ -4830,6 +4841,46 @@
       ]
     },
     {
+      "mnemonic": "SAVE",
+      "opcode": "0xfa",
+      "supported": true,
+      "required_coverage": [
+        "save_l_zero",
+        "save_locals",
+        "save_limit",
+        "save_pending",
+        "save_x_boundary",
+        "save_special_values",
+        "save_x_not_global",
+        "save_invalid_z"
+      ]
+    },
+    {
+      "mnemonic": "UNSAVE",
+      "opcode": "0xfb",
+      "supported": true,
+      "required_coverage": [
+        "unsave_round_trip",
+        "unsave_special_values",
+        "unsave_ring_change",
+        "unsave_g_below_32",
+        "unsave_z_unaligned",
+        "unsave_ra_masked",
+        "unsave_count_fault",
+        "unsave_invalid_x"
+      ]
+    },
+    {
+      "mnemonic": "SWYM",
+      "opcode": "0xfd",
+      "supported": true,
+      "required_coverage": [
+        "swym_zero",
+        "swym_fields",
+        "swym_no_grow"
+      ]
+    },
+    {
       "mnemonic": "GET",
       "opcode": "0xfe",
       "supported": true,
@@ -4855,6 +4906,8 @@
         "rM",
         "rR",
         "rBB",
+        "rT",
+        "rK",
         "rA",
         "rF",
         "rP",

@@ -309,7 +309,8 @@ wire Registers {
     // 일반 특수 레지스터는 버스만 사용. 전용 칸은 접근하지 않음.
     { specials[0..32].direct_w_en } <= 0
     { specials[0..32].direct_in } <= 0
-    specials[0..32].direct_out -> OPENED
+    specials[0..13,14..32].direct_out -> OPENED
+    specials[rT].direct_out -> stack.rT_out
     { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].enable } <= 0
     { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].rw } <= 0
     { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].data } <= OPENED

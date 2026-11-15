@@ -1,4 +1,4 @@
-// 레지스터 스택의 여러 클록 동작을 수행한다. EXECUTE에서 required=1이면 Control이
+// 레지스터 스택과 TRAP의 여러 클록 동작을 수행한다. EXECUTE에서 required=1이면 Control이
 // STACK 상태로 넘어오고, start=1인 에지부터 이 FSM이 진행한다.
 // retry: EXECUTE를 다시 수행, retire: 명령 완료, range_fault/access_fault: 정지.
 seq StackControl {
@@ -10,8 +10,14 @@ seq StackControl {
     pub pop: In<bit,1>
     pub put_g: In<bit,1>
     pub put_l: In<bit,1>  // PUT rL 완료 에지. 여러 클록이 필요 없다
+    pub save: In<bit,1>
+    pub unsave: In<bit,1>
+    pub trap: In<bit,1>
+    pub rJ: WordIn
+    pub pc_next: WordIn  // TRAP의 rWW
+    pub instruction: In<bit,32>  // TRAP의 rXX
     pub x: In<bit,8>
-    pub value: WordIn  // PUT 값
+    pub value: WordIn  // PUT 값, UNSAVE의 $Z
     pub r1_data: WordIn
 
     pub rG: In<bit,8>
@@ -31,6 +37,8 @@ seq StackControl {
     pub retry: Out<bit,1>
     pub retire: Out<bit,1>
     pub push_retire: Out<bit,1>
+    pub save_write: Out<bit,1>  // SAVE 완료 에지. $X에 save_address를 쓴다
+    pub save_address: WordOut
     pub range_fault: Out<bit,1>
     pub access_fault: Out<bit,1>
 
@@ -40,18 +48,28 @@ seq StackControl {
     pub w_slot: Out<bit,8>
     pub w_data: WordOut
 
+    // SAVE/UNSAVE가 특수 레지스터를 옮길 때 쓰는 GET/PUT 버스 제어
+    pub special_en: Out<bit,1>
+    pub special_write: Out<bit,1>
+    pub special_sel: Out<bit,5>
+    pub special_data: WordIn
+    pub special_value: WordOut
+
     pub mem_valid: Out<bit,1>
     pub mem_store: Out<bit,1>
+    pub mem_write_data: WordOut
     pub mem_ready: In<bit,1>
     pub mem_res_valid: In<bit,1>
     pub mem_res_ready: Out<bit,1>
     pub mem_read_data: WordIn
     pub mem_error: In<bit,1>
 
-    mut state: reg::ValueReg<4>
+    mut state: reg::ValueReg<5>
     mut y: reg::ValueReg<WORD_SIZE>  // POP이 hole로 옮길 값
     mut k: reg::ValueReg<8>  // hole이 기록한 PUSH 칸 수 - 1
-    sel: Decoder<4,16>
+    mut index: reg::ValueReg<8>  // SAVE/UNSAVE가 옮기는 레지스터 번호, UNSAVE의 남은 로컬 수
+    mut phase: reg::ValueReg<2>  // 0: 글로벌, 1: 특수 레지스터, 2: (rG,rA)
+    sel: Decoder<5,32>
     geometry: reg::RingGeometry
 
     x_vs_g: Adder<8>
@@ -67,8 +85,8 @@ seq StackControl {
     minus_one: Adder<8>
     offset: Mux<3,8>
     ring_add: Adder<7>
-    slot: Mux<3,8>
-    data: Mux<4,WORD_SIZE>
+    slot: Mux<4,8>
+    data: Mux<5,WORD_SIZE>
     y_source: Mux<2,WORD_SIZE>
 
     increment_source: Mux<2,8>
@@ -83,11 +101,22 @@ seq StackControl {
     pop_l: Mux<2,8>
     k_vs_l: Adder<8>
 
-    l_source: Mux<4,8>
-    g_source: Mux<2,8>
+    l_source: Mux<5,8>
+    g_load: Mux<2,8>
+    g_source: Mux<3,8>
     o_count: Mux<2,8>
     o_add: Adder<WORD_SIZE>
+    o_source: Mux<2,WORD_SIZE>
+    s_base: Mux<2,WORD_SIZE>
     s_add: Adder<WORD_SIZE>
+
+    index_step: Adder<8>
+    index_source: Mux<7,8>
+    index_vs_g: Adder<8>
+    store_source: Mux<3,WORD_SIZE>
+    special_index: Mux<3,5>
+    trap_register: Mux<7,5>
+    special_source: Mux<6,WORD_SIZE>
 }
 
 wire StackControl {
@@ -108,6 +137,19 @@ wire StackControl {
         G_CLEAR=13
         G_FLUSH=14
         G_COMMIT=15
+        SAVE_HOLE=16
+        SAVE_FLUSH=17
+        SAVE_REQUEST=18
+        SAVE_WAIT=19
+        SAVE_COMMIT=20
+        UNSAVE_BASE=21
+        UNSAVE_ADDRESS=22
+        UNSAVE_REQUEST=23
+        UNSAVE_WAIT=24
+        UNSAVE_HOLE=25
+        UNSAVE_LOCALS=26
+        UNSAVE_COMMIT=27
+        TRAP_STEP=28
     }
     alias idle = sel.out[IDLE]
     alias grow = sel.out[GROW]
@@ -125,11 +167,36 @@ wire StackControl {
     alias g_clear = sel.out[G_CLEAR]
     alias g_flush = sel.out[G_FLUSH]
     alias g_commit = sel.out[G_COMMIT]
+    alias save_hole = sel.out[SAVE_HOLE]
+    alias save_flush = sel.out[SAVE_FLUSH]
+    alias save_request = sel.out[SAVE_REQUEST]
+    alias save_wait = sel.out[SAVE_WAIT]
+    alias save_commit = sel.out[SAVE_COMMIT]
+    alias unsave_base = sel.out[UNSAVE_BASE]
+    alias unsave_address = sel.out[UNSAVE_ADDRESS]
+    alias unsave_request = sel.out[UNSAVE_REQUEST]
+    alias unsave_wait = sel.out[UNSAVE_WAIT]
+    alias unsave_hole = sel.out[UNSAVE_HOLE]
+    alias unsave_locals = sel.out[UNSAVE_LOCALS]
+    alias unsave_commit = sel.out[UNSAVE_COMMIT]
+    alias trap_step = sel.out[TRAP_STEP]
+    sel.out[29..32] -> OPENED
+
+    // TRAP 단계: 0 rWW, 1 rXX, 2 rYY, 3 rZZ, 4 rBB, 5 $255, 6 rK와 PC.
+    alias step0 = and(trap_step, not(index.out[0]), not(index.out[1]), not(index.out[2]))
+    alias step1 = and(trap_step, index.out[0], not(index.out[1]), not(index.out[2]))
+    alias step2 = and(trap_step, not(index.out[0]), index.out[1], not(index.out[2]))
+    alias step3 = and(trap_step, index.out[0], index.out[1], not(index.out[2]))
+    alias step4 = and(trap_step, not(index.out[0]), not(index.out[1]), index.out[2])
+    alias step5 = and(trap_step, index.out[0], not(index.out[1]), index.out[2])
+    alias step6 = and(trap_step, not(index.out[0]), index.out[1], index.out[2])
 
     alias x_global = x_vs_g.c_out
     alias x_local = not(x_vs_l.c_out)
     alias need_grow = and(writes_x, not(x_global), not(x_local))
     alias push_global = and(push, x_global)
+    alias hole_path = or(push_global, save)  // L을 한 칸 늘린 뒤 그 칸에 hole을 쓴다
+    alias hole_commit = or(push_commit, save_hole)
     alias mask5 = geometry.mask[5]
     alias mask6 = geometry.mask[6]
 
@@ -147,11 +214,25 @@ wire StackControl {
     alias pop_ok = and(pop_commit, not(pop_bad))
     alias pop_writes_hole = not(k_vs_l.c_out)
     alias res_ok = and(mem_res_valid, not(mem_error))
+    alias l_nonzero = or(rL[0..8])
 
-    clock => { state.clock, y.clock, k.clock }
-    reset => { state.reset, y.reset, k.reset }
+    alias phase_global = not(or(phase.out[0..2]))
+    alias phase_special = phase.out[0]
+    alias phase_pack = phase.out[1]
+    alias index_max = and(index.out[0..8])
+    alias index_zero = not(or(index.out[0..8]))
+    alias index_6 = and(not(index.out[0]), index.out[1], index.out[2], not(or(index.out[3..8])))
+    alias index_23 = and(index.out[0], index.out[1], index.out[2], not(index.out[3]), index.out[4], not(or(index.out[5..8])))
+    alias index_27 = and(index.out[0], index.out[1], not(index.out[2]), index.out[3], index.out[4], not(or(index.out[5..8])))
+    alias index_at_g = not(or(index_vs_g.sum[0..8]))
+    alias save_done = and(save_wait, res_ok)
+    alias unsave_done = and(unsave_wait, res_ok)
+    alias slot_is_index = and(phase_global, or(save_request, unsave_wait))
 
-    required <- or(need_grow, push, pop, put_g)
+    clock => { state.clock, y.clock, k.clock, index.clock, phase.clock }
+    reset => { state.reset, y.reset, k.reset, index.reset, phase.reset }
+
+    required <- or(need_grow, push, pop, put_g, save, unsave, trap)
     rG -> geometry.g
     rO -> geometry.rO
     rS -> geometry.rS
@@ -177,6 +258,10 @@ wire StackControl {
     value_vs_l.b <- not(rL)
     value_vs_l.c_in <- 1
     value_vs_l.sum -> OPENED
+    index.out -> index_vs_g.a
+    index_vs_g.b <- not(rG)
+    index_vs_g.c_in <- 1
+    index_vs_g.c_out -> OPENED
 
     // ring에 있고 메모리에는 없는 칸 수
     pending.a <- [ rO[3..12] ]
@@ -195,16 +280,26 @@ wire StackControl {
 
     // 다음 상태
     alias enter = and(idle, start)
-    alias next_grow = and(enter, or(need_grow, push_global))
+    alias next_grow = and(enter, or(need_grow, hole_path))
     alias next_check = and(grow, not(grow_bad))
-    alias next_spill_request = or(and(check, ring_full), and(spill_request, not(mem_ready)), and(g_flush, not(pending_zero)))
+    alias next_spill_request = or(
+        and(check, ring_full),
+        and(spill_request, not(mem_ready)),
+        and(g_flush, not(pending_zero)),
+        and(save_flush, not(pending_zero)),
+    )
     alias next_spill_wait = or(and(spill_request, mem_ready), and(spill_wait, not(mem_res_valid)))
     alias next_pop_read = and(enter, not(need_grow), pop)
     alias next_pop_base = pop_read
-    alias next_fill_address = or(and(pop_base, pending_zero), and(pop_hole, not(hole_bad), hole_needs_fill))
+    alias next_fill_address = or(
+        and(pop_base, pending_zero),
+        and(pop_hole, not(hole_bad), hole_needs_fill),
+        and(unsave_done, phase_global, index_at_g),
+        and(unsave_locals, not(index_zero)),
+    )
     alias next_fill_request = or(fill_address, and(fill_request, not(mem_ready)))
     alias next_fill_wait = or(and(fill_request, mem_ready), and(fill_wait, not(mem_res_valid)))
-    alias next_pop_hole = or(and(pop_base, not(pending_zero)), and(fill_wait, res_ok))
+    alias next_pop_hole = or(and(pop_base, not(pending_zero)), and(fill_wait, res_ok, not(unsave)))
     alias next_pop_commit = and(pop_hole, not(hole_bad), not(hole_needs_fill))
     alias next_push_commit = or(
         and(enter, not(need_grow), push, not(push_global)),
@@ -214,23 +309,43 @@ wire StackControl {
     alias next_g_clear = or(and(enter, put_g, not(ring_changes)), and(g_flush, pending_zero), and(g_clear, g_above))
     alias next_g_flush = or(and(enter, put_g, ring_changes), and(spill_wait, res_ok, put_g))
     alias next_g_commit = and(g_clear, not(g_above))
+    alias next_save_hole = or(and(check, not(ring_full), save), and(spill_wait, res_ok, save, l_nonzero))
+    alias next_save_flush = or(save_hole, and(spill_wait, res_ok, save, not(l_nonzero)))
+    alias next_save_request = or(
+        and(save_flush, pending_zero),
+        and(save_request, not(mem_ready)),
+        and(save_done, not(phase_pack)),
+    )
+    alias next_save_wait = or(and(save_request, mem_ready), and(save_wait, not(mem_res_valid)))
+    alias next_save_commit = and(save_done, phase_pack)
+    alias next_unsave_base = and(enter, unsave)
+    alias next_unsave_address = or(unsave_base, and(unsave_done, not(and(phase_global, index_at_g))))
+    alias next_unsave_request = or(unsave_address, and(unsave_request, not(mem_ready)))
+    alias next_unsave_wait = or(and(unsave_request, mem_ready), and(unsave_wait, not(mem_res_valid)))
+    alias next_unsave_hole = and(fill_wait, res_ok, unsave, phase_global)
+    alias next_unsave_locals = or(and(unsave_hole, not(hole_bad)), and(fill_wait, res_ok, unsave, not(phase_global)))
+    alias next_unsave_commit = and(unsave_locals, index_zero)
+    alias trap_enter = and(enter, trap)
+    alias next_trap_step = or(trap_enter, and(trap_step, not(step6)))
 
     state.w_en <- 1
     state.out -> sel.in
-    state.in[0] <- or(next_grow, next_spill_request, next_pop_read, next_fill_address, next_fill_wait, next_pop_commit, next_g_clear, next_g_commit)
-    state.in[1] <- or(next_check, next_spill_request, next_pop_base, next_fill_address, next_pop_hole, next_pop_commit, next_g_flush, next_g_commit)
-    state.in[2] <- or(next_spill_wait, next_pop_read, next_pop_base, next_fill_address, next_push_commit, next_g_clear, next_g_flush, next_g_commit)
-    state.in[3] <- or(next_fill_request, next_fill_wait, next_pop_hole, next_pop_commit, next_push_commit, next_g_clear, next_g_flush, next_g_commit)
+    state.in[0] <- or(next_grow, next_spill_request, next_pop_read, next_fill_address, next_fill_wait, next_pop_commit, next_g_clear, next_g_commit, next_save_flush, next_save_wait, next_unsave_base, next_unsave_request, next_unsave_hole, next_unsave_commit)
+    state.in[1] <- or(next_check, next_spill_request, next_pop_base, next_fill_address, next_pop_hole, next_pop_commit, next_g_flush, next_g_commit, next_save_request, next_save_wait, next_unsave_address, next_unsave_request, next_unsave_locals, next_unsave_commit)
+    state.in[2] <- or(next_spill_wait, next_pop_read, next_pop_base, next_fill_address, next_push_commit, next_g_clear, next_g_flush, next_g_commit, next_save_commit, next_unsave_base, next_unsave_address, next_unsave_request, next_trap_step)
+    state.in[3] <- or(next_fill_request, next_fill_wait, next_pop_hole, next_pop_commit, next_push_commit, next_g_clear, next_g_flush, next_g_commit, next_unsave_wait, next_unsave_hole, next_unsave_locals, next_unsave_commit, next_trap_step)
+    state.in[4] <- or(next_save_hole, next_save_flush, next_save_request, next_save_wait, next_save_commit, next_unsave_base, next_unsave_address, next_unsave_request, next_unsave_wait, next_unsave_hole, next_unsave_locals, next_unsave_commit, next_trap_step)
 
-    retry <- or(and(check, not(ring_full), not(push_global)), and(spill_wait, res_ok, not(push_global), not(put_g)))
-    retire <- or(push_commit, pop_ok, g_commit)
+    retry <- or(and(check, not(ring_full), not(hole_path)), and(spill_wait, res_ok, not(hole_path), not(put_g)))
+    retire <- or(push_commit, pop_ok, g_commit, save_commit, unsave_commit, step6)
     push_commit -> push_retire
-    range_fault <- or(grow_bad, and(pop_hole, hole_bad), and(pop_commit, pop_bad))
-    access_fault <- and(or(spill_wait, fill_wait), mem_res_valid, mem_error)
+    save_commit -> save_write
+    range_fault <- or(grow_bad, and(pop_hole, hole_bad), and(pop_commit, pop_bad), and(unsave_hole, hole_bad))
+    access_fault <- and(or(spill_wait, fill_wait, save_wait, unsave_wait), mem_res_valid, mem_error)
 
     // 슬롯 계산. minus_one은 hole 위치(-1), X-1, L-1, G-1을 만든다.
     minus_one_source.select[0] <- or(pop_read, g_clear)
-    minus_one_source.select[1] <- or(and(push_commit, push_global), g_clear)
+    minus_one_source.select[1] <- or(and(push_commit, push_global), save_hole, g_clear)
     minus_one_source.option[0] <- 0
     minus_one_source.option[1] <- x
     minus_one_source.option[2] <- rL
@@ -241,7 +356,7 @@ wire StackControl {
     minus_one.c_out -> OPENED
 
     offset.select[0] <- and(push_commit, not(push_global))
-    offset.select[1] <- or(pop_read, pop_hole, pop_commit, and(push_commit, push_global))
+    offset.select[1] <- or(pop_read, pop_hole, pop_commit, and(push_commit, push_global), save_hole)
     offset.option[0] <- rL
     offset.option[1] <- x
     offset.option[2] <- minus_one.sum
@@ -250,27 +365,33 @@ wire StackControl {
     ring_add.c_in <- 0
     ring_add.c_out -> OPENED
 
-    slot.select[0] <- or(spill_request, fill_wait)
-    slot.select[1] <- g_clear
+    // 0: ring, 1: gamma, 2: minus_one(G-1, TRAP에서는 0-1=255), 3: index(글로벌 번호 그대로)
+    slot.select[0] <- or(spill_request, fill_wait, unsave_hole, slot_is_index)
+    slot.select[1] <- or(g_clear, slot_is_index, trap_step)
     slot.option[0][0..7] <- and(ring_add.sum, geometry.mask)
     slot.option[0][7] <- 0
     slot.option[1][0..7] <- geometry.gamma
     slot.option[1][7] <- 0
     slot.option[2] <- minus_one.sum
+    slot.option[3] <- index.out
     slot.selected -> r1_slot
     slot.selected -> w_slot
-    r1_physical <- or(spill_request, pop_read, pop_hole)
+    r1_physical <- or(spill_request, pop_read, pop_hole, unsave_hole, and(save_request, phase_global), step4)
 
-    // 내부 쓰기: GROW/G_CLEAR는 0, PUSH는 hole 값, POP은 y, FILL은 메모리 값.
+    // 내부 쓰기: GROW/G_CLEAR는 0, PUSH/SAVE는 hole 값, POP은 y, FILL/UNSAVE는 메모리 값, TRAP은 rJ.
     w_en <- or(
         and(grow, not(grow_bad)),
-        push_commit,
+        hole_commit,
         and(pop_ok, pop_writes_hole),
         and(fill_wait, res_ok),
         and(g_clear, g_above),
+        and(unsave_done, phase_global),
+        step5,
     )
-    data.select[0] <- or(push_commit, fill_wait)
-    data.select[1] <- or(pop_commit, fill_wait)
+    data.select[0] <- or(hole_commit, fill_wait, unsave_wait)
+    data.select[1] <- or(pop_commit, fill_wait, unsave_wait)
+    data.select[2] <- trap_step
+    rJ -> data.option[4]
     data.option[0] <- 0
     data.option[1][0..8] <- offset.selected
     { data.option[1][8..WORD_SIZE] } <= 0
@@ -284,10 +405,10 @@ wire StackControl {
     y_source.option[1] <- r1_data
     y.w_en <- pop_read
     y_source.selected -> y.in
-    k.w_en <- pop_hole
+    k.w_en <- or(pop_hole, unsave_hole)
     k.in <- [ r1_data[0..8] ]
 
-    // PUSH: 칸 수 = X+1 또는 L. POP: 칸 수 = k+1.
+    // PUSH: 칸 수 = X+1 또는 L. SAVE: L. POP: k+1.
     increment_source.select <- pop
     increment_source.option[0] <- x
     increment_source.option[1] <- k.out
@@ -295,7 +416,7 @@ wire StackControl {
     increment.b <- 0
     increment.c_in <- 1
     increment.c_out -> OPENED
-    count.select <- push_global
+    count.select <- hole_path
     count.option[0] <- increment.sum
     count.option[1] <- rL
 
@@ -327,23 +448,107 @@ wire StackControl {
     k_vs_l.c_in <- 1
     k_vs_l.sum -> OPENED
 
+    // SAVE: 글로벌 G..255, 번호 0..6, 번호 23..27, (rG,rA) 순서로 저장한다.
+    // UNSAVE: (rG,rA), 번호 27..23, 번호 6..0, 글로벌 255..G 순서로 읽는다.
+    { index_step.b[0..8] } <= unsave
+    index_step.a <- index.out
+    index_step.c_in <- not(unsave)
+    index_step.c_out -> OPENED
+    alias index_to_g = and(save_flush, pending_zero)
+    alias index_to_23 = and(save_done, phase_special, index_6)
+    alias index_to_6 = and(unsave_done, phase_special, index_23)
+    alias index_to_27 = and(unsave_done, phase_pack)
+    index_source.select[0] <- or(index_to_g, index_to_6, unsave_hole)
+    index_source.select[1] <- or(index_to_23, index_to_6, trap_enter)
+    index_source.select[2] <- or(index_to_27, unsave_hole, trap_enter)
+    index_source.option[6] <- 0
+    index_source.option[0] <- index_step.sum
+    index_source.option[1] <- rG
+    index_source.option[2] <- 23
+    index_source.option[3] <- 6
+    index_source.option[4] <- 27
+    index_source.option[5] <- [ r1_data[0..8] ]
+    index_source.selected -> index.in
+    index.w_en <- or(index_to_g, save_done, unsave_done, unsave_hole, and(unsave_locals, not(index_zero)), trap_enter, trap_step)
+
+    phase.w_en <- or(
+        index_to_g,
+        and(save_done, phase_global, index_max),
+        and(save_done, phase_special, index_27),
+        unsave_base,
+        index_to_27,
+        and(unsave_done, phase_special, index_zero),
+        unsave_hole,
+    )
+    phase.in[0] <- or(and(save_done, phase_global), index_to_27, unsave_hole)
+    phase.in[1] <- or(and(save_done, phase_special), unsave_base)
+
+    // 저장 데이터: spill과 글로벌은 읽기 포트 1, 특수 레지스터는 버스, 마지막 칸은 (rG,rA).
+    store_source.select[0] <- and(save_request, phase_special)
+    store_source.select[1] <- and(save_request, phase_pack)
+    store_source.option[0] <- r1_data
+    store_source.option[1] <- special_data
+    store_source.option[2][0..56] <- special_data[0..56]
+    store_source.option[2][56..WORD_SIZE] <- rG
+    store_source.selected -> mem_write_data
+
+    special_index.select[0] <- and(phase_pack, not(trap_step))
+    special_index.select[1] <- trap_step
+    special_index.option[0] <- [ index.out[0..5] ]
+    special_index.option[1] <- 21  // rA
+    special_index.option[2] <- trap_register.selected
+    special_index.selected -> special_sel
+    trap_register.select <- [ index.out[0..3] ]
+    trap_register.option[0] <- 28  // rWW
+    trap_register.option[1] <- 29  // rXX
+    trap_register.option[2] <- 30  // rYY
+    trap_register.option[3] <- 31  // rZZ
+    trap_register.option[4] <- 7   // rBB
+    trap_register.option[5] <- 7   // 이 단계는 버스를 쓰지 않는다
+    trap_register.option[6] <- 15  // rK
+    alias trap_special = and(trap_step, not(step5))
+    special_write <- or(and(unsave_done, not(phase_global)), trap_special)
+    special_en <- or(and(save_request, not(phase_global)), and(unsave_done, not(phase_global)), trap_special)
+
+    // 버스에 쓸 값. 0: UNSAVE의 메모리 값, 1~5: TRAP 단계별 값.
+    special_source.select[0] <- or(step0, step2, step4, step6)
+    special_source.select[1] <- or(step1, step2, step4)
+    special_source.select[2] <- or(step3, step6)
+    special_source.option[0] <- mem_read_data
+    special_source.option[1] <- pc_next
+    special_source.option[2][0..32] <- instruction
+    { special_source.option[2][32..63] } <= 0
+    special_source.option[2][63] <- 1
+    special_source.option[3] <- r1_data  // step2: $Y, step4: $255
+    special_source.option[4] <- value    // $Z
+    special_source.option[5] <- 0
+    special_source.selected -> special_value
+
     // 상태 레지스터 갱신
-    l_source.select[0] <- or(push_commit, put_l)
+    l_source.select[0] <- or(hole_commit, put_l)
     l_source.select[1] <- or(pop_commit, put_l)
+    l_source.select[2] <- unsave_commit
     l_source.option[0] <- l_increment.sum
     l_source.option[1] <- l_subtract.sum
     l_source.option[2] <- pop_l.selected
     l_source.option[3] <- [ value[0..8] ]
+    l_source.option[4] <- k.out
     l_source.selected -> rL_in
-    rL_w_en <- or(and(grow, not(grow_bad)), push_commit, pop_ok, and(put_l, value_below_l))
+    rL_w_en <- or(and(grow, not(grow_bad)), hole_commit, pop_ok, and(put_l, value_below_l), unsave_commit)
 
-    g_source.select <- g_commit
+    // 저장된 G가 32보다 작으면 32로 복원한다.
+    g_load.select <- or(mem_read_data[61..64])
+    g_load.option[0] <- 32
+    g_load.option[1] <- [ mem_read_data[56..64] ]
+    g_source.select[0] <- g_commit
+    g_source.select[1] <- unsave_wait
     g_source.option[0] <- minus_one.sum
     g_source.option[1] <- [ value[0..8] ]
+    g_source.option[2] <- g_load.selected
     g_source.selected -> rG_in
-    rG_w_en <- or(and(g_clear, g_above), g_commit)
+    rG_w_en <- or(and(g_clear, g_above), g_commit, and(unsave_done, phase_pack))
 
-    // rO에 8*칸 수를 더하거나 뺀다.
+    // rO에 8*칸 수를 더하거나 뺀다. SAVE/UNSAVE 완료에서는 rS와 같아진다.
     o_count.select <- pop
     o_count.option[0] <- count.selected
     o_count.option[1] <- not(count.selected)
@@ -353,20 +558,29 @@ wire StackControl {
     { o_add.b[11..WORD_SIZE] } <= pop
     o_add.c_in <- pop
     o_add.c_out -> OPENED
-    o_add.sum -> rO_in
-    rO_w_en <- or(push_commit, pop_ok)
+    o_source.select <- or(save_commit, unsave_commit)
+    o_source.option[0] <- o_add.sum
+    o_source.option[1] <- rS
+    o_source.selected -> rO_in
+    rO_w_en <- or(hole_commit, pop_ok, save_commit, unsave_commit)
 
-    // rS는 8씩 움직인다. FILL_ADDRESS에서 -8, SPILL 완료에서 +8.
-    rS -> s_add.a
+    // rS는 8씩 움직인다. UNSAVE 시작에서는 정렬한 $Z + 8이 된다.
+    alias s_down = or(fill_address, unsave_address, save_commit)
+    s_base.select <- unsave_base
+    s_base.option[0] <- rS
+    { s_base.option[1][0..3] } <= 0
+    s_base.option[1][3..WORD_SIZE] <- [ value[3..WORD_SIZE] ]
+    s_base.selected -> s_add.a
     { s_add.b[0..3] } <= 0
     s_add.b[3] <- 1
-    { s_add.b[4..WORD_SIZE] } <= fill_address
+    { s_add.b[4..WORD_SIZE] } <= s_down
     s_add.c_in <- 0
     s_add.c_out -> OPENED
     s_add.sum -> rS_in
-    rS_w_en <- or(and(spill_wait, res_ok), fill_address)
+    s_add.sum -> save_address
+    rS_w_en <- or(and(spill_wait, res_ok), fill_address, save_done, unsave_base, unsave_address)
 
-    mem_valid <- or(spill_request, fill_request)
-    mem_store <- spill_request
-    mem_res_ready <- or(and(spill_wait, mem_res_valid), and(fill_wait, mem_res_valid))
+    mem_valid <- or(spill_request, fill_request, save_request, unsave_request)
+    mem_store <- or(spill_request, save_request)
+    mem_res_ready <- and(or(spill_wait, fill_wait, save_wait, unsave_wait), mem_res_valid)
 }

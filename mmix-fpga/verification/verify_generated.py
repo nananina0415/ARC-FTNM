@@ -260,6 +260,7 @@ class Checks:
         vectors += [(word, valid) for word in (0, 1, 0x100, 0x10000) for valid in (0, 1)]
         vectors += [(word,valid) for index in range(33) for word in (
             0xfe030000|index,0xf6000002|(index<<16),0xf70000c0|(index<<16)) for valid in (0,1)]
+        vectors += [(word,valid) for word in (0xfaff0000,0xfaff0001,0xfaff0100,0xfb0000ff,0xfb0100ff,0xfb0001ff) for valid in (0,1)]
         for index, (word, input_valid) in enumerate(vectors):
             opcode, x, y, z = word >> 24, (word >> 16) & 255, (word >> 8) & 255, word & 255
             constant=0xe0<=opcode<=0xef
@@ -277,15 +278,21 @@ class Checks:
             push_go=opcode in (0xbe,0xbf)
             push=push_go or opcode in (0xf2,0xf3)
             pop=opcode==0xf8
-            stack=push or pop
+            save=opcode==0xfa and y==0 and z==0
+            unsave=opcode==0xfb and x==0 and y==0
+            stack=push or pop or save or unsave
+            trap=opcode==0 and word!=0
+            swym=opcode==0xfd
             load=0x80<=opcode<=0x8f
             unit, op = table.get(opcode, (3, 0))
             bits=24 if jump else 16
             displacement=(word&((1<<bits)-1))-((opcode&1)<<bits)
-            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special or stack)),
-                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special or stack)),
+            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special or stack or trap or swym)),
+                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special or stack or trap or swym)),
+                        "trap": int(input_valid and trap), "swym": int(input_valid and swym),
                         "writes_x": int(input_valid and (supported or constant or load or address_get or (special and special_get) or push)),
                         "push": int(input_valid and push), "push_go": int(input_valid and push_go), "pop": int(input_valid and pop),
+                        "save": int(input_valid and save), "unsave": int(input_valid and unsave),
                         "put_g": int(input_valid and special and special_put and x==19),
                         "put_l": int(input_valid and special and special_put and x==20),
                         "memory": int(input_valid and memory), "store": int(input_valid and store),

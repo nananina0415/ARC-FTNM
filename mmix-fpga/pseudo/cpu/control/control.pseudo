@@ -25,6 +25,10 @@ seq Control {
     pub decoded_pop: In<bit,1>
     pub decoded_put_g: In<bit,1>
     pub decoded_put_l: In<bit,1>
+    pub decoded_save: In<bit,1>
+    pub decoded_unsave: In<bit,1>
+    pub decoded_trap: In<bit,1>
+    pub decoded_swym: In<bit,1>
     pub decoded_x: In<bit,8>
     pub special_value: WordIn
     pub stack_regs: *reg::StackDirectIO
@@ -34,6 +38,11 @@ seq Control {
     pub stack_w_en: Out<bit,1>
     pub stack_w_slot: Out<bit,8>
     pub stack_w_data: WordOut
+    pub stack_special_en: Out<bit,1>
+    pub stack_special_write: Out<bit,1>
+    pub stack_special_sel: Out<bit,5>
+    pub stack_special_data: WordIn
+    pub stack_special_value: WordOut
     pub effective_address: WordIn
     pub store_data: WordIn
     pub trip_req: In<bit,1>
@@ -57,8 +66,10 @@ seq Control {
     pc_add: Adder<WORD_SIZE>
     branch: Branch
     branch_base: Mux<2,WORD_SIZE>  // POP은 rJ 기준, 그 외는 현재 PC 기준
-    next_pc: Mux<3,WORD_SIZE>
+    next_pc: Mux<4,WORD_SIZE>
     memory_address: Mux<2,WORD_SIZE>
+    memory_data: Mux<2,WORD_SIZE>
+    address_source: Mux<2,WORD_SIZE>  // GETA 목표 또는 SAVE의 컨텍스트 주소
 }
 wire Control {
     alias {
@@ -86,7 +97,7 @@ wire Control {
     alias stack_enter=and(active, executing, response_ok, stack.required)
     alias stack_exit=or(stack.retire, stack.retry, stack_fault)
     alias stack_fault=or(stack.range_fault, stack.access_fault)
-    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put, decoded_push, decoded_pop)
+    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
     alias success=and(response_ok, not(stack.required), or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
     alias retire_execute=and(active, executing, success, not(decoded_halt), not(decoded_memory))
     alias retire_mem=and(active, mem_commit)
@@ -115,6 +126,17 @@ wire Control {
     decoded_pop -> stack.pop
     decoded_put_g -> stack.put_g
     stack.put_l <- and(retire_execute, decoded_put_l)
+    decoded_save -> stack.save
+    decoded_unsave -> stack.unsave
+    decoded_trap -> stack.trap
+    stack_regs.rJ_out -> stack.rJ
+    pc_add.sum -> stack.pc_next
+    fetch.instruction -> stack.instruction
+    stack.special_value -> stack_special_value
+    stack.special_en -> stack_special_en
+    stack.special_write -> stack_special_write
+    stack.special_sel -> stack_special_sel
+    stack_special_data -> stack.special_data
     decoded_x -> stack.x
     special_value -> stack.value
     stack_r1_data -> stack.r1_data
@@ -152,13 +174,17 @@ wire Control {
     branch_base.option[1] <- stack_regs.rJ_out
     branch_base.selected -> branch.pc
     branch_offset -> branch.offset
-    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO)
-    next_pc.select[0] <- or(and(retire_execute, branch.taken), and(stack.retire, or(decoded_pop, and(decoded_push, not(decoded_push_go)))))
-    next_pc.select[1] <- and(stack.retire, decoded_push_go)
+    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO), 3: rT(TRAP)
+    next_pc.select[0] <- or(and(retire_execute, branch.taken), and(stack.retire, or(decoded_pop, decoded_trap, and(decoded_push, not(decoded_push_go)))))
+    next_pc.select[1] <- and(stack.retire, or(decoded_push_go, decoded_trap))
     next_pc.option[0] <- pc_add.sum
     next_pc.option[1] <- branch.target
     next_pc.option[2] <- effective_address
-    branch.target -> address_result
+    next_pc.option[3] <- stack_regs.rT_out
+    address_source.select <- stack.save_write
+    address_source.option[0] <- branch.target
+    address_source.option[1] <- stack.save_address
+    address_source.selected -> address_result
     pc.w_en <- or(retire_execute, retire_mem, stack.retire)
     pc.in <- next_pc.selected
     address.w_en <- and(active, start_mem)
@@ -168,7 +194,6 @@ wire Control {
     fetch.req_pc <- pc.out
     fetch.res_ready <- and(active, or(and(executing, not(start_mem), not(stack_enter)), mem_commit, wait_fault, mem_fault, stack.retire, stack_fault))
     fetch.res_pc -> OPENED
-    fetch.instruction -> OPENED
 
     // spill/fill도 같은 메모리 경로를 쓴다. 주소는 rS, 크기는 octa다.
     memory.req_valid <- and(active, or(mem_request, stack.mem_valid))
@@ -181,7 +206,10 @@ wire Control {
     memory.size[0] <- or(decoded_memory_size[0], stack_active)
     memory.size[1] <- or(decoded_memory_size[1], stack_active)
     memory.zero_extend <- decoded_load_unsigned
-    memory.write_data <- store_data
+    memory_data.select <- stack_active
+    memory_data.option[0] <- store_data
+    memory_data.option[1] <- stack.mem_write_data
+    memory_data.selected -> memory.write_data
     memory.res_ready <- and(active, or(mem_commit, mem_fault, stack.mem_res_ready))
     memory.res_valid -> stack.mem_res_valid
     memory.error -> stack.mem_error
@@ -190,7 +218,7 @@ wire Control {
     store_read_x <- and(mem_request, decoded_store, not(decoded_store_constant))
     execute_en <- and(retire_execute, not(non_alu))
     load_write_en <- and(retire_mem, not(decoded_store))
-    address_write_en <- and(retire_execute, decoded_geta)
+    address_write_en <- or(and(retire_execute, decoded_geta), stack.save_write)
     special_get_en <- and(retire_execute, decoded_get)
     special_put_en <- and(retire_execute, decoded_put)
 
