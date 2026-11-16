@@ -9,6 +9,7 @@
   (OS·앱이 넘기는 값: $255=실행파일 클러스터, $254=링크파일 클러스터, $253=연속 크래시 횟수)
 
 앱 실행 직전 (로더)
+- mem_size = 보드 드라이버 board.ld의 MEM_SIZE (ROM 빌드 시 결정, 예: drivers/PA100T-EDU/board.ld)
 - 파일 끝 8바이트 = fix_end (BSS 끝, 링커가 기록). BSS는 파일에 없으므로 이 값으로 배치를 계산
 - gap = (mem_size - fix_end) mod 128, unfix_start = fix_end + gap, unfix_size = mem_size - unfix_start
 - rS = unfix_start + unfix_size * 3/4  (32바이트 정렬)

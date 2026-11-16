@@ -6,5 +6,5 @@ _os_start	IS @
 	! 주석은 rT에 트랩 핸들러를 설정하던 코드다.
 	!	GETA	$0,trap_handler
 	!	PUT	rT,$0
-	GETA	$0,_start
-	GO	$1,$0,0
+	! 로더가 UNSAVE로 넘긴 $0~$3을 crt0이 읽어야 하므로 레지스터를 쓰지 않고 넘어간다.
+	JMP	_start
