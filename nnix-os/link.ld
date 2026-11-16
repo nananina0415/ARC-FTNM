@@ -19,4 +19,10 @@ SECTIONS {
         . = ALIGN(8);
         _fix_end = .;
     }
+    /* 전역 레지스터 초기값. 어셈블러·링커가 배정한 값과 GREG 값을 기본 스크립트처럼 한 섹션으로 모은다.
+     * 주소는 링커가 G*8로 정하며 mkexe.py가 레지스터 영역으로 옮긴다. */
+    .MMIX.reg_contents : {
+        *(.MMIX.reg_contents.linker_allocated);
+        *(.MMIX.reg_contents);
+    }
 }

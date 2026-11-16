@@ -12,7 +12,8 @@
     로컬 $0~$3 (로더가 채움), hole = 4, 전역 $G~$255, 특수 12개(rB rD rE rH rJ rM rR rP rW rX rY rZ) = 0,
     (G << 56) | rA (rA = 0)
 
-전역 레지스터 초기값은 링커가 .MMIX.reg_contents에 둔다. 이 섹션의 주소는 G*8이고 $G~$254를 담는다.
+전역 레지스터 초기값은 링커 스크립트가 .MMIX.reg_contents로 모은다(어셈블러·링커 배정분과 GREG).
+이 섹션의 주소는 G*8이고 $G~$254를 담는다.
 $255는 0으로 둔다(로더가 진입 GO에 쓴다).
 
 사용법: python mkexe.py <입력.elf> <출력>
@@ -81,15 +82,15 @@ def build(data):
     for offset, vaddr, filesz, _ in segments:
         image[vaddr:vaddr + filesz] = data[offset:offset + filesz]
 
+    # GCC MMIX ABI는 $254(스택 포인터)를 전역으로 두므로 이 섹션이 있어야 한다(링커 스크립트가 모은다).
     regs = sections.get(".MMIX.reg_contents")
     if regs is None:
-        g, values = 255, []
-    else:
-        _, addr, offset, size = regs
-        g = addr // 8
-        if addr % 8 or size != (255 - g) * 8 or not 32 <= g <= 255:
-            fail(f".MMIX.reg_contents가 $G~$254 형식이 아니다 (주소 {addr:#x}, 크기 {size})")
-        values = list(struct.unpack_from(f">{255 - g}Q", data, offset))
+        fail(".MMIX.reg_contents가 없다 (링커 스크립트가 .MMIX.reg_contents*를 이 섹션으로 모아야 한다)")
+    _, addr, offset, size = regs
+    g = addr // 8
+    if addr % 8 or size != (255 - g) * 8 or not 32 <= g <= 254:
+        fail(f".MMIX.reg_contents가 $G~$254 형식이 아니다 (주소 {addr:#x}, 크기 {size})")
+    values = list(struct.unpack_from(f">{255 - g}Q", data, offset))
 
     context = [0] * APP_LOCALS + [APP_LOCALS] + values + [0] + [0] * SPECIALS + [g << 56]
     regs_area = struct.pack(f">{len(context)}Q", *context)
