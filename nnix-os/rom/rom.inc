@@ -1,13 +1,19 @@
 ! BIOS ROM 공용 상수. ROM의 각 .s 파일이 .include 한다.
 
-! 앱에 넘기는 rG. 링커가 앱에 배치하는 전역 레지스터가 $128부터라고 본다(Doom 기준).
-! 전역 레지스터 초기값은 RAW 이미지에 없으므로 0으로 넘긴다.
-APP_G	IS	128
+! nnix 실행파일 헤더 (tools/mkexe.py). 값은 빅엔디언 octa.
+EXE_HEADER_SIZE	IS	512
+EXE_MAGIC	IS	0x00
+EXE_HEADER	IS	0x08
+EXE_FIX_END	IS	0x10
+EXE_IMAGE	IS	0x18
+EXE_REGS	IS	0x20
 
-! UNSAVE 컨텍스트 크기(바이트): 로컬 4 + hole 1 + 전역 (256-APP_G) + 특수 12 + rG/rA 1
+! 레지스터 영역 = UNSAVE 컨텍스트: 로컬 4 + hole 1 + 전역 (256-G) + 특수 12 + rG/rA 1 (octa)
+! 길이 = (274 - G) * 8, G는 32~255
 APP_LOCALS	IS	4
-CTX_OCTAS	IS	APP_LOCALS+1+(256-APP_G)+12+1
-CTX_SIZE	IS	CTX_OCTAS*8
+REGS_BASE_OCTAS	IS	274
+REGS_MIN	IS	(REGS_BASE_OCTAS-255)*8
+REGS_MAX	IS	(REGS_BASE_OCTAS-32)*8
 
 ! ROM 작업 영역: RAM 최상단 ROM_RAM_SIZE 바이트.
 ! 앱 로드가 끝날 때까지만 쓰고, 이후엔 앱이 이 영역을 덮어쓴다.

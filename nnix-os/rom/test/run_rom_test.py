@@ -9,6 +9,7 @@ SD 드라이버만 sd_sim.s(호스트 파일 disk.img를 TRAP으로 읽음)로 �
 """
 
 import argparse
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -19,11 +20,14 @@ HERE = Path(__file__).resolve().parent
 ROM_DIR = HERE.parent
 NNIX_DIR = ROM_DIR.parent
 LINK_LD = NNIX_DIR / "link.ld"
+MKEXE = NNIX_DIR.parent / "tools" / "mkexe.py"
 
 SECTOR = 512
-APP_G = 128
 ROM_RAM_SIZE = 0x800
-CTX_SIZE = (4 + 1 + (256 - APP_G) + 12 + 1) * 8
+
+_spec = importlib.util.spec_from_file_location("mkexe", MKEXE)
+mkexe = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(mkexe)
 
 ERR = {"SD": 1, "MOUNT": 2, "NO_OS": 3, "NO_EXE": 4, "READ": 5, "IMAGE": 6, "MEM": 7}
 
@@ -52,10 +56,16 @@ def build_payload(tools, out, pid, data):
     d.mkdir(parents=True, exist_ok=True)
     (d / "data.bin").write_bytes(data)
     run([tools.as_, "-I", d, "--defsym", f"PAYLOAD_ID={pid}", "-o", d / "payload.o", HERE / "payload.s"])
-    run([tools.ld, "-T", LINK_LD, "-o", d / "payload.bin", d / "payload.o"])
-    image = (d / "payload.bin").read_bytes()
-    fix_end = int.from_bytes(image[-8:], "big")
-    return {"id": pid, "image": image, "fix_end": fix_end, "sum": sum(data)}
+    run([tools.ld, "-T", LINK_LD, "-o", d / "payload.elf", d / "payload.o"])
+    run([sys.executable, MKEXE, d / "payload.elf", d / "payload.exe"])
+    image = (d / "payload.exe").read_bytes()
+    fix_end = int.from_bytes(image[16:24], "big")
+    elf = (d / "payload.elf").read_bytes()
+    _, sections = mkexe.read_elf(elf)
+    _, addr, offset, size = sections[".MMIX.reg_contents"]
+    g = addr // 8
+    globals_ = {g + i: int.from_bytes(elf[offset + 8 * i:offset + 8 * i + 8], "big") for i in range(size // 8)}
+    return {"id": pid, "image": image, "fix_end": fix_end, "sum": sum(data), "g": g, "globals": globals_}
 
 
 def build_rom_objects(tools, out):
@@ -199,8 +209,8 @@ def image_a(path, os_img, app_img):
     """512B 클러스터, MBR, FAT32 최소 클러스터 수 이상. 루트 디렉토리와 파일이 조각나 있고
     FAT 섹터 경계(128 클러스터)를 넘나든다."""
     f = Fat32(spc=1, n_clusters=66000, mbr=True)
-    os_clusters = [10, 11, 12, 200, 201, 13, 300, 14, 15, 400]
-    app_clusters = [60, 16, 61, 500, 17, 18]
+    os_clusters = [10, 11, 12, 200, 201, 13, 300, 14, 15, 400, 401, 402, 600, 601]
+    app_clusters = [60, 16, 61, 500, 17, 18, 19, 62]
     f.dir.append(short_entry("NNIXTEST   ", 0x08, 0, 0))
     # 삭제된 항목: 시작 클러스터는 APP.EXE와 같고 크기가 다르다. 건너뛰지 않으면 크기가 틀린다.
     f.dir.append(short_entry("NNIX    OS ", 0x20, app_clusters[0], 999999, first=0xE5))
@@ -227,10 +237,18 @@ def image_b(path, os_img):
     return {"os": os_c}
 
 
-def image_bad_size(path, os_img):
-    """NNIX.OS 크기가 8의 배수가 아니다."""
+def image_bad_magic(path, os_img):
+    """NNIX.OS 헤더의 매직이 다르다."""
     f = Fat32(spc=1, n_clusters=66000, mbr=True)
-    os_c = f.add_file("NNIX    OS ", list(range(10, 30)), os_img[:-4])
+    os_c = f.add_file("NNIX    OS ", list(range(10, 30)), b"XXXXXXXX" + os_img[8:])
+    f.save(path, [2])
+    return {"os": os_c}
+
+
+def image_size_mismatch(path, os_img):
+    """NNIX.OS 파일 크기가 헤더의 길이 합과 다르다(레지스터 영역이 잘림)."""
+    f = Fat32(spc=1, n_clusters=66000, mbr=True)
+    os_c = f.add_file("NNIX    OS ", list(range(10, 30)), os_img[:-8])
     f.save(path, [2])
     return {"os": os_c}
 
@@ -253,12 +271,12 @@ def layout(fix_end, mem_size):
 
 def check_payload(out, payload, mem_size, regs):
     vals = [int(t, 16) for t in out.split()]
-    names = ["ID", "$0", "$1", "$2", "$3", "rL", "rS", "rO", "rG", "_fix_end", "sum"]
+    names = ["ID", "$0", "$1", "$2", "$3", "rL", "rS", "rO", "rG", "_fix_end", "sum", "$253", "$254"]
     if len(vals) != len(names):
         return [f"출력 형식이 다름: {out!r}"]
     rs = layout(payload["fix_end"], mem_size)
-    want = [payload["id"], regs[0], regs[1], mem_size, regs[2], 4, rs, rs, APP_G,
-            payload["fix_end"], payload["sum"]]
+    want = [payload["id"], regs[0], regs[1], mem_size, regs[2], 4, rs, rs, payload["g"],
+            payload["fix_end"], payload["sum"], payload["globals"][253], payload["globals"][254]]
     return [f"{n}: {g:#x} (기대 {w:#x})" for n, g, w in zip(names, vals, want) if g != w]
 
 
@@ -280,7 +298,8 @@ def main():
     imgs.mkdir(exist_ok=True)
     a = image_a(imgs / "a.img", os_pl["image"], app_pl["image"])
     b = image_b(imgs / "b.img", os_pl["image"])
-    c = image_bad_size(imgs / "bad_size.img", os_pl["image"])
+    c = image_bad_magic(imgs / "bad_magic.img", os_pl["image"])
+    image_size_mismatch(imgs / "size_mismatch.img", os_pl["image"])
     d = image_no_os(imgs / "no_os.img", app_pl["image"])
 
     big = 0x20000000
@@ -294,7 +313,8 @@ def main():
         ("reset_a_odd_mem", "a.img", odd, (0, 0, 0), os_pl, (a["os"], 0, 0)),
         ("reset_b_spc8_no_mbr", "b.img", big, (0, 0, 0), os_pl, (b["os"], 0, 0)),
         ("execve_missing_cluster", "a.img", big, (5000, 0, 0), ERR["NO_EXE"], None),
-        ("reset_bad_size", "bad_size.img", big, (0, 0, 0), ERR["IMAGE"], None),
+        ("reset_bad_magic", "bad_magic.img", big, (0, 0, 0), ERR["IMAGE"], None),
+        ("reset_size_mismatch", "size_mismatch.img", big, (0, 0, 0), ERR["IMAGE"], None),
         ("reset_no_os", "no_os.img", big, (0, 0, 0), ERR["NO_OS"], None),
         ("reset_mem_too_small", "a.img", tiny, (0, 0, 0), ERR["MEM"], None),
     ]

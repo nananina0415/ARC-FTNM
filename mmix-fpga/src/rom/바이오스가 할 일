@@ -10,9 +10,13 @@
 
 앱 실행 직전 (로더)
 - mem_size = 보드 드라이버 board.ld의 MEM_SIZE (ROM 빌드 시 결정, 예: drivers/PA100T-EDU/board.ld)
-- 파일 끝 8바이트 = fix_end (BSS 끝, 링커가 기록). BSS는 파일에 없으므로 이 값으로 배치를 계산
-- gap = (mem_size - fix_end) mod 128, unfix_start = fix_end + gap, unfix_size = mem_size - unfix_start
-- rS = unfix_start + unfix_size * 3/4  (32바이트 정렬)
-- UNSAVE로 rS를 넣고, 로컬 $0=실행파일 클러스터, $1=링크파일 클러스터, $2=mem_size,
-  $3=연속 크래시 횟수($253 그대로)로 넘긴 뒤 0번지로 점프 (hole의 로컬 개수 = 4)
+- 실행파일 형식 (tools/mkexe.py가 ELF에서 만든다)
+  [헤더 512B: 매직 "NNIXEXE\0", 헤더 크기, fix_end(BSS 포함 길이), 이미지 길이(512 배수), 레지스터 영역 길이]
+  [이미지: 0번지부터 적재]
+  [레지스터 영역: rS부터 적재. UNSAVE 컨텍스트이며 전역 $G~$255와 rG는 링커가 정한 값]
+- 헤더를 먼저 읽어 배치를 계산
+  gap = (mem_size - fix_end) mod 128, unfix_start = fix_end + gap, unfix_size = mem_size - unfix_start
+  rS = unfix_start + unfix_size * 3/4  (32바이트 정렬)
+- 레지스터 영역의 로컬 $0=실행파일 클러스터, $1=링크파일 클러스터, $2=mem_size,
+  $3=연속 크래시 횟수($253 그대로)를 채우고 UNSAVE한 뒤 0번지로 점프 (hole의 로컬 개수 = 4)
   (rS는 PUT으로 바꿀 수 없음. 배치 전체는 nnix-os/kernel/mem.h)

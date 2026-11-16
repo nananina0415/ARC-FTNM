@@ -77,4 +77,11 @@ if(NOT MMIX_SIM)
     target_link_options(doom PRIVATE
         -T ${CMAKE_CURRENT_SOURCE_DIR}/link.ld
     )
+    # 링크 결과는 ELF(doom.elf). SD 카드에 둘 실행파일 doom은 mkexe.py가 만든다.
+    set_target_properties(doom PROPERTIES SUFFIX ".elf")
+    add_custom_command(TARGET doom POST_BUILD
+        COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/../../tools/mkexe.py"
+            "$<TARGET_FILE:doom>" "${CMAKE_CURRENT_BINARY_DIR}/doom"
+        COMMENT "Generating doom executable"
+    )
 endif()

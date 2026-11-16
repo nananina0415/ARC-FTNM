@@ -10,7 +10,7 @@
 // BIOS(로더) → 앱 전달 (UNSAVE로 설정, crt0.s가 받음):
 //   $0 = 실행파일 클러스터, $1 = 링크파일 클러스터, $2 = RAM 크기(mem_size)
 //   $3 = 연속 크래시 횟수 (BIOS가 받은 $253 그대로)
-//   rS = 두 스택의 기준점. 파일 끝 8바이트(fix_end)와 mem_size로 계산한다.
+//   rS = 두 스택의 기준점. 실행파일 헤더의 fix_end와 mem_size로 계산한다.
 //     gap         = (mem_size - fix_end) mod 128
 //     unfix_start = fix_end + gap
 //     unfix_size  = mem_size - unfix_start

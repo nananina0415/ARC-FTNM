@@ -55,3 +55,11 @@ target_link_options(nnix_os PRIVATE
     -nostdlib
     -T ${CMAKE_CURRENT_SOURCE_DIR}/link.ld
 )
+
+# 링크 결과는 ELF(nnix_os.elf). SD 카드에 둘 실행파일 nnix.os는 mkexe.py가 만든다.
+set_target_properties(nnix_os PROPERTIES SUFFIX ".elf")
+add_custom_command(TARGET nnix_os POST_BUILD
+    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/../tools/mkexe.py"
+        "$<TARGET_FILE:nnix_os>" "${CMAKE_CURRENT_BINARY_DIR}/nnix.os"
+    COMMENT "Generating nnix.os"
+)

@@ -43,7 +43,7 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=apps/doom/toolchain/mmix.cmake
 cmake --build build
 ```
 
-출력: `build/apps/doom/doom` (MMIX 바이너리)
+출력: `build/apps/doom/doom` (nnix 실행파일). 링크 결과 `doom.elf`를 `tools/mkexe.py`가 변환한다.
 
 ### 시뮬레이터 빌드
 

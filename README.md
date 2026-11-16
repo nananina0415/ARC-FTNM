@@ -44,7 +44,8 @@ mmix-fpga/build.sh [보드명] upload
 ```
 ARC-FTNM/
 ├── tools/
-│   └── gen_license_notice.py      — 빌드 단위별 NOTICE 파일 자동 생성
+│   ├── gen_license_notice.py      — 빌드 단위별 NOTICE 파일 자동 생성
+│   └── mkexe.py                   — ELF를 nnix 실행파일(헤더 + 이미지 + 레지스터 영역)로 변환
 ├── apps/
 │   └── doom/                      — DOOM 포팅 (GPL v2)
 │       ├── src/
@@ -57,7 +58,7 @@ ARC-FTNM/
 │       ├── gen_puredoom_h.py      — PureDOOM.h 패치 생성 스크립트
 │       ├── check-fp.sh            — 부동소수점 명령어 검출 스크립트
 │       ├── notice-map.json        — 라이선스 고지 매핑
-│       ├── link.ld                — RAW 바이너리 링커 스크립트
+│       ├── link.ld                — ELF 링커 스크립트 (tools/mkexe.py로 실행파일 변환)
 │       └── PureDOOM/              — 외부 라이브러리 (GPL v2)
 ├── drivers/
 │   ├── fpga/                      — FPGA 공통 드라이버 (보드 독립)

@@ -1,4 +1,6 @@
-OUTPUT_FORMAT(binary)
+/* ELF로 링크한 뒤 tools/mkexe.py가 nnix 실행파일(헤더 + 0번지 이미지 + 레지스터 영역)로 변환한다.
+ * 전역 레지스터 초기값은 링커가 .MMIX.reg_contents에 두며 mkexe.py가 레지스터 영역으로 옮긴다. */
+OUTPUT_FORMAT("elf64-mmix")
 
 SECTIONS {
     . = 0x0;
@@ -8,9 +10,9 @@ SECTIONS {
     }
     .rodata : { *(.rodata .rodata.*) }
     .data   : { *(.data .data.*) }
-    /* 파일 끝 8바이트: BSS 끝(_fix_end). BSS는 파일에 들어가지 않으므로 로더가 이 값으로 배치를 계산한다. */
-    .fixinfo : { . = ALIGN(8); QUAD(_fix_end) }
+    /* crt0이 octa 단위로 BSS를 지우므로 시작을 8바이트 정렬한다. _fix_end는 실행파일 헤더에도 기록된다. */
     .bss    : {
+        . = ALIGN(8);
         _bss_start = .;
         *(.bss .bss.* COMMON)
         . = ALIGN(8);

@@ -1,6 +1,7 @@
-! ROM 테스트용 실행파일. nnix-os/link.ld로 RAW 링크해서 디스크 이미지에 넣는다.
+! ROM 테스트용 실행파일. nnix-os/link.ld로 ELF 링크하고 tools/mkexe.py로 변환해 디스크 이미지에 넣는다.
 ! ROM이 넘긴 상태를 한 줄로 출력하고 멈춘다(16진수, 공백 구분).
-!   ID $0 $1 $2 $3 rL rS rO rG _fix_end 데이터합
+!   ID $0 $1 $2 $3 rL rS rO rG _fix_end 데이터합 $253 $254
+! $253/$254는 GREG로 잡은 전역 레지스터라 실행파일의 레지스터 영역에서 초기값이 온다.
 ! 어셈블할 때 --defsym PAYLOAD_ID=...를 주고, 데이터 블록은 data.bin(.incbin)이다.
 
 	.global	_start
@@ -60,6 +61,12 @@ sum_done	IS	@
 	SET	$22,$21
 	SET	$23,$10
 	PUSHJ	$21,hex
+	SET	$22,$21
+	SET	$23,$253
+	PUSHJ	$21,hex
+	SET	$22,$21
+	SET	$23,$254
+	PUSHJ	$21,hex
 	SET	$11,10
 	STBU	$11,$21,0
 	SET	$11,0
@@ -88,6 +95,10 @@ hex_digit	IS	@
 	STBU	$3,$0,0
 	ADD	$0,$0,1
 	POP	1,0
+
+! 전역 레지스터: 링커가 $254, $253 순서로 배정한다(G = 253).
+glob_const	GREG	0x0123456789ABCDEF
+glob_addr	GREG	data_block
 
 	.section .data
 data_block	IS	@
