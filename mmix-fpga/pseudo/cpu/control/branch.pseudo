@@ -1,0 +1,38 @@
+// 분기 여부와 목표 주소를 계산한다. PC 저장 시점은 Control이 결정한다.
+comb Branch {
+    pub enable: In<bit,1>
+    pub unconditional: In<bit,1>
+    pub condition_select: In<bit,3>
+    pub value: WordIn
+    pub pc: WordIn
+    pub offset: WordIn
+    pub taken: Out<bit,1>
+    pub target: WordOut
+    predicate: condition::Condition
+    address: RelativeAddress
+}
+
+wire Branch {
+    condition_select -> predicate.select
+    value -> predicate.value
+    pc -> address.base
+    offset -> address.offset
+    address.target -> target
+    taken <- and(enable, or(unconditional, predicate.matched))
+}
+
+// ALU와 별개인 주소 계산기. 64비트 modulo 덧셈이며 rA를 변경하지 않는다.
+comb RelativeAddress {
+    pub base: WordIn
+    pub offset: WordIn
+    pub target: WordOut
+    adder: Adder<WORD_SIZE>
+}
+
+wire RelativeAddress {
+    base -> adder.a
+    offset -> adder.b
+    adder.c_in <- 0
+    adder.sum -> target
+    adder.c_out -> OPENED
+}

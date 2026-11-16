@@ -1,0 +1,327 @@
+alias Alu = ::alu::Alu
+alias Registers = ::reg::Registers
+alias Fetch = ::fetch::Fetch
+alias FetchIO = ::fetch::FetchIO
+alias InstructionDecode = ::decode::InstructionDecode
+alias DecodeControl = ::decode::DecodeControl
+alias Control = ::control::Control
+alias MemoryAccess = ::memory::MemoryAccess
+alias ReadSelect = ::memory::ReadSelect
+
+seq Cpu {
+    pub clock: In<bit,1>  // MIG.ui_clk
+    pub reset: In<bit,1>  // 동기 active-high. MIG.ui_clk_sync_rst 및 AXI reset과 함께 사용
+    pub init_calib_complete: In<bit,1>  // MIG 출력. 1일 때만 새 페치 요청 수락
+    pub axi: AxiMaster   // FPGA RAM controller의 AXI slave에 연결
+
+    pub decoded: DecodeControl  // 제어유닛용 해독 결과
+    pub done: Out<bit,1>  // HALT 명령으로 정지
+    pub fault: Out<bit,1>  // 오류로 정지
+    pub fault_reason: Out<bit,3>  // [0] 페치/데이터 접근, [1] 미지원, [2] trip
+    pub trip_req: Out<bit,1>    // 유효한 지원 명령의 ALU 예외. 제어유닛이 처리
+
+    alu: Alu
+    mut reg: Registers
+    mut fetch: Fetch
+    mut control: Control
+    mut memory: MemoryAccess
+    read_select: ReadSelect
+    address_add: Adder<WORD_SIZE>
+    read1_mux: Mux<2,8>
+    read1_slot: Mux<2,8>  // 레지스터 스택 내부 읽기는 슬롯을 직접 지정
+    writeback_mux: Mux<4,WORD_SIZE>
+    store_data_mux: Mux<2,WORD_SIZE>
+    special_source: Mux<2,WORD_SIZE>
+    special_select: Mux<2,5>  // SAVE/UNSAVE는 StackControl이 번호를 지정
+    special_drive: Mux<2,WORD_SIZE>  // UNSAVE는 메모리 값을 버스에 구동
+    special_access: ::reg::SpecialAccess
+    special_driver: TriState
+    decode: InstructionDecode
+    arg1_mux: Mux<3,WORD_SIZE>  // $r1 / unsigned Y / 0
+    arg2_mux: Mux<3,WORD_SIZE>  // $Z / unsigned Z / shifted YZ
+}
+
+wire Cpu {
+    clock => { reg.clock, fetch.clock, control.clock, memory.clock }
+    reset => { reg.reset, fetch.reset, control.reset, memory.reset }
+    init_calib_complete => { fetch.ram_ready, memory.ram_ready }
+    memory.instruction_invalidate -> fetch.invalidate
+    control.done -> done
+    control.fault -> fault
+    control.fault_reason -> fault_reason
+    control.decoded_valid <- and(decode.control.valid, special_access.allowed)
+    decode.control.halt -> control.decoded_halt
+    decode.control.memory -> control.decoded_memory
+    decode.control.store -> control.decoded_store
+    decode.control.store_constant -> control.decoded_store_constant
+    decode.control.memory_size -> control.decoded_memory_size
+    decode.control.load_unsigned -> control.decoded_load_unsigned
+    decode.control.address_get -> control.decoded_geta
+    decode.control.special_get -> control.decoded_get
+    decode.control.special_put -> control.decoded_put
+    decode.control.branch -> control.decoded_branch
+    decode.control.branch_unconditional -> control.branch_unconditional
+    decode.control.branch_condition -> control.branch_condition
+    decode.control.branch_offset -> control.branch_offset
+    reg.general.r1_data -> control.branch_value
+    alu.trip_req -> control.trip_req
+
+    decode.control.writes_x -> control.decoded_writes_x
+    decode.control.push -> control.decoded_push
+    decode.control.push_go -> control.decoded_push_go
+    decode.control.go -> control.decoded_go
+    decode.control.pop -> control.decoded_pop
+    decode.control.put_g -> control.decoded_put_g
+    decode.control.put_l -> control.decoded_put_l
+    decode.control.save -> control.decoded_save
+    decode.control.unsave -> control.decoded_unsave
+    decode.control.trap -> control.decoded_trap
+    decode.control.swym -> control.decoded_swym
+    reg.stack.rT_out -> control.stack_regs.rT_out
+    decode.control.w_sel -> control.decoded_x
+    reg.special.data -> control.stack_special_data
+    special_source.selected -> control.special_value
+    reg.general.r1_data -> control.stack_r1_data
+    reg.stack.rJ_out -> control.stack_regs.rJ_out
+    control.stack_regs.rJ_in -> reg.stack.rJ_in
+    control.stack_regs.rJ_w_en -> reg.stack.rJ_w_en
+    reg.stack.rO_out -> control.stack_regs.rO_out
+    control.stack_regs.rO_in -> reg.stack.rO_in
+    control.stack_regs.rO_w_en -> reg.stack.rO_w_en
+    reg.stack.rS_out -> control.stack_regs.rS_out
+    control.stack_regs.rS_in -> reg.stack.rS_in
+    control.stack_regs.rS_w_en -> reg.stack.rS_w_en
+    reg.stack.rG_out -> control.stack_regs.rG_out
+    control.stack_regs.rG_in -> reg.stack.rG_in
+    control.stack_regs.rG_w_en -> reg.stack.rG_w_en
+    reg.stack.rL_out -> control.stack_regs.rL_out
+    control.stack_regs.rL_in -> reg.stack.rL_in
+    control.stack_regs.rL_w_en -> reg.stack.rL_w_en
+    control.stack_r1_physical -> reg.general.r1_physical
+    control.stack_w_en -> reg.general.stack_w_en
+    control.stack_w_slot -> reg.general.stack_w_sel
+    control.stack_w_data -> reg.general.stack_w_data
+
+    reg.stack.rG_out -> special_access.g
+    reg.stack.rL_out -> special_access.l
+    decode.control.save -> special_access.save
+    decode.control.w_sel -> special_access.x
+    special_source.select <- decode.control.special_immediate
+    special_source.option[0] <- reg.general.r2_data
+    special_source.option[1] <- decode.control.imm_z
+    decode.control.special_get -> special_access.get
+    decode.control.special_put -> special_access.put
+    decode.control.special_index -> special_access.index
+    special_source.selected -> special_access.value
+    reg.special.enable <- or(control.special_get_en, control.special_put_en, control.stack_special_en)
+    special_select.select <- control.stack_special_en
+    special_select.option[0] <- decode.control.special_index
+    special_select.option[1] <- control.stack_special_sel
+    special_select.selected -> reg.special.sel
+    reg.special.rw <- and(not(decode.control.special_put), not(control.stack_special_write))
+    special_driver.enable <- or(control.special_put_en, control.stack_special_write)
+    special_drive.select <- control.stack_special_write
+    special_drive.option[0] <- special_source.selected
+    special_drive.option[1] <- control.stack_special_value
+    special_drive.selected -> special_driver.in
+    special_driver.out -> reg.special.data
+
+    fetch.control.instruction -> decode.instruction
+    decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
+    decoded.valid <- and(decode.control.valid, special_access.allowed)
+    decoded.unsupported <- or(decode.control.unsupported, and(decode.control.valid, not(special_access.allowed)))
+    decode.control.halt -> decoded.halt
+    decode.control.memory -> decoded.memory
+    decode.control.store -> decoded.store
+    decode.control.memory_size -> decoded.memory_size
+    decode.control.load_unsigned -> decoded.load_unsigned
+    decode.control.store_constant -> decoded.store_constant
+    decode.control.address_get -> decoded.address_get
+    decode.control.special_get -> decoded.special_get
+    decode.control.special_put -> decoded.special_put
+    decode.control.special_immediate -> decoded.special_immediate
+    decode.control.special_index -> decoded.special_index
+    decode.control.branch -> decoded.branch
+    decode.control.branch_unconditional -> decoded.branch_unconditional
+    decode.control.branch_condition -> decoded.branch_condition
+    decode.control.branch_offset -> decoded.branch_offset
+    decode.control.writes_x -> decoded.writes_x
+    decode.control.push -> decoded.push
+    decode.control.push_go -> decoded.push_go
+    decode.control.go -> decoded.go
+    decode.control.pop -> decoded.pop
+    decode.control.put_g -> decoded.put_g
+    decode.control.put_l -> decoded.put_l
+    decode.control.save -> decoded.save
+    decode.control.unsave -> decoded.unsave
+    decode.control.trap -> decoded.trap
+    decode.control.swym -> decoded.swym
+    decode.control.alu_sel -> decoded.alu_sel
+    decode.control.op -> decoded.op
+    decode.control.r1_sel -> decoded.r1_sel
+    decode.control.r2_sel -> decoded.r2_sel
+    decode.control.w_sel -> decoded.w_sel
+    decode.control.arg1_imm -> decoded.arg1_imm
+    decode.control.arg2_imm -> decoded.arg2_imm
+    decode.control.arg1_zero -> decoded.arg1_zero
+    decode.control.arg2_wyde -> decoded.arg2_wyde
+    decode.control.imm_y -> decoded.imm_y
+    decode.control.imm_z -> decoded.imm_z
+    decode.control.imm_yz -> decoded.imm_yz
+    decode.control.imm_x -> decoded.imm_x
+
+    decode.control.alu_sel -> alu.alu_sel
+    decode.control.op -> alu.op
+    read1_mux.select <- control.store_read_x
+    read1_mux.option[0] <- decode.control.r1_sel
+    read1_mux.option[1] <- decode.control.w_sel
+    read1_slot.select <- control.stack_r1_physical
+    read1_slot.option[0] <- read1_mux.selected
+    read1_slot.option[1] <- control.stack_r1_slot
+    read1_slot.selected -> reg.general.r1_sel
+    decode.control.r2_sel -> reg.general.r2_sel
+    decode.control.w_sel -> reg.general.w_sel
+
+    // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
+    arg1_mux.select[0] <- decode.control.arg1_imm
+    arg1_mux.select[1] <- decode.control.arg1_zero
+    arg1_mux.option[0] <- reg.general.r1_data
+    arg1_mux.option[1] <- decode.control.imm_y
+    arg1_mux.option[2] <- 0
+    arg1_mux.selected -> alu.arg1
+    arg2_mux.select[0] <- decode.control.arg2_imm
+    arg2_mux.select[1] <- decode.control.arg2_wyde
+    arg2_mux.option[0] <- reg.general.r2_data
+    arg2_mux.option[1] <- decode.control.imm_z
+    arg2_mux.option[2] <- decode.control.imm_yz
+    arg2_mux.selected -> alu.arg2
+
+    // 명령 없음/페치 오류/미지원 명령/reset에서는 저장하지 않음.
+    alu.write_en <- and(control.execute_en, decode.control.valid)
+    trip_req <- and(decode.control.valid, alu.trip_req)
+    address_add.a <- arg1_mux.selected
+    address_add.b <- arg2_mux.selected
+    address_add.c_in <- 0
+    address_add.c_out -> OPENED
+    address_add.sum -> control.effective_address
+    store_data_mux.select <- decode.control.store_constant
+    store_data_mux.option[0] <- reg.general.r1_data
+    store_data_mux.option[1] <- decode.control.imm_x
+    store_data_mux.selected -> control.store_data
+    writeback_mux.select[0] <- or(control.load_write_en, control.special_get_en)
+    writeback_mux.select[1] <- or(control.address_write_en, control.special_get_en)
+    writeback_mux.option[0] <- alu.res
+    writeback_mux.option[1] <- memory.control.read_data
+    writeback_mux.option[2] <- control.address_result
+    writeback_mux.option[3] <- reg.special.data
+    writeback_mux.selected -> reg.general.w_data
+    reg.general.w_en <- or(alu.res_w_en, control.load_write_en, control.address_write_en, control.special_get_en)
+
+    reg.alu_direct.rA_in -> alu.spec_direct.rA_in
+    reg.alu_direct.rD_in -> alu.spec_direct.rD_in
+    reg.alu_direct.rM_in -> alu.spec_direct.rM_in
+    alu.spec_direct.rA_out -> reg.alu_direct.rA_out
+    alu.spec_direct.rA_w_en -> reg.alu_direct.rA_w_en
+    alu.spec_direct.rH_out -> reg.alu_direct.rH_out
+    alu.spec_direct.rH_w_en -> reg.alu_direct.rH_w_en
+    alu.spec_direct.rR_out -> reg.alu_direct.rR_out
+    alu.spec_direct.rR_w_en -> reg.alu_direct.rR_w_en
+
+    control.fetch.req_valid -> fetch.control.req_valid
+    control.fetch.req_pc -> fetch.control.req_pc
+    fetch.control.req_ready -> control.fetch.req_ready
+    fetch.control.res_valid -> control.fetch.res_valid
+    control.fetch.res_ready -> fetch.control.res_ready
+    fetch.control.res_pc -> control.fetch.res_pc
+    fetch.control.instruction -> control.fetch.instruction
+    fetch.control.error -> control.fetch.error
+
+    // 주소 캡처 뒤 기존 읽기 포트 1을 $X로 전환해 store 데이터를 준비.
+    control.memory.req_valid -> memory.control.req_valid
+    control.memory.address -> memory.control.address
+    control.memory.store -> memory.control.store
+    control.memory.size -> memory.control.size
+    control.memory.zero_extend -> memory.control.zero_extend
+    control.memory.write_data -> memory.control.write_data
+    control.memory.line -> memory.control.line
+    control.memory.line_mask -> memory.control.line_mask
+    control.memory.line_write_data -> memory.control.line_write_data
+    memory.control.line_read_data -> control.memory.line_read_data
+    control.memory.res_ready -> memory.control.res_ready
+    memory.control.req_ready -> control.memory.req_ready
+    memory.control.res_valid -> control.memory.res_valid
+    memory.control.read_data -> control.memory.read_data
+    memory.control.error -> control.memory.error
+    control.memory_active -> read_select.select
+    fetch.axi.arid -> read_select.instruction.arid
+    memory.axi.read.arid -> read_select.data.arid
+    read_select.bus.arid -> axi.read.arid
+    fetch.axi.araddr -> read_select.instruction.araddr
+    memory.axi.read.araddr -> read_select.data.araddr
+    read_select.bus.araddr -> axi.read.araddr
+    fetch.axi.arlen -> read_select.instruction.arlen
+    memory.axi.read.arlen -> read_select.data.arlen
+    read_select.bus.arlen -> axi.read.arlen
+    fetch.axi.arsize -> read_select.instruction.arsize
+    memory.axi.read.arsize -> read_select.data.arsize
+    read_select.bus.arsize -> axi.read.arsize
+    fetch.axi.arburst -> read_select.instruction.arburst
+    memory.axi.read.arburst -> read_select.data.arburst
+    read_select.bus.arburst -> axi.read.arburst
+    fetch.axi.arlock -> read_select.instruction.arlock
+    memory.axi.read.arlock -> read_select.data.arlock
+    read_select.bus.arlock -> axi.read.arlock
+    fetch.axi.arcache -> read_select.instruction.arcache
+    memory.axi.read.arcache -> read_select.data.arcache
+    read_select.bus.arcache -> axi.read.arcache
+    fetch.axi.arprot -> read_select.instruction.arprot
+    memory.axi.read.arprot -> read_select.data.arprot
+    read_select.bus.arprot -> axi.read.arprot
+    fetch.axi.arqos -> read_select.instruction.arqos
+    memory.axi.read.arqos -> read_select.data.arqos
+    read_select.bus.arqos -> axi.read.arqos
+    fetch.axi.arvalid -> read_select.instruction.arvalid
+    memory.axi.read.arvalid -> read_select.data.arvalid
+    read_select.bus.arvalid -> axi.read.arvalid
+    fetch.axi.rready -> read_select.instruction.rready
+    memory.axi.read.rready -> read_select.data.rready
+    read_select.bus.rready -> axi.read.rready
+    axi.read.arready -> read_select.bus.arready
+    read_select.instruction.arready -> fetch.axi.arready
+    read_select.data.arready -> memory.axi.read.arready
+    axi.read.rid -> read_select.bus.rid
+    read_select.instruction.rid -> fetch.axi.rid
+    read_select.data.rid -> memory.axi.read.rid
+    axi.read.rdata -> read_select.bus.rdata
+    read_select.instruction.rdata -> fetch.axi.rdata
+    read_select.data.rdata -> memory.axi.read.rdata
+    axi.read.rresp -> read_select.bus.rresp
+    read_select.instruction.rresp -> fetch.axi.rresp
+    read_select.data.rresp -> memory.axi.read.rresp
+    axi.read.rlast -> read_select.bus.rlast
+    read_select.instruction.rlast -> fetch.axi.rlast
+    read_select.data.rlast -> memory.axi.read.rlast
+    axi.read.rvalid -> read_select.bus.rvalid
+    read_select.instruction.rvalid -> fetch.axi.rvalid
+    read_select.data.rvalid -> memory.axi.read.rvalid
+    memory.axi.write.awid -> axi.write.awid
+    memory.axi.write.awaddr -> axi.write.awaddr
+    memory.axi.write.awlen -> axi.write.awlen
+    memory.axi.write.awsize -> axi.write.awsize
+    memory.axi.write.awburst -> axi.write.awburst
+    memory.axi.write.awlock -> axi.write.awlock
+    memory.axi.write.awcache -> axi.write.awcache
+    memory.axi.write.awprot -> axi.write.awprot
+    memory.axi.write.awqos -> axi.write.awqos
+    memory.axi.write.awvalid -> axi.write.awvalid
+    memory.axi.write.wdata -> axi.write.wdata
+    memory.axi.write.wstrb -> axi.write.wstrb
+    memory.axi.write.wlast -> axi.write.wlast
+    memory.axi.write.wvalid -> axi.write.wvalid
+    memory.axi.write.bready -> axi.write.bready
+    axi.write.awready -> memory.axi.write.awready
+    axi.write.wready -> memory.axi.write.wready
+    axi.write.bid -> memory.axi.write.bid
+    axi.write.bresp -> memory.axi.write.bresp
+    axi.write.bvalid -> memory.axi.write.bvalid
+}

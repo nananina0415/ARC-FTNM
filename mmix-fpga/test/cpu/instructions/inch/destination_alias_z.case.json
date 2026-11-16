@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "id": "inch.destination_alias_z",
+  "target": {
+    "mnemonic": "INCH",
+    "opcode": "0xe4",
+    "pc": "0x0",
+    "word": "0xe4341234",
+    "executions": 1
+  },
+  "tags": [
+    "destination_alias_z",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$18": "0x8765432112345678",
+      "$52": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$52": "0x1357456789abcdef"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "destination_alias_z"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

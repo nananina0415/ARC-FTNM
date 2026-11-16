@@ -1,0 +1,72 @@
+// 제어유닛이 한 트랜잭션 완료까지 select를 유지하는 직렬 CPU용 읽기 중재.
+comb ReadSelect {
+    pub select: In<bit,1>
+    pub instruction: *AxiRead
+    pub data: *AxiRead
+    pub bus: AxiRead
+    arid_mux: Mux<2,4>
+    araddr_mux: Mux<2,30>
+    arlen_mux: Mux<2,8>
+    arsize_mux: Mux<2,3>
+    arburst_mux: Mux<2,2>
+    arlock_mux: Mux<2,1>
+    arcache_mux: Mux<2,4>
+    arprot_mux: Mux<2,3>
+    arqos_mux: Mux<2,4>
+    arvalid_mux: Mux<2,1>
+    rready_mux: Mux<2,1>
+}
+wire ReadSelect {
+    arid_mux.select <- select
+    arid_mux.option[0] <- instruction.arid
+    arid_mux.option[1] <- data.arid
+    arid_mux.selected -> bus.arid
+    araddr_mux.select <- select
+    araddr_mux.option[0] <- instruction.araddr
+    araddr_mux.option[1] <- data.araddr
+    araddr_mux.selected -> bus.araddr
+    arlen_mux.select <- select
+    arlen_mux.option[0] <- instruction.arlen
+    arlen_mux.option[1] <- data.arlen
+    arlen_mux.selected -> bus.arlen
+    arsize_mux.select <- select
+    arsize_mux.option[0] <- instruction.arsize
+    arsize_mux.option[1] <- data.arsize
+    arsize_mux.selected -> bus.arsize
+    arburst_mux.select <- select
+    arburst_mux.option[0] <- instruction.arburst
+    arburst_mux.option[1] <- data.arburst
+    arburst_mux.selected -> bus.arburst
+    arlock_mux.select <- select
+    arlock_mux.option[0] <- instruction.arlock
+    arlock_mux.option[1] <- data.arlock
+    arlock_mux.selected -> bus.arlock
+    arcache_mux.select <- select
+    arcache_mux.option[0] <- instruction.arcache
+    arcache_mux.option[1] <- data.arcache
+    arcache_mux.selected -> bus.arcache
+    arprot_mux.select <- select
+    arprot_mux.option[0] <- instruction.arprot
+    arprot_mux.option[1] <- data.arprot
+    arprot_mux.selected -> bus.arprot
+    arqos_mux.select <- select
+    arqos_mux.option[0] <- instruction.arqos
+    arqos_mux.option[1] <- data.arqos
+    arqos_mux.selected -> bus.arqos
+    arvalid_mux.select <- select
+    arvalid_mux.option[0] <- instruction.arvalid
+    arvalid_mux.option[1] <- data.arvalid
+    arvalid_mux.selected -> bus.arvalid
+    rready_mux.select <- select
+    rready_mux.option[0] <- instruction.rready
+    rready_mux.option[1] <- data.rready
+    rready_mux.selected -> bus.rready
+    instruction.arready <- and(bus.arready, not(select))
+    data.arready <- and(bus.arready, select)
+    instruction.rvalid <- and(bus.rvalid, not(select))
+    data.rvalid <- and(bus.rvalid, select)
+    bus.rid => { instruction.rid, data.rid }
+    bus.rdata => { instruction.rdata, data.rdata }
+    bus.rresp => { instruction.rresp, data.rresp }
+    bus.rlast => { instruction.rlast, data.rlast }
+}

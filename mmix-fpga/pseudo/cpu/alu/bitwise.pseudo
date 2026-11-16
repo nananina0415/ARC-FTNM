@@ -1,0 +1,41 @@
+// 비트 연산 유닛. 즉치는 제어유닛이 arg로 주입
+// op 번호는 opcode #C0~#DF 의 (opcode >> 1) 하위 4비트
+
+comb Bitwise {
+    pub op:   In<bit,4>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+    pub rM:   WordIn  // MUX 마스크
+
+    res_mux: Mux<16,WORD_SIZE>
+}
+
+wire Bitwise {
+    alias {
+        OR = 0
+        ORN = 1
+        NOR = 2
+        XOR = 3
+        AND = 4
+        ANDN = 5
+        NAND = 6
+        NXOR = 7
+        MUX = 12
+    }
+
+    op -> res_mux.select
+
+    res_mux.option[OR]   <- or(arg1, arg2)
+    res_mux.option[ORN]  <- or(arg1, not(arg2))
+    res_mux.option[NOR]  <- not(or(arg1, arg2))
+    res_mux.option[XOR]  <- xor(arg1, arg2)
+    res_mux.option[AND]  <- and(arg1, arg2)
+    res_mux.option[ANDN] <- and(arg1, not(arg2))
+    res_mux.option[NAND] <- not(and(arg1, arg2))
+    res_mux.option[NXOR] <- not(xor(arg1, arg2))
+    res_mux.option[MUX]  <- or(and(arg1, rM), and(arg2, not(rM)))
+    { res_mux.option[8,9,10,11,13,14,15] } <= OPENED
+
+    res_mux.selected -> res
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "ldtui.address_23",
+  "target": {
+    "mnemonic": "LDTUI",
+    "opcode": "0x8b",
+    "pc": "0x0",
+    "word": "0x8b030117",
+    "executions": 1
+  },
+  "tags": [
+    "address_23",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000100",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x114": "01",
+      "0x115": "80",
+      "0x116": "ff",
+      "0x117": "7f",
+      "0x118": "55",
+      "0x119": "aa",
+      "0x11a": "12",
+      "0x11b": "34"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x000000000180ff7f"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "address_23"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

@@ -1,0 +1,4 @@
+% puti.rzz_0
+        LOC 0
+Main    PUT rZZ,0
+        TRAP 0,Halt,0

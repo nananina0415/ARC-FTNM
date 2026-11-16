@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "id": "ldtui.address_wrap",
+  "target": {
+    "mnemonic": "LDTUI",
+    "opcode": "0x8b",
+    "pc": "0x0",
+    "word": "0x8b0301c0",
+    "executions": 1
+  },
+  "tags": [
+    "address_wrap",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0xffffffffffffffc0",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x80": "01",
+      "0x81": "02",
+      "0x82": "03",
+      "0x83": "04"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x0000000001020304"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "address_wrap"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

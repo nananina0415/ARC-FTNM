@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "put.rg_raise",
+  "target": {
+    "mnemonic": "PUT",
+    "opcode": "0xf6",
+    "pc": "0x0",
+    "word": "0xf61300fa",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "rg_raise"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$250": "0x00000000000000f0"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {},
+    "special": {
+      "rG": "0x00000000000000f0"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "rg_raise"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

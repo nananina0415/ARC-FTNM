@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "swym.swym_no_grow",
+  "target": {
+    "mnemonic": "SWYM",
+    "opcode": "0xfd",
+    "pc": "0x0",
+    "word": "0xfd6496b4",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "swym_no_grow"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$100": "0x0000000000000077"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {},
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "swym_no_grow"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "bodb.condition_4",
+  "target": {
+    "mnemonic": "BODB",
+    "opcode": "0x47",
+    "pc": "0x20",
+    "word": "0x4701fffc",
+    "executions": 1
+  },
+  "tags": [
+    "branch",
+    "condition_4"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0xfffffffffffffffe",
+      "$4": "0x0000000000000007",
+      "$255": "0x5555555555555555",
+      "$252": "0x5555555555555555"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0",
+      "rH": "0x1122334455667788",
+      "rR": "0x8877665544332211"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000028",
+    "registers": {
+      "$4": "0x0000000000000008"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "condition_4"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

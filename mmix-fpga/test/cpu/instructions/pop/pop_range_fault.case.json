@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "id": "pop.pop_range_fault",
+  "target": {
+    "mnemonic": "POP",
+    "opcode": "0xf8",
+    "pc": "0xc",
+    "word": "0xf8020000",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "pop_range_fault"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {},
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x0000000000000080",
+      "rL": "0x000000000000007f"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "fault",
+    "reason": 2,
+    "pc": "0x000000000000000c",
+    "registers": {
+      "$126": "0x000000000000007e"
+    },
+    "special": {
+      "rJ": "0x0000000000000004",
+      "rO": "0x0000000000000bf8",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {
+      "0x800": "00",
+      "0x801": "00",
+      "0x802": "00",
+      "0x803": "00",
+      "0x804": "00",
+      "0x805": "00",
+      "0x806": "00",
+      "0x807": "00",
+      "0x808": "00",
+      "0x809": "00",
+      "0x80a": "00",
+      "0x80b": "00",
+      "0x80c": "00",
+      "0x80d": "00",
+      "0x80e": "00",
+      "0x80f": "00",
+      "0x810": "00",
+      "0x811": "00",
+      "0x812": "00",
+      "0x813": "00",
+      "0x814": "00",
+      "0x815": "00",
+      "0x816": "00",
+      "0x817": "00",
+      "0x818": "00",
+      "0x819": "00",
+      "0x81a": "00",
+      "0x81b": "00",
+      "0x81c": "00",
+      "0x81d": "00",
+      "0x81e": "00",
+      "0x81f": "00"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "pop_range_fault"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

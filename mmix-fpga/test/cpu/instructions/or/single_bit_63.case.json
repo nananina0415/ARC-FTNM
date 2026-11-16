@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "or.single_bit_63",
+  "target": {
+    "mnemonic": "OR",
+    "opcode": "0xc0",
+    "pc": "0x0",
+    "word": "0xc0030102",
+    "executions": 1
+  },
+  "tags": [
+    "single_bit_63",
+    "register"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x8000000000000000",
+      "$2": "0x0000000000000055",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x8000000000000055"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "single_bit_63"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

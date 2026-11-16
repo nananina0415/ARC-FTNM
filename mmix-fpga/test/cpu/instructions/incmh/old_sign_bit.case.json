@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "incmh.old_sign_bit",
+  "target": {
+    "mnemonic": "INCMH",
+    "opcode": "0xe5",
+    "pc": "0x0",
+    "word": "0xe5038001",
+    "executions": 1
+  },
+  "tags": [
+    "old_sign_bit",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x8765432112345678",
+      "$3": "0x8000000000000000",
+      "$128": "0x8765432112345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x8000800100000000"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "old_sign_bit"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

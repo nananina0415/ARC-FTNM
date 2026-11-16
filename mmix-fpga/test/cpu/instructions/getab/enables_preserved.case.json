@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "getab.enables_preserved",
+  "target": {
+    "mnemonic": "GETAB",
+    "opcode": "0xf5",
+    "pc": "0x20",
+    "word": "0xf503ffff",
+    "executions": 1
+  },
+  "tags": [
+    "enables_preserved"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$3": "0xdeadbeef12345678",
+      "$255": "0xffffffffffffffff"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000024",
+    "registers": {
+      "$3": "0x000000000000001c"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "enables_preserved"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

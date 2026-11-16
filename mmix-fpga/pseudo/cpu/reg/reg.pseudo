@@ -1,0 +1,438 @@
+alias AluDirectIO = alu::AluDirectIO
+
+seq WordReg {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub w_en: In<bit,1>
+    pub in: WordIn
+    pub out: WordOut  // 항상 현재 값
+
+    buf: [D_FlipFlop; WORD_SIZE]
+    w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
+    rst_mux: Mux<2,WORD_SIZE>
+}
+
+wire WordReg {
+    clock => { buf[..].clock }
+
+    w_mux.select    <- w_en
+    w_mux.option[0] <- [ buf[..].out ]
+    w_mux.option[1] <- in
+
+    // 동기 리셋. 쓰기보다 우선
+    rst_mux.select    <- reset
+    rst_mux.option[0] <- w_mux.selected
+    rst_mux.option[1] <- 0
+    rst_mux.selected  -> [ buf[..].in ]
+
+    out <- [ buf[..].out ]
+}
+
+bundle WordRegBus {  // WordRegPort 입장
+    r1_en: In<bit,1>
+    r1:    WordOut
+    r2_en: In<bit,1>
+    r2:    WordOut
+    w_en:  In<bit,1>
+    w:     WordIn
+}
+
+// 읽기 버스 2개, 쓰기 버스 1개에 붙는 레지스터
+
+seq WordRegPort {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub bus: WordRegBus
+
+    mut reg: WordReg
+    r1_tri: TriState
+    r2_tri: TriState
+}
+
+wire WordRegPort {
+    clock -> reg.clock
+    reset -> reg.reset
+
+    bus.w_en -> reg.w_en
+    bus.w    -> reg.in
+
+    r1_tri.enable <- bus.r1_en
+    r1_tri.in     <- reg.out
+    r1_tri.out    -> bus.r1
+
+    r2_tri.enable <- bus.r2_en
+    r2_tri.in     <- reg.out
+    r2_tri.out    -> bus.r2
+}
+
+// 버스(GET/PUT)와 직접 와이어 양쪽으로 접근하는 레지스터
+
+seq DirectReg<N> {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub enable: In<bit,1>
+    pub rw: In<bit,1>
+    pub data: InOut<bit,N>
+
+    pub direct_out: Out<bit,N>  // 항상 현재 값
+    pub direct_in: In<bit,N>
+    pub direct_w_en: In<bit,1>
+
+    buf: [D_FlipFlop; N]
+    w_mux: Mux<3,N>
+    rst_mux: Mux<2,N>
+    tri: TriState<N>
+}
+
+wire DirectReg<N> {  // r=1,w=0
+    clock => { buf[0..N].clock }
+
+    // 0: 유지, 1: 버스 쓰기, 2: 직접 쓰기, 3(동시 쓰기): 미정의
+    w_mux.select[0] <- and(enable, not(rw))
+    w_mux.select[1] <- direct_w_en
+    w_mux.option[0] <- [ buf[0..N].out ]
+    w_mux.option[1] <- data
+    w_mux.option[2] <- direct_in
+
+    // 동기 리셋. 쓰기보다 우선
+    rst_mux.select    <- reset
+    rst_mux.option[0] <- w_mux.selected
+    rst_mux.option[1] <- 0
+    rst_mux.selected  -> [ buf[0..N].in ]
+
+    tri.enable <- and(enable, rw)
+    tri.in     <- [ buf[0..N].out ]
+    tri.out    -> data
+
+    direct_out <- [ buf[0..N].out ]
+}
+
+// DirectReg와 같고 동기 리셋 값만 모든 비트 1이다.
+seq DirectSetReg<N> {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub enable: In<bit,1>
+    pub rw: In<bit,1>
+    pub data: InOut<bit,N>
+
+    pub direct_out: Out<bit,N>
+    pub direct_in: In<bit,N>
+    pub direct_w_en: In<bit,1>
+
+    buf: [D_FlipFlop; N]
+    w_mux: Mux<3,N>
+    rst_mux: Mux<2,N>
+    tri: TriState<N>
+}
+
+wire DirectSetReg<N> {  // r=1,w=0
+    clock => { buf[0..N].clock }
+
+    w_mux.select[0] <- and(enable, not(rw))
+    w_mux.select[1] <- direct_w_en
+    w_mux.option[0] <- [ buf[0..N].out ]
+    w_mux.option[1] <- data
+    w_mux.option[2] <- direct_in
+
+    rst_mux.select    <- reset
+    rst_mux.option[0] <- w_mux.selected
+    { rst_mux.option[1][0..N] } <= 1
+    rst_mux.selected  -> [ buf[0..N].in ]
+
+    tri.enable <- and(enable, rw)
+    tri.in     <- [ buf[0..N].out ]
+    tri.out    -> data
+
+    direct_out <- [ buf[0..N].out ]
+}
+
+// 번들은 번들만 포함가능
+
+bundle GeneralRegIO {
+    r1_sel:  In<bit,8>
+    r1_physical: In<bit,1>  // 1이면 r1_sel이 논리 번호가 아니라 슬롯 번호
+    r1_data: WordOut  // 읽기 버스 1
+    r2_sel:  In<bit,8>
+    r2_data: WordOut  // 읽기 버스 2
+
+    w_sel:   In<bit,8>
+    w_data:  WordIn   // 쓰기 버스
+    w_en:    In<bit,1>
+
+    // 레지스터 스택 내부 쓰기. 슬롯을 직접 지정하며 명령의 $X 쓰기와 구분한다.
+    stack_w_sel:  In<bit,8>
+    stack_w_data: WordIn
+    stack_w_en:   In<bit,1>
+}
+
+bundle SpecialRegIO {
+    enable: In<bit,1>  // GET/PUT 버스 접근 허용. ALU 직접 경로와 별개
+    sel: In<bit,5>
+    rw: In<bit,1>
+    data: WordInOut
+}
+
+// 순차회로. 내부에 순차회로를 썼으면 순차회로여야함.
+// 내부에 순차회로 삽입시 mut 붙이기
+
+seq Registers {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+
+    pub general: GeneralRegIO
+    pub special: SpecialRegIO
+    pub alu_direct: *AluDirectIO
+    pub stack: StackDirectIO
+
+    mut generals: [WordRegPort; 256]
+    mut specials: [DirectReg<WORD_SIZE>; 32]  // rA,rD,rH,rM,rR,rJ,rO,rS,rG,rL 자리는 미사용
+
+    mut direct_rA: DirectReg<4>  // 비트 배치는 alu::RaBits
+    mut direct_rD: DirectReg<WORD_SIZE>
+    mut direct_rH: DirectReg<WORD_SIZE>
+    mut direct_rM: DirectReg<WORD_SIZE>
+    mut direct_rR: DirectReg<WORD_SIZE>
+    mut direct_rJ: DirectReg<WORD_SIZE>
+    mut direct_rO: DirectReg<WORD_SIZE>
+    mut direct_rS: DirectReg<WORD_SIZE>
+    mut direct_rG: DirectSetReg<8>  // 리셋 값 255
+    mut direct_rL: DirectReg<8>
+
+    geometry: RingGeometry
+    window_r1: RegisterWindow
+    window_r2: RegisterWindow
+    window_w: RegisterWindow
+    r1_slot: Mux<2,8>
+    w_slot: Mux<2,8>
+    w_data_mux: Mux<2,WORD_SIZE>
+    r1_en_mux: Mux<2,256>  // marginal 읽기는 슬롯을 선택하지 않는다
+    r2_en_mux: Mux<2,256>
+    r1_zero: TriState  // marginal은 0으로 읽힌다
+    r2_zero: TriState
+
+    sel_r1: Decoder<8,256>
+    sel_r2: Decoder<8,256>
+    sel_w:  Decoder<8,256>
+    w_en_mux: Mux<2,256>  // w_en=0이면 모든 쓰기 enable을 0으로
+    sel_special_reg: Decoder<5,32>
+    special_enable: Mux<2,32>
+
+    rA_pad: TriState<WORD_SIZE-4>  // rA의 나머지 비트는 GET 시 0
+    rG_pad: TriState<WORD_SIZE-8>
+    rL_pad: TriState<WORD_SIZE-8>
+}
+
+wire Registers {
+    clock => {
+        generals[..].clock,
+        specials[..].clock,
+        direct_rA.clock,
+        direct_rD.clock,
+        direct_rH.clock,
+        direct_rM.clock,
+        direct_rR.clock,
+        direct_rJ.clock,
+        direct_rO.clock,
+        direct_rS.clock,
+        direct_rG.clock,
+        direct_rL.clock,
+    }
+    reset => {
+        generals[..].reset,
+        specials[..].reset,
+        direct_rA.reset,
+        direct_rD.reset,
+        direct_rH.reset,
+        direct_rM.reset,
+        direct_rR.reset,
+        direct_rJ.reset,
+        direct_rO.reset,
+        direct_rS.reset,
+        direct_rG.reset,
+        direct_rL.reset,
+    }
+
+    // 논리 번호 -> 슬롯 변환
+    direct_rG.direct_out -> geometry.g
+    direct_rO.direct_out -> geometry.rO
+    direct_rS.direct_out -> geometry.rS
+    geometry.gamma -> OPENED
+    direct_rG.direct_out => { window_r1.g, window_r2.g, window_w.g }
+    direct_rL.direct_out => { window_r1.l, window_r2.l, window_w.l }
+    geometry.alpha => { window_r1.alpha, window_r2.alpha, window_w.alpha }
+    geometry.mask => { window_r1.mask, window_r2.mask, window_w.mask }
+
+    // 범용 레지스터 버스 (읽기 2, 쓰기 1)
+    general.r1_sel -> window_r1.sel
+    r1_slot.select <- general.r1_physical
+    r1_slot.option[0] <- window_r1.slot
+    r1_slot.option[1] <- general.r1_sel
+    r1_slot.selected -> sel_r1.in
+    r1_en_mux.select <- or(general.r1_physical, not(window_r1.marginal))
+    r1_en_mux.option[0] <- 0
+    r1_en_mux.option[1] <- sel_r1.out
+    r1_en_mux.selected -> [ generals[0..256].bus.r1_en ]
+    r1_zero.enable <- and(window_r1.marginal, not(general.r1_physical))
+    r1_zero.in <- 0
+    general.r1_data <= { generals[0..256].bus.r1, r1_zero.out }
+
+    general.r2_sel -> window_r2.sel
+    window_r2.slot -> sel_r2.in
+    r2_en_mux.select <- not(window_r2.marginal)
+    r2_en_mux.option[0] <- 0
+    r2_en_mux.option[1] <- sel_r2.out
+    r2_en_mux.selected -> [ generals[0..256].bus.r2_en ]
+    r2_zero.enable <- window_r2.marginal
+    r2_zero.in <- 0
+    general.r2_data <= { generals[0..256].bus.r2, r2_zero.out }
+
+    general.w_sel        -> window_w.sel
+    w_slot.select        <- general.stack_w_en
+    w_slot.option[0]     <- window_w.slot
+    w_slot.option[1]     <- general.stack_w_sel
+    w_slot.selected      -> sel_w.in
+    w_en_mux.select      <- or(and(general.w_en, not(window_w.marginal)), general.stack_w_en)
+    w_en_mux.option[0]   <- 0
+    w_en_mux.option[1]   <- sel_w.out
+    w_en_mux.selected    -> [ generals[0..256].bus.w_en ]
+    w_data_mux.select    <- general.stack_w_en
+    w_data_mux.option[0] <- general.w_data
+    w_data_mux.option[1] <- general.stack_w_data
+    w_data_mux.selected  => { generals[0..256].bus.w }
+
+    // 특수 레지스터 버스 (GET/PUT)
+    special.sel -> sel_special_reg.in
+    special_enable.select <- special.enable
+    special_enable.option[0] <- 0
+    special_enable.option[1] <- sel_special_reg.out
+
+    // 일반 특수 레지스터는 버스만 사용. 전용 칸은 접근하지 않음.
+    { specials[0..32].direct_w_en } <= 0
+    { specials[0..32].direct_in } <= 0
+    specials[0..13,14..32].direct_out -> OPENED
+    specials[rT].direct_out -> stack.rT_out
+    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].enable } <= 0
+    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].rw } <= 0
+    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].data } <= OPENED
+
+    special_enable.selected[0,2,7..10,12..19,22..32] -> [ specials[0,2,7..10,12..19,22..32].enable ]
+    special.rw   => { specials[0,2,7..10,12..19,22..32].rw }
+    special.data <=> { specials[0,2,7..10,12..19,22..32].data }
+
+    special_enable.selected[rA, rD, rH, rM, rR, rJ] -> [
+        direct_rA.enable,
+        direct_rD.enable,
+        direct_rH.enable,
+        direct_rM.enable,
+        direct_rR.enable,
+        direct_rJ.enable,
+    ]
+    // rO, rS, rG, rL은 버스로 읽기만 한다. 쓰기는 StackControl의 직접 경로로만 한다.
+    direct_rO.enable <- and(special_enable.selected[rO], special.rw)
+    direct_rS.enable <- and(special_enable.selected[rS], special.rw)
+    direct_rG.enable <- and(special_enable.selected[rG], special.rw)
+    direct_rL.enable <- and(special_enable.selected[rL], special.rw)
+    special.rw => {
+        direct_rA.rw,
+        direct_rD.rw,
+        direct_rH.rw,
+        direct_rM.rw,
+        direct_rR.rw,
+        direct_rJ.rw,
+        direct_rO.rw,
+        direct_rS.rw,
+        direct_rG.rw,
+        direct_rL.rw,
+    }
+    special.data[6,7,14,15] <=> { direct_rA.data }
+    special.data[0..8] <=> { direct_rG.data, direct_rL.data }
+    special.data <=> {
+        direct_rD.data,
+        direct_rH.data,
+        direct_rM.data,
+        direct_rR.data,
+        direct_rJ.data,
+        direct_rO.data,
+        direct_rS.data,
+    }
+
+    rA_pad.enable <- and(special_enable.selected[rA], special.rw)
+    rA_pad.in     <- 0
+    rA_pad.out    -> special.data[0..6, 8..14, 16..WORD_SIZE]
+    rG_pad.enable <- and(special_enable.selected[rG], special.rw)
+    rG_pad.in     <- 0
+    rG_pad.out    -> special.data[8..WORD_SIZE]
+    rL_pad.enable <- and(special_enable.selected[rL], special.rw)
+    rL_pad.in     <- 0
+    rL_pad.out    -> special.data[8..WORD_SIZE]
+
+    // 레지스터 스택 직접 와이어
+    direct_rJ.direct_out -> stack.rJ_out
+    stack.rJ_in -> direct_rJ.direct_in
+    stack.rJ_w_en -> direct_rJ.direct_w_en
+    direct_rO.direct_out -> stack.rO_out
+    stack.rO_in -> direct_rO.direct_in
+    stack.rO_w_en -> direct_rO.direct_w_en
+    direct_rS.direct_out -> stack.rS_out
+    stack.rS_in -> direct_rS.direct_in
+    stack.rS_w_en -> direct_rS.direct_w_en
+    direct_rG.direct_out -> stack.rG_out
+    stack.rG_in -> direct_rG.direct_in
+    stack.rG_w_en -> direct_rG.direct_w_en
+    direct_rL.direct_out -> stack.rL_out
+    stack.rL_in -> direct_rL.direct_in
+    stack.rL_w_en -> direct_rL.direct_w_en
+
+    // ALU 직접 와이어
+    direct_rA.direct_out -> alu_direct.rA_in
+    alu_direct.rA_out    -> direct_rA.direct_in
+    alu_direct.rA_w_en   -> direct_rA.direct_w_en
+
+    direct_rD.direct_out  -> alu_direct.rD_in
+    direct_rD.direct_w_en <- 0
+    direct_rD.direct_in <- 0
+    direct_rM.direct_out  -> alu_direct.rM_in
+    direct_rM.direct_w_en <- 0
+    direct_rM.direct_in <- 0
+
+    alu_direct.rH_out  -> direct_rH.direct_in
+    alu_direct.rH_w_en -> direct_rH.direct_w_en
+    alu_direct.rR_out  -> direct_rR.direct_in
+    alu_direct.rR_w_en -> direct_rR.direct_w_en
+    [ direct_rH.direct_out, direct_rR.direct_out ] -> OPENED
+}
+
+alias {
+    rB = 0
+    rD = 1
+    rE = 2
+    rH = 3
+    rJ = 4
+    rM = 5
+    rR = 6
+    rBB = 7
+    rC = 8
+    rN = 9
+    rO = 10
+    rS = 11
+    rI = 12
+    rT = 13
+    rTT = 14
+    rK = 15
+    rQ = 16
+    rU = 17
+    rV = 18
+    rG = 19
+    rL = 20
+    rA = 21
+    rF = 22
+    rP = 23
+    rW = 24
+    rX = 25
+    rY = 26
+    rZ = 27
+    rWW = 28
+    rXX = 29
+    rYY = 30
+    rZZ = 31
+}

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "id": "puti.rg_lower_clear",
+  "target": {
+    "mnemonic": "PUTI",
+    "opcode": "0xf7",
+    "pc": "0x0",
+    "word": "0xf7130096",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "rg_lower_clear"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$149": "0x0000000000000077",
+      "$150": "0x0000000000000099",
+      "$199": "0x0000000000000088"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {
+      "$150": "0x0000000000000000",
+      "$199": "0x0000000000000000"
+    },
+    "special": {
+      "rG": "0x0000000000000096"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "rg_lower_clear"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

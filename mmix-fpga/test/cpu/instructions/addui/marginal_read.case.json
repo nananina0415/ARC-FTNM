@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "addui.marginal_read",
+  "target": {
+    "mnemonic": "ADDUI",
+    "opcode": "0x23",
+    "pc": "0x0",
+    "word": "0x23013201",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "marginal_read"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$50": "0x0000000000000077"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {
+      "$1": "0x0000000000000001"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "marginal_read"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

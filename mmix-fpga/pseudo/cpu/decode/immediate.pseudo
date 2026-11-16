@@ -1,0 +1,21 @@
+// MMIX wyde 즉치: YZ의 16비트를 H/MH/ML/L 위치에 0 확장하여 배치.
+// lane 0=H, 1=MH, 2=ML, 3=L. 연산 자체는 기존 ALU가 담당한다.
+comb WydeImmediate {
+    pub value: In<bit,16>
+    pub lane: In<bit,2>
+    pub out: WordOut
+    position: Mux<4,WORD_SIZE>
+}
+
+wire WydeImmediate {
+    lane -> position.select
+    { position.option[0][0..48] } <= 0
+    position.option[0][48..64] <- value
+    { position.option[1][0..32,48..64] } <= 0
+    position.option[1][32..48] <- value
+    { position.option[2][0..16,32..64] } <= 0
+    position.option[2][16..32] <- value
+    position.option[3][0..16] <- value
+    { position.option[3][16..64] } <= 0
+    position.selected -> out
+}

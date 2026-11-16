@@ -1,0 +1,20 @@
+// CS/ZS: 조건 거짓이면 op[3]=0은 X 보존, op[3]=1은 0 저장.
+comb Cond {
+    pub op: In<bit,4>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res: WordOut
+    pub res_w_en: Out<bit,1>
+    predicate: condition::Condition
+    res_mux: Mux<2,WORD_SIZE>
+}
+
+wire Cond {
+    op[0..3] -> predicate.select
+    arg1 -> predicate.value
+    res_mux.select <- predicate.matched
+    res_mux.option[0] <- 0
+    res_mux.option[1] <- arg2
+    res_mux.selected -> res
+    res_w_en <- or(predicate.matched, op[3])
+}

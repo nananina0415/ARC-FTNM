@@ -1,0 +1,12 @@
+// 전역에서 접근가능
+
+alias WORD_SIZE = 64  // alias가 상수선언을 겸함
+alias WORD_MSB = WORD_SIZE - 1
+bundle WordIn: In<bit,WORD_SIZE>
+bundle WordOut: *WordIn
+bundle WordInOut: InOut<bit,WORD_SIZE>
+
+alias TriState = TriState<64>
+
+alias AxiRead = ::axi::AxiRead
+alias AxiMaster = ::axi::AxiMaster

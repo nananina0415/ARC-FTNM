@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "incml.destination_register255",
+  "target": {
+    "mnemonic": "INCML",
+    "opcode": "0xe6",
+    "pc": "0x0",
+    "word": "0xe6ff1234",
+    "executions": 1
+  },
+  "tags": [
+    "destination_register255",
+    "immediate"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$18": "0x8765432112345678",
+      "$52": "0x8765432112345678",
+      "$255": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$255": "0x012345679bdfcdef"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "destination_register255"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

@@ -1,0 +1,168 @@
+// 구현된 ALU/메모리/분기/GO 명령을 해독한다. 실행 단계/PC 저장은 제어유닛 담당.
+// instruction[24..32]=OP, [16..24]=X, [8..16]=Y, [0..8]=Z.
+// 일반 register/immediate 쌍은 OP bit 0으로 Z 입력 선택.
+// #E0~#EF는 별도 형식: $X와 16비트 YZ, opcode 하위 2비트는 wyde 위치.
+
+bundle DecodeControl {  // InstructionDecode 입장
+    valid:       Out<bit,1>  // instruction_valid && 지원 명령
+    unsupported: Out<bit,1>  // instruction_valid && 미지원 명령
+    halt:        Out<bit,1>  // TRAP 0,Halt,0 (#00000000), 현재 런타임의 종료 요청
+    memory:      Out<bit,1>
+    store:       Out<bit,1>
+    memory_size: Out<bit,2>  // log2(bytes)
+    load_unsigned: Out<bit,1>
+    store_constant: Out<bit,1>
+    address_get: Out<bit,1>
+    special_get: Out<bit,1>
+    special_put: Out<bit,1>
+    special_immediate: Out<bit,1>
+    special_index: Out<bit,5>
+    branch:      Out<bit,1>
+    branch_unconditional: Out<bit,1>
+    branch_condition: Out<bit,3>
+    branch_offset: WordOut
+    writes_x:    Out<bit,1>  // $X가 목적지인 명령. 거짓 조건의 CS*와 PUSH(X<G)도 L을 늘린다
+    push:        Out<bit,1>
+    push_go:     Out<bit,1>  // PUSHGO: 목표는 $Y+$Z, 아니면 PUSHJ의 상대 주소
+    go:          Out<bit,1>  // GO: $X ← @+4, 목표는 $Y+$Z
+    pop:         Out<bit,1>
+    put_g:       Out<bit,1>
+    put_l:       Out<bit,1>
+    save:        Out<bit,1>
+    unsave:      Out<bit,1>
+    trap:        Out<bit,1>  // XYZ가 0이 아닌 TRAP. XYZ=0은 halt
+    swym:        Out<bit,1>
+    alu_sel:     Out<bit,3>
+    op:          Out<bit,4>
+    r1_sel:      Out<bit,8>
+    r2_sel:      Out<bit,8>
+    w_sel:       Out<bit,8>
+    arg1_imm:    Out<bit,1>  // NEG/NEGU: Y 자체
+    arg2_imm:    Out<bit,1>  // 즉치형: Z 자체, 그 외 $Z
+    arg1_zero:   Out<bit,1>  // SET*: 첫 피연산자는 0
+    arg2_wyde:   Out<bit,1>  // #E0~#EF: 위치 배치된 16비트 YZ
+    imm_y:       WordOut    // unsigned byte, 0 확장
+    imm_z:       WordOut
+    imm_yz:      WordOut
+    imm_x:       WordOut
+}
+
+comb InstructionDecode {
+    pub instruction: In<bit,32>
+    pub instruction_valid: In<bit,1>  // 페치 오류가 없는 유효한 명령
+    pub control: DecodeControl
+
+    sel_pair: Decoder<7,128>
+    read1: Mux<2,8>
+    wyde: WydeImmediate
+    relative: RelativeOffset
+    special_select: Mux<2,5>
+}
+
+wire InstructionDecode {
+    alias supported = or(sel_pair.out[12], sel_pair.out[13], sel_pair.out[14], sel_pair.out[15], sel_pair.out[16], sel_pair.out[17], sel_pair.out[18], sel_pair.out[19], sel_pair.out[20], sel_pair.out[21], sel_pair.out[22], sel_pair.out[23], sel_pair.out[24], sel_pair.out[25], sel_pair.out[26], sel_pair.out[27], sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[96], sel_pair.out[97], sel_pair.out[98], sel_pair.out[99], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+    alias enabled = and(instruction_valid, supported)
+    alias neg = or(sel_pair.out[26], sel_pair.out[27])
+    alias is_load = or(sel_pair.out[64..72])
+    alias is_store_constant = sel_pair.out[90]
+    alias is_store = or(sel_pair.out[81,83,85..88], is_store_constant)
+    alias is_memory = or(is_load, is_store)
+    alias is_geta = sel_pair.out[122]
+    alias is_get = and(sel_pair.out[127], not(instruction[24]))
+    alias is_put = sel_pair.out[123]
+    alias special_format = and(not(or(instruction[8..16])), or(
+        and(is_get, not(or(instruction[5..8]))),
+        and(is_put, not(or(instruction[21..24]))),
+    ))
+    alias is_special = and(or(is_get, is_put), special_format)
+    alias is_conditional_branch = and(not(instruction[31]), instruction[30], not(instruction[29]))
+    alias is_jump = sel_pair.out[120]
+    alias is_branch = or(is_conditional_branch, is_jump)
+    alias is_go = sel_pair.out[79]
+    alias is_pushj = sel_pair.out[121]
+    alias is_pushgo = sel_pair.out[95]
+    alias is_push = or(is_pushj, is_pushgo)
+    alias is_pop = and(sel_pair.out[124], not(instruction[24]))
+    alias is_save = and(sel_pair.out[125], not(instruction[24]), not(or(instruction[0..16])))  // Y=Z=0
+    alias is_unsave = and(sel_pair.out[125], instruction[24], not(or(instruction[8..24])))  // X=Y=0
+    alias is_stack = or(is_push, is_pop, is_save, is_unsave)
+    alias is_trap = and(sel_pair.out[0], not(instruction[24]), or(instruction[0..24]))
+    alias is_swym = and(sel_pair.out[126], instruction[24])
+    alias is_constant = and(instruction[31], instruction[30], instruction[29], not(instruction[28]))
+    alias const_add = and(is_constant, not(instruction[27]))  // SET/INC -> ADDU
+    alias const_set = and(const_add, not(instruction[26]))
+    alias const_or = and(is_constant, instruction[27], not(instruction[26]))
+    alias const_andn = and(is_constant, instruction[27], instruction[26])
+    alias default_compare = and(not(supported), not(is_constant))
+
+    instruction[25..32] -> sel_pair.in
+    sel_pair.out[1..12,32..48,72..79,80,82,84,88,89,91..95,104..108,109..120] -> OPENED
+    alias is_halt = not(or(instruction[0..32]))
+    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_go, is_special, is_stack, is_trap, is_swym))
+    control.halt <- and(instruction_valid, is_halt)
+    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_go, is_special, is_stack, is_trap, is_swym)))
+    control.trap <- and(instruction_valid, is_trap)
+    control.swym <- and(instruction_valid, is_swym)
+    control.writes_x <- and(instruction_valid, or(supported, is_constant, is_load, is_geta, is_go, and(is_special, is_get), is_push))
+    control.push <- and(instruction_valid, is_push)
+    control.push_go <- and(instruction_valid, is_pushgo)
+    control.go <- and(instruction_valid, is_go)
+    control.pop <- and(instruction_valid, is_pop)
+    control.save <- and(instruction_valid, is_save)
+    control.unsave <- and(instruction_valid, is_unsave)
+    control.put_g <- and(instruction_valid, is_special, is_put, instruction[16], instruction[17], not(instruction[18]), not(instruction[19]), instruction[20])
+    control.put_l <- and(instruction_valid, is_special, is_put, not(instruction[16]), not(instruction[17]), instruction[18], not(instruction[19]), instruction[20])
+    control.memory <- and(instruction_valid, is_memory)
+    control.store <- and(instruction_valid, is_store)
+    control.store_constant <- and(instruction_valid, is_store_constant)
+    control.memory_size[0] <- or(instruction[26], is_store_constant)
+    control.memory_size[1] <- or(instruction[27], is_store_constant)
+    instruction[25] -> control.load_unsigned
+    control.address_get <- and(instruction_valid, is_geta)
+    control.special_get <- and(instruction_valid, is_special, is_get)
+    control.special_put <- and(instruction_valid, is_special, is_put)
+    control.special_immediate <- and(instruction_valid, is_special, is_put, instruction[24])
+    special_select.select <- is_put
+    special_select.option[0] <- instruction[0..5]
+    special_select.option[1] <- instruction[16..21]
+    special_select.selected -> control.special_index
+    control.branch <- and(instruction_valid, is_branch)
+    control.branch_unconditional <- and(instruction_valid, is_jump)
+    instruction[25..28] -> control.branch_condition
+    instruction[0..24] -> relative.value
+    relative.wide <- is_jump
+    relative.backward <- instruction[24]
+    relative.out -> control.branch_offset
+
+    read1.select <- or(is_constant, is_conditional_branch)
+    read1.option[0] <- instruction[8..16]
+    read1.option[1] <- instruction[16..24]
+    read1.selected -> control.r1_sel
+    instruction[0..8] -> control.r2_sel
+    instruction[16..24] -> control.w_sel
+    control.arg1_imm <- and(enabled, neg)
+    control.arg2_imm <- and(instruction_valid, or(supported, is_memory, is_pushgo, is_go), instruction[24])
+    control.arg1_zero <- and(instruction_valid, const_set)
+    control.arg2_wyde <- and(instruction_valid, is_constant)
+    control.imm_y[0..8] <- [ instruction[8..16] ]
+    { control.imm_y[8..WORD_SIZE] } <= 0
+    control.imm_z[0..8] <- [ instruction[0..8] ]
+    { control.imm_z[8..WORD_SIZE] } <= 0
+    control.imm_x[0..8] <- instruction[16..24]
+    { control.imm_x[8..WORD_SIZE] } <= 0
+    instruction[0..16] -> wyde.value
+    instruction[24..26] -> wyde.lane
+    wyde.out -> control.imm_yz
+
+    // ALU 유닛 번호: AddSub=0, Mul=1, Div=2, Compare=3, Bitwise=4, Shift=5, Cond=6.
+    // 미지원 opcode는 예외 없는 Compare로 선택. 쓰기 허용은 valid로 차단.
+    control.alu_sel[0] <- or(default_compare, or(sel_pair.out[12], sel_pair.out[13], sel_pair.out[24], sel_pair.out[25], sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31]))
+    control.alu_sel[1] <- or(default_compare, or(sel_pair.out[14], sel_pair.out[15], sel_pair.out[24], sel_pair.out[25], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63]))
+    control.alu_sel[2] <- or(const_or, const_andn, sel_pair.out[28], sel_pair.out[29], sel_pair.out[30], sel_pair.out[31], sel_pair.out[48], sel_pair.out[49], sel_pair.out[50], sel_pair.out[51], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[96], sel_pair.out[97], sel_pair.out[98], sel_pair.out[99], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+
+    // 각 하위 유닛의 op 번호로 변환. AddSub의 NEG/NEGU는 8/9.
+    control.op[0] <- or(const_add, const_andn, sel_pair.out[13], sel_pair.out[15], sel_pair.out[17], sel_pair.out[19], sel_pair.out[21], sel_pair.out[23], sel_pair.out[25], sel_pair.out[27], sel_pair.out[29], sel_pair.out[31], sel_pair.out[49], sel_pair.out[51], sel_pair.out[53], sel_pair.out[55], sel_pair.out[57], sel_pair.out[59], sel_pair.out[61], sel_pair.out[63], sel_pair.out[97], sel_pair.out[99], sel_pair.out[101], sel_pair.out[103])
+    control.op[1] <- or(sel_pair.out[18], sel_pair.out[19], sel_pair.out[22], sel_pair.out[23], sel_pair.out[30], sel_pair.out[31], sel_pair.out[50], sel_pair.out[51], sel_pair.out[54], sel_pair.out[55], sel_pair.out[58], sel_pair.out[59], sel_pair.out[62], sel_pair.out[63], sel_pair.out[98], sel_pair.out[99], sel_pair.out[102], sel_pair.out[103])
+    control.op[2] <- or(const_andn, sel_pair.out[20], sel_pair.out[21], sel_pair.out[22], sel_pair.out[23], sel_pair.out[52], sel_pair.out[53], sel_pair.out[54], sel_pair.out[55], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[100], sel_pair.out[101], sel_pair.out[102], sel_pair.out[103], sel_pair.out[108])
+    control.op[3] <- or(sel_pair.out[26], sel_pair.out[27], sel_pair.out[56], sel_pair.out[57], sel_pair.out[58], sel_pair.out[59], sel_pair.out[60], sel_pair.out[61], sel_pair.out[62], sel_pair.out[63], sel_pair.out[108])
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "halt.trap_marginal_operands",
+  "target": {
+    "mnemonic": "HALT",
+    "opcode": "0x00",
+    "pc": "0x0",
+    "word": "0x0001323c",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "trap_marginal_operands"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000001",
+      "$1": "0x0000000000000002",
+      "$50": "0x0000000000000050",
+      "$60": "0x0000000000000060"
+    },
+    "special": {
+      "rJ": "0x0000000000001234",
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rT": "0x0000000000000008",
+      "rK": "0x0000000000005555",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$255": "0x0000000000001234"
+    },
+    "special": {
+      "rK": "0x0000000000000000",
+      "rWW": "0x0000000000000004",
+      "rXX": "0x800000000001323c"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "trap_marginal_operands"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

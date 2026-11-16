@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "ldo.last_valid_octa",
+  "target": {
+    "mnemonic": "LDO",
+    "opcode": "0x8c",
+    "pc": "0x0",
+    "word": "0x8c030102",
+    "executions": 1
+  },
+  "tags": [
+    "last_valid_octa",
+    "register"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x000000003ffffff8",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x3ffffff8": "01",
+      "0x3ffffff9": "02",
+      "0x3ffffffa": "03",
+      "0x3ffffffb": "04",
+      "0x3ffffffc": "05",
+      "0x3ffffffd": "06",
+      "0x3ffffffe": "07",
+      "0x3fffffff": "08"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {
+      "$3": "0x0102030405060708"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "last_valid_octa"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

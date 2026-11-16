@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "id": "sto.address_wrap",
+  "target": {
+    "mnemonic": "STO",
+    "opcode": "0xac",
+    "pc": "0x0",
+    "word": "0xac030102",
+    "executions": 1
+  },
+  "tags": [
+    "address_wrap",
+    "register"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0xffffffffffffffc0",
+      "$2": "0x00000000000000c0",
+      "$3": "0x0123456789abcdef"
+    },
+    "special": {
+      "rH": "0x1122334455667788",
+      "rM": "0xaaaaaaaa55555555",
+      "rR": "0x8877665544332211",
+      "rG": "0x00000000000000ff"
+    },
+    "memory": {
+      "0x80": "01",
+      "0x81": "02",
+      "0x82": "03",
+      "0x83": "04",
+      "0x84": "05",
+      "0x85": "06",
+      "0x86": "07",
+      "0x87": "08"
+    }
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "registers": {},
+    "special": {},
+    "memory": {
+      "0x81": "23",
+      "0x82": "45",
+      "0x83": "67",
+      "0x84": "89",
+      "0x85": "ab",
+      "0x86": "cd",
+      "0x87": "ef"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "address_wrap"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

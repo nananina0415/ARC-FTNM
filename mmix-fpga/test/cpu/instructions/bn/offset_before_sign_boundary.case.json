@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "bn.offset_before_sign_boundary",
+  "target": {
+    "mnemonic": "BN",
+    "opcode": "0x40",
+    "pc": "0x0",
+    "word": "0x40017fff",
+    "executions": 1
+  },
+  "tags": [
+    "branch",
+    "offset_before_sign_boundary"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0xffffffffffffffff",
+      "$4": "0x0000000000000007",
+      "$127": "0x5555555555555555",
+      "$255": "0x5555555555555555"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0",
+      "rH": "0x1122334455667788",
+      "rR": "0x8877665544332211"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "fault",
+    "reason": 1,
+    "pc": "0x000000000001fffc",
+    "registers": {},
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "offset_before_sign_boundary"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "id": "put.alu_direct_round_trip",
+  "target": {
+    "mnemonic": "PUT",
+    "opcode": "0xf6",
+    "pc": "0x4",
+    "word": "0xf6010001",
+    "executions": 1
+  },
+  "tags": [
+    "alu_direct_round_trip"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {},
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000028",
+    "registers": {
+      "$1": "0x00000000000000ff",
+      "$2": "0x0000000000000003",
+      "$3": "0x0000000000000004",
+      "$4": "0x8000000000000000",
+      "$5": "0x0000000000000003",
+      "$6": "0x0000000000000003",
+      "$7": "0x0000000000000002"
+    },
+    "special": {
+      "rD": "0x0000000000000002",
+      "rM": "0x00000000000000ff",
+      "rR": "0x0000000000000003"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 8,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "alu_direct_round_trip"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

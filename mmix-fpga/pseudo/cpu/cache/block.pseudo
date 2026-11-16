@@ -1,0 +1,134 @@
+// 32바이트 캐시라인. valid/tag/data 저장, byte mask store 갱신.
+seq CacheBlock {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub invalidate: In<bit,1>
+    pub fill_en: In<bit,1>
+    pub update_tag: In<bit,22>
+    pub fill_data: In<bit,256>
+    pub store_en: In<bit,1>
+    pub store_data: In<bit,256>
+    pub store_mask: In<bit,32>
+    pub valid: Out<bit,1>
+    pub tag: Out<bit,22>
+    pub data: Out<bit,256>
+    mut valid_reg: reg::ValueReg<1>
+    mut tag_reg: reg::ValueReg<22>
+    mut data_reg: reg::ValueReg<256>
+    bytes: [Mux<2,8>; 32]
+    fill_mux: Mux<2,256>
+}
+wire CacheBlock {
+    alias difference = xor(tag_reg.out, update_tag)
+    alias matches = and(valid_reg.out, not(or(difference[0..22])))
+    clock => { valid_reg.clock, tag_reg.clock, data_reg.clock }
+    reset => { valid_reg.reset, tag_reg.reset, data_reg.reset }
+    valid_reg.w_en <- or(fill_en, invalidate)
+    valid_reg.in <- and(fill_en, not(invalidate))
+    tag_reg.w_en <- fill_en
+    tag_reg.in <- update_tag
+    data_reg.w_en <- or(fill_en, and(store_en, matches))
+    fill_mux.select <- fill_en
+    fill_mux.option[0] <- [ bytes[0..32].selected ]
+    fill_mux.option[1] <- fill_data
+    fill_mux.selected -> data_reg.in
+    bytes[0].select <- store_mask[0]
+    bytes[0].option[0] <- [ data_reg.out[0..8] ]
+    bytes[0].option[1] <- [ store_data[0..8] ]
+    bytes[1].select <- store_mask[1]
+    bytes[1].option[0] <- [ data_reg.out[8..16] ]
+    bytes[1].option[1] <- [ store_data[8..16] ]
+    bytes[2].select <- store_mask[2]
+    bytes[2].option[0] <- [ data_reg.out[16..24] ]
+    bytes[2].option[1] <- [ store_data[16..24] ]
+    bytes[3].select <- store_mask[3]
+    bytes[3].option[0] <- [ data_reg.out[24..32] ]
+    bytes[3].option[1] <- [ store_data[24..32] ]
+    bytes[4].select <- store_mask[4]
+    bytes[4].option[0] <- [ data_reg.out[32..40] ]
+    bytes[4].option[1] <- [ store_data[32..40] ]
+    bytes[5].select <- store_mask[5]
+    bytes[5].option[0] <- [ data_reg.out[40..48] ]
+    bytes[5].option[1] <- [ store_data[40..48] ]
+    bytes[6].select <- store_mask[6]
+    bytes[6].option[0] <- [ data_reg.out[48..56] ]
+    bytes[6].option[1] <- [ store_data[48..56] ]
+    bytes[7].select <- store_mask[7]
+    bytes[7].option[0] <- [ data_reg.out[56..64] ]
+    bytes[7].option[1] <- [ store_data[56..64] ]
+    bytes[8].select <- store_mask[8]
+    bytes[8].option[0] <- [ data_reg.out[64..72] ]
+    bytes[8].option[1] <- [ store_data[64..72] ]
+    bytes[9].select <- store_mask[9]
+    bytes[9].option[0] <- [ data_reg.out[72..80] ]
+    bytes[9].option[1] <- [ store_data[72..80] ]
+    bytes[10].select <- store_mask[10]
+    bytes[10].option[0] <- [ data_reg.out[80..88] ]
+    bytes[10].option[1] <- [ store_data[80..88] ]
+    bytes[11].select <- store_mask[11]
+    bytes[11].option[0] <- [ data_reg.out[88..96] ]
+    bytes[11].option[1] <- [ store_data[88..96] ]
+    bytes[12].select <- store_mask[12]
+    bytes[12].option[0] <- [ data_reg.out[96..104] ]
+    bytes[12].option[1] <- [ store_data[96..104] ]
+    bytes[13].select <- store_mask[13]
+    bytes[13].option[0] <- [ data_reg.out[104..112] ]
+    bytes[13].option[1] <- [ store_data[104..112] ]
+    bytes[14].select <- store_mask[14]
+    bytes[14].option[0] <- [ data_reg.out[112..120] ]
+    bytes[14].option[1] <- [ store_data[112..120] ]
+    bytes[15].select <- store_mask[15]
+    bytes[15].option[0] <- [ data_reg.out[120..128] ]
+    bytes[15].option[1] <- [ store_data[120..128] ]
+    bytes[16].select <- store_mask[16]
+    bytes[16].option[0] <- [ data_reg.out[128..136] ]
+    bytes[16].option[1] <- [ store_data[128..136] ]
+    bytes[17].select <- store_mask[17]
+    bytes[17].option[0] <- [ data_reg.out[136..144] ]
+    bytes[17].option[1] <- [ store_data[136..144] ]
+    bytes[18].select <- store_mask[18]
+    bytes[18].option[0] <- [ data_reg.out[144..152] ]
+    bytes[18].option[1] <- [ store_data[144..152] ]
+    bytes[19].select <- store_mask[19]
+    bytes[19].option[0] <- [ data_reg.out[152..160] ]
+    bytes[19].option[1] <- [ store_data[152..160] ]
+    bytes[20].select <- store_mask[20]
+    bytes[20].option[0] <- [ data_reg.out[160..168] ]
+    bytes[20].option[1] <- [ store_data[160..168] ]
+    bytes[21].select <- store_mask[21]
+    bytes[21].option[0] <- [ data_reg.out[168..176] ]
+    bytes[21].option[1] <- [ store_data[168..176] ]
+    bytes[22].select <- store_mask[22]
+    bytes[22].option[0] <- [ data_reg.out[176..184] ]
+    bytes[22].option[1] <- [ store_data[176..184] ]
+    bytes[23].select <- store_mask[23]
+    bytes[23].option[0] <- [ data_reg.out[184..192] ]
+    bytes[23].option[1] <- [ store_data[184..192] ]
+    bytes[24].select <- store_mask[24]
+    bytes[24].option[0] <- [ data_reg.out[192..200] ]
+    bytes[24].option[1] <- [ store_data[192..200] ]
+    bytes[25].select <- store_mask[25]
+    bytes[25].option[0] <- [ data_reg.out[200..208] ]
+    bytes[25].option[1] <- [ store_data[200..208] ]
+    bytes[26].select <- store_mask[26]
+    bytes[26].option[0] <- [ data_reg.out[208..216] ]
+    bytes[26].option[1] <- [ store_data[208..216] ]
+    bytes[27].select <- store_mask[27]
+    bytes[27].option[0] <- [ data_reg.out[216..224] ]
+    bytes[27].option[1] <- [ store_data[216..224] ]
+    bytes[28].select <- store_mask[28]
+    bytes[28].option[0] <- [ data_reg.out[224..232] ]
+    bytes[28].option[1] <- [ store_data[224..232] ]
+    bytes[29].select <- store_mask[29]
+    bytes[29].option[0] <- [ data_reg.out[232..240] ]
+    bytes[29].option[1] <- [ store_data[232..240] ]
+    bytes[30].select <- store_mask[30]
+    bytes[30].option[0] <- [ data_reg.out[240..248] ]
+    bytes[30].option[1] <- [ store_data[240..248] ]
+    bytes[31].select <- store_mask[31]
+    bytes[31].option[0] <- [ data_reg.out[248..256] ]
+    bytes[31].option[1] <- [ store_data[248..256] ]
+    valid_reg.out -> valid
+    tag_reg.out -> tag
+    data_reg.out -> data
+}

@@ -1,0 +1,78 @@
+﻿opcode,mnemonic,static_words,unit_checked,cycle_checked,status
+00,TRAP,19,False,False,HALT만 지원 / 일반 TRAP 미구현
+1A,MULU,89,True,False,지원 경로 있음
+1B,MULUI,47,True,False,지원 경로 있음
+1E,DIVU,138,True,False,지원 경로 있음
+1F,DIVUI,7,True,False,지원 경로 있음
+21,ADDI,1,True,False,지원 경로 있음
+22,ADDU,3756,True,False,지원 경로 있음
+23,ADDUI,16120,True,False,지원 경로 있음
+26,SUBU,542,True,False,지원 경로 있음
+27,SUBUI,1158,True,False,지원 경로 있음
+30,CMP,1080,True,False,지원 경로 있음
+31,CMPI,3153,True,False,지원 경로 있음
+32,CMPU,73,True,False,지원 경로 있음
+33,CMPUI,91,True,False,지원 경로 있음
+36,NEGU,696,True,False,지원 경로 있음
+37,NEGUI,187,True,False,지원 경로 있음
+3A,SLU,7,True,False,지원 경로 있음
+3B,SLUI,11428,True,False,지원 경로 있음
+3C,SR,4,True,False,지원 경로 있음
+3D,SRI,7882,True,False,지원 경로 있음
+3F,SRUI,2096,True,False,지원 경로 있음
+40,BN,204,True,False,지원 경로 있음
+41,BNB,123,True,False,지원 경로 있음
+42,BZ,1522,True,False,지원 경로 있음
+43,BZB,21,True,False,지원 경로 있음
+44,BP,377,True,False,지원 경로 있음
+45,BPB,62,True,False,지원 경로 있음
+48,BNN,293,True,False,지원 경로 있음
+49,BNNB,18,True,False,지원 경로 있음
+4A,BNZ,1094,True,False,지원 경로 있음
+4B,BNZB,129,True,False,지원 경로 있음
+4C,BNP,350,True,False,지원 경로 있음
+4D,BNPB,203,True,False,지원 경로 있음
+60,CSN,358,True,False,지원 경로 있음
+68,CSNN,41,True,False,지원 경로 있음
+6C,CSNP,1,True,False,지원 경로 있음
+80,LDB,5,True,False,지원 경로 있음
+81,LDBI,454,True,False,지원 경로 있음
+85,LDWI,627,True,False,지원 경로 있음
+89,LDTI,10064,True,False,지원 경로 있음
+8D,LDOI,9586,True,False,지원 경로 있음
+8F,LDOUI,2,True,False,지원 경로 있음
+A2,STBU,8,True,False,지원 경로 있음
+A3,STBUI,254,True,False,지원 경로 있음
+A7,STWUI,282,True,False,지원 경로 있음
+AB,STTUI,5292,True,False,지원 경로 있음
+AF,STOUI,2190,True,False,지원 경로 있음
+B5,STCOI,77,True,False,지원 경로 있음
+BF,PUSHGOI,469,False,False,미구현
+C0,OR,55,True,False,지원 경로 있음
+C1,ORI,13487,True,False,지원 경로 있음
+C5,NORI,2,True,False,지원 경로 있음
+C6,XOR,110,True,False,지원 경로 있음
+C7,XORI,21,True,False,지원 경로 있음
+C8,AND,125,True,False,지원 경로 있음
+C9,ANDI,232,True,False,지원 경로 있음
+E2,SETML,288,True,True,지원 경로 있음
+E3,SETL,5862,True,True,지원 경로 있음
+E4,INCH,1001,True,True,지원 경로 있음
+E5,INCMH,988,True,True,지원 경로 있음
+E6,INCML,1286,True,True,지원 경로 있음
+E7,INCL,161,True,True,지원 경로 있음
+E8,ORH,3,True,True,지원 경로 있음
+EA,ORML,4,True,True,지원 경로 있음
+EB,ORL,18,True,True,지원 경로 있음
+EE,ANDNML,6,True,True,지원 경로 있음
+EF,ANDNL,27,True,True,지원 경로 있음
+F0,JMP,2530,True,False,지원 경로 있음
+F1,JMPB,828,True,False,지원 경로 있음
+F2,PUSHJ,1783,False,False,미구현
+F3,PUSHJB,1752,False,False,미구현
+F4,GETA,4,True,False,지원 경로 있음
+F5,GETAB,82,True,False,지원 경로 있음
+F6,PUT,4002,True,False,지원 경로 있음
+F8,POP,823,False,False,미구현
+FD,SWYM,116,False,False,미구현
+FE,GET,673,True,False,지원 경로 있음

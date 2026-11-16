@@ -1,0 +1,109 @@
+# MMIX structural pseudo language, v0.1
+# Standard PEG notation: <- definition, / ordered choice, ! negative lookahead.
+# No semantic actions or parser-library-specific syntax.
+# S includes newlines: statement boundaries follow syntax, not physical lines.
+# Save source spans before discarding S; semantic rules are in language-semantics.md.
+
+Source              <- BOM? S Declaration* S End
+Declaration         <- AliasDeclaration / BundleDeclaration / CircuitDeclaration / WireDeclaration
+
+AliasDeclaration    <- KAlias (AliasBlock / AliasBinding)
+AliasBlock          <- LBrace (AliasBinding Comma?)* RBrace
+AliasBinding        <- Identifier Equals RightExpression
+
+BundleDeclaration   <- KBundle Identifier (Colon Type / BundleBody)
+BundleBody          <- LBrace (BundleField Comma?)* RBrace
+BundleField         <- Identifier Colon Type
+
+CircuitDeclaration  <- CircuitKind Identifier Parameters? LBrace Member* RBrace
+CircuitKind         <- KComb / KSeq
+Parameters          <- LAngle Identifier (Comma Identifier)* Comma? RAngle
+Member              <- AliasDeclaration / MemberDeclaration
+MemberDeclaration   <- Modifier? Identifier Colon Type
+Modifier            <- KPub / KMut
+
+WireDeclaration     <- KWire Identifier Parameters? LBrace WireStatement* RBrace
+WireStatement       <- AliasDeclaration / Connection
+Connection          <- Endpoint Arrow RightEndpoint
+Endpoint            <- FanoutList / Expression
+FanoutList          <- LBrace Expression (Comma Expression)* Comma? RBrace
+Arrow               <- S ('<=>' / '=>' / '<=' / '->' / '<-') H
+
+Type                <- Reverse* (ArrayType / NamedType)
+NamedType           <- NamePath Arguments?
+ArrayType           <- LBracket Type Semicolon Expression RBracket
+Reverse             <- S '*' H
+Arguments           <- LAngle Expression (Comma Expression)* Comma? RAngle
+
+Expression          <- Additive
+Additive            <- Multiplicative ((Plus / Minus) Multiplicative)*
+Multiplicative      <- Unary ((Multiply / Divide / Modulo) Unary)*
+Unary               <- (Plus / Minus / Reverse) Unary / Primary
+Primary             <- Integer / Call / ArrayType / PackedList / Parenthesized / Reference
+Parenthesized       <- LParen Expression RParen
+Call                <- Identifier LParen Expression (Comma Expression)* Comma? RParen
+PackedList          <- LBracket Expression (Comma Expression)* Comma? RBracket
+Reference           <- NamePath Arguments? Selector*
+Selector            <- Index / Field
+# At a completed right-hand endpoint, a new-line packed operand followed by
+# an arrow starts a new connection instead of indexing the previous endpoint.
+RightEndpoint       <- FanoutList / RightExpression
+RightExpression     <- RightAdditive
+RightAdditive       <- RightMultiplicative ((Plus / Minus) RightMultiplicative)*
+RightMultiplicative <- RightUnary ((Multiply / Divide / Modulo) RightUnary)*
+RightUnary          <- (Plus / Minus / Reverse) RightUnary / RightPrimary
+RightPrimary        <- Integer / Call / ArrayType / PackedList / Parenthesized / RightReference
+RightReference      <- NamePath Arguments? (!NewPackedStatement Selector)*
+NewPackedStatement  <- LineGap PackedList Arrow
+LineGap             <- H (LineComment / Newline) S
+Field               <- Dot Identifier
+Index               <- LBracket (WholeRange / IndexItem (Comma IndexItem)* Comma?) RBracket
+WholeRange          <- Range
+IndexItem           <- Expression (Range Expression)?
+NamePath            <- Namespace? Identifier (Namespace Identifier)*
+
+Integer             <- S (Hex / Binary / Decimal) !IdentifierContinue H
+Hex                 <- '0' [xX] [0-9a-fA-F]+
+Binary              <- '0' [bB] [01]+
+Decimal             <- [0-9]+
+Identifier          <- S !Reserved IdentifierStart IdentifierContinue* H
+IdentifierStart     <- [A-Za-z_]
+IdentifierContinue  <- [A-Za-z0-9_]
+Reserved            <- ('alias' / 'bundle' / 'comb' / 'seq' / 'wire' / 'pub' / 'mut') !IdentifierContinue
+
+KAlias              <- S 'alias' !IdentifierContinue H
+KBundle             <- S 'bundle' !IdentifierContinue H
+KComb               <- S 'comb' !IdentifierContinue H
+KSeq                <- S 'seq' !IdentifierContinue H
+KWire               <- S 'wire' !IdentifierContinue H
+KPub                <- S 'pub' !IdentifierContinue H
+KMut                <- S 'mut' !IdentifierContinue H
+
+Equals              <- S '=' !'>' H
+Colon               <- S ':' !':' H
+Namespace           <- S '::' H
+Comma               <- S ',' H
+Semicolon           <- S ';' H
+Dot                 <- S '.' !'.' H
+Range               <- S '..' H
+Plus                <- S '+' H
+Minus               <- S '-' !'>' H
+Multiply            <- S '*' H
+Divide              <- S '/' !'/' H
+Modulo              <- S '%' H
+LAngle              <- S '<' ![=-] H
+RAngle              <- S '>' H
+LParen              <- S '(' H
+RParen              <- S ')' H
+LBracket            <- S '[' H
+RBracket            <- S ']' H
+LBrace              <- S '{' H
+RBrace              <- S '}' H
+
+H                   <- [ \t]*
+S                   <- (Space / LineComment)*
+Space               <- [ \t\r\n]
+LineComment         <- '//' (!Newline .)* (Newline / End)
+Newline             <- '\r\n' / '\n' / '\r'
+BOM                 <- '\uFEFF'
+End                 <- !.

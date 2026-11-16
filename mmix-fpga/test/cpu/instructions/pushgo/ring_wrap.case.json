@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "pushgo.ring_wrap",
+  "target": {
+    "mnemonic": "PUSHGO",
+    "opcode": "0xbe",
+    "pc": "0x4",
+    "word": "0xbe02fefd",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "ring_wrap"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000012",
+      "$1": "0x0000000000000013",
+      "$2": "0x0000000000000014",
+      "$126": "0x0000000000000010",
+      "$127": "0x0000000000000011"
+    },
+    "special": {
+      "rO": "0x0000000000000bf0",
+      "rS": "0x0000000000000bf0",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000005"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$0": "0x0000000000000002",
+      "$254": "0x000000000000000c"
+    },
+    "special": {
+      "rJ": "0x0000000000000008",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "ring_wrap"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

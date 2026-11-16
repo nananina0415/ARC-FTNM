@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "pushjb.x_marginal",
+  "target": {
+    "mnemonic": "PUSHJB",
+    "opcode": "0xf3",
+    "pc": "0x8",
+    "word": "0xf307ffff",
+    "executions": 7
+  },
+  "tags": [
+    "stack",
+    "x_marginal"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$0": "0x0000000000000010",
+      "$1": "0x0000000000000011",
+      "$2": "0x0000000000000012",
+      "$3": "0x0000000000000013",
+      "$4": "0x0000000000000014"
+    },
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x00000000000000c8",
+      "rL": "0x0000000000000002"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x000000000000000c",
+    "registers": {
+      "$2": "0x0000000000000000",
+      "$3": "0x0000000000000000",
+      "$4": "0x0000000000000000",
+      "$7": "0x0000000000000007"
+    },
+    "special": {
+      "rJ": "0x000000000000000c",
+      "rL": "0x0000000000000007"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "x_marginal"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

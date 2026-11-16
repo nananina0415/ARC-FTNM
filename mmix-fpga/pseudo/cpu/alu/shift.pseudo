@@ -1,0 +1,109 @@
+// 시프트 유닛. 즉치는 제어유닛이 arg2로 주입
+// op = (opcode >> 1)의 하위 2비트: SL=0, SLU=1, SR=2, SRU=3
+// arg2는 unsigned 64비트 시프트량. 하위 6비트로만 잘라 해석하지 않음
+
+comb Shift {
+    pub op:   In<bit,2>
+    pub arg1: WordIn
+    pub arg2: WordIn
+    pub res:  WordOut
+    pub v:    Out<bit,1>  // SL만 signed 오버플로를 보고
+
+    step1: ShiftStep<1>
+    step2: ShiftStep<2>
+    step4: ShiftStep<4>
+    step8: ShiftStep<8>
+    step16: ShiftStep<16>
+    step32: ShiftStep<32>
+    res_mux: Mux<2,WORD_SIZE>
+}
+
+wire Shift {
+    alias right = op[1]
+    alias signed_right = and(op[1], not(op[0]))
+    alias fill = and(signed_right, arg1[WORD_MSB])
+    alias large = or(arg2[6..WORD_SIZE])  // 시프트량 >= 64
+
+    step1.arg    <- arg1
+    step1.enable <- arg2[0]
+    step1.right  <- right
+    step1.fill   <- fill
+
+    step2.arg    <- step1.res
+    step2.enable <- arg2[1]
+    step2.right  <- right
+    step2.fill   <- fill
+
+    step4.arg    <- step2.res
+    step4.enable <- arg2[2]
+    step4.right  <- right
+    step4.fill   <- fill
+
+    step8.arg    <- step4.res
+    step8.enable <- arg2[3]
+    step8.right  <- right
+    step8.fill   <- fill
+
+    step16.arg    <- step8.res
+    step16.enable <- arg2[4]
+    step16.right  <- right
+    step16.fill   <- fill
+
+    step32.arg    <- step16.res
+    step32.enable <- arg2[5]
+    step32.right  <- right
+    step32.fill   <- fill
+
+    // >=64이면 SL/SLU/SRU는 0, SR은 원래 부호 비트로 채움
+    res_mux.select    <- large
+    res_mux.option[0] <- step32.res
+    { res_mux.option[1][0..WORD_SIZE] } <= fill
+    res_mux.selected -> res
+
+    // >=64인 SL은 원래 입력이 0일 때만 오버플로가 아님
+    v <- and(
+        not(or(op[0], op[1])),
+        or(
+            and(large, or(arg1[0..WORD_SIZE])),
+            and(not(large), or(step1.v, step2.v, step4.v, step8.v, step16.v, step32.v)),
+        ),
+    )
+}
+
+// K비트 이동 단계. enable=0이면 입력을 그대로 통과
+comb ShiftStep<K> {
+    pub arg:    WordIn
+    pub enable: In<bit,1>
+    pub right:  In<bit,1>
+    pub fill:   In<bit,1>  // SR이면 원래 부호 비트, 그 외 0
+    pub res:    WordOut
+    pub v:      Out<bit,1>  // 왼쪽 이동의 오버플로 후보
+
+    direction_mux: Mux<2,WORD_SIZE>
+    enable_mux:    Mux<2,WORD_SIZE>
+}
+
+wire ShiftStep<K> {
+    direction_mux.select <- right
+
+    { direction_mux.option[0][0..K] } <= 0
+    direction_mux.option[0][K..WORD_SIZE] <- [ arg[0..WORD_SIZE-K] ]
+
+    direction_mux.option[1][0..WORD_SIZE-K] <- [ arg[K..WORD_SIZE] ]
+    { direction_mux.option[1][WORD_SIZE-K..WORD_SIZE] } <= fill
+
+    enable_mux.select    <- enable
+    enable_mux.option[0] <- arg
+    enable_mux.option[1] <- direction_mux.selected
+    enable_mux.selected -> res
+
+    // 버리는 K비트와 새 부호 비트가 모두 원래 부호와 같아야 함
+    // 상위 K+1비트가 전부 0이거나 전부 1이면 signed 범위 안에 있음
+    v <- and(
+        enable,
+        not(or(
+            and(arg[WORD_SIZE-K-1..WORD_SIZE]),
+            not(or(arg[WORD_SIZE-K-1..WORD_SIZE])),
+        )),
+    )
+}

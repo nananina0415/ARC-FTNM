@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "get.rp_ffffffffffffffff",
+  "target": {
+    "mnemonic": "GET",
+    "opcode": "0xfe",
+    "pc": "0x0",
+    "word": "0xfe030017",
+    "executions": 1
+  },
+  "tags": [
+    "rp_ffffffffffffffff"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rG": "0x00000000000000ff",
+      "rA": "0x000000000000c0c0",
+      "rP": "0xffffffffffffffff"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {
+      "$3": "0xffffffffffffffff"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "rp_ffffffffffffffff"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

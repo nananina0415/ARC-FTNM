@@ -1,0 +1,81 @@
+// 범용 슬롯 256개를 공유한다. 슬롯 G..255는 번호 그대로 글로벌이고,
+// 슬롯 0..R-1이 로컬 ring이다. R은 G 이하에서 가장 큰 2의 거듭제곱(32/64/128)이다.
+
+bundle StackDirectIO {  // Registers 입장
+    rJ_out: WordOut
+    rJ_in: WordIn
+    rJ_w_en: In<bit,1>
+    rO_out: WordOut
+    rO_in: WordIn
+    rO_w_en: In<bit,1>
+    rS_out: WordOut
+    rS_in: WordIn
+    rS_w_en: In<bit,1>
+    rG_out: Out<bit,8>
+    rG_in: In<bit,8>
+    rG_w_en: In<bit,1>
+    rL_out: Out<bit,8>
+    rL_in: In<bit,8>
+    rL_w_en: In<bit,1>
+    rT_out: WordOut  // TRAP의 목표 주소
+}
+
+// alpha = (rO/8) mod R, gamma = (rS/8) mod R.
+comb RingGeometry {
+    pub g: In<bit,8>
+    pub rO: WordIn
+    pub rS: WordIn
+    pub mask: Out<bit,7>
+    pub alpha: Out<bit,7>
+    pub gamma: Out<bit,7>
+}
+
+wire RingGeometry {
+    { mask[0..5] } <= 1
+    mask[5] <- or(g[7], g[6])
+    mask[6] <- g[7]
+    alpha <- and([ rO[3..10] ], mask)
+    gamma <- and([ rS[3..10] ], mask)
+}
+
+// 논리 번호 k를 슬롯으로 변환한다. k>=G는 k, k<L은 (alpha+k) mod R, 나머지는 marginal.
+comb RegisterWindow {
+    pub sel: In<bit,8>
+    pub g: In<bit,8>
+    pub l: In<bit,8>
+    pub alpha: In<bit,7>
+    pub mask: In<bit,7>
+    pub slot: Out<bit,8>
+    pub marginal: Out<bit,1>
+    global_compare: Adder<8>
+    local_compare: Adder<8>
+    ring_add: Adder<7>
+    slot_mux: Mux<2,8>
+}
+
+wire RegisterWindow {
+    alias is_global = global_compare.c_out
+    alias is_local = not(local_compare.c_out)
+
+    sel -> global_compare.a
+    global_compare.b <- not(g)
+    global_compare.c_in <- 1
+    global_compare.sum -> OPENED
+
+    sel -> local_compare.a
+    local_compare.b <- not(l)
+    local_compare.c_in <- 1
+    local_compare.sum -> OPENED
+
+    alpha -> ring_add.a
+    ring_add.b <- [ sel[0..7] ]
+    ring_add.c_in <- 0
+    ring_add.c_out -> OPENED
+
+    slot_mux.select <- is_global
+    slot_mux.option[0][0..7] <- and(ring_add.sum, mask)
+    slot_mux.option[0][7] <- 0
+    slot_mux.option[1] <- sel
+    slot_mux.selected -> slot
+    marginal <- and(not(is_global), not(is_local))
+}

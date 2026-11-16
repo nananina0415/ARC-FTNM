@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "pbp.next_line",
+  "target": {
+    "mnemonic": "PBP",
+    "opcode": "0x54",
+    "pc": "0x0",
+    "word": "0x54010008",
+    "executions": 1
+  },
+  "tags": [
+    "branch",
+    "next_line"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000001",
+      "$4": "0x0000000000000007",
+      "$0": "0x5555555555555555",
+      "$8": "0x5555555555555555"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0",
+      "rH": "0x1122334455667788",
+      "rR": "0x8877665544332211"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000020",
+    "registers": {},
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 0,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "next_line"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

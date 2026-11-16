@@ -1,0 +1,47 @@
+# Local tool installations and generated build/test reports.
+/.tools/
+/build/
+
+# Python caches, virtual environments, and coverage reports.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# HDL simulator executables and waveform dumps.
+*.vvp
+*.vcd
+*.fst
+*.lxt
+*.lxt2
+
+# Vivado generated directories and session files.
+# Keep .xpr, .xci, .bd, .xdc, .tcl, and .srcs design inputs.
+.Xil/
+*.cache/
+*.gen/
+*.runs/
+*.sim/
+*.hw/
+*.ip_user_files/
+*.jou
+vivado*.log
+*.str
+*.wdb
+
+# Operating-system and temporary editor files.
+.DS_Store
+Thumbs.db
+Desktop.ini
+*~
+*.swp
+*.swo
+
+# Generated RTL in src/cpu and .mms/.case.json tests are versioned sources.
+# Do not broadly ignore Verilog, memory images, JSON, or HTML files.
