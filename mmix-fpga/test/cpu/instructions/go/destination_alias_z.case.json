@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "go.destination_alias_z",
+  "target": {
+    "mnemonic": "GO",
+    "opcode": "0x9e",
+    "pc": "0x0",
+    "word": "0x9e020102",
+    "executions": 1
+  },
+  "tags": [
+    "destination_alias_z"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000010",
+      "$2": "0x0000000000000008"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000018",
+    "registers": {
+      "$2": "0x0000000000000004"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "destination_alias_z"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

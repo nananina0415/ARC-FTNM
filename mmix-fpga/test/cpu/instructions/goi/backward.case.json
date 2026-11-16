@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "id": "goi.backward",
+  "target": {
+    "mnemonic": "GOI",
+    "opcode": "0x9f",
+    "pc": "0x20",
+    "word": "0x9f030104",
+    "executions": 1
+  },
+  "tags": [
+    "backward"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "registers": {
+      "$1": "0x0000000000000004",
+      "$3": "0xdeadbeef12345678"
+    },
+    "special": {
+      "rG": "0xff",
+      "rA": "0xc0c0"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$3": "0x0000000000000024"
+    },
+    "special": {},
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "backward"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 2000,
+    "wall_seconds": 60
+  }
+}

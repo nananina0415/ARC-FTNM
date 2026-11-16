@@ -24,8 +24,10 @@ BRANCHES = {0x40+16*hint+2*i+back:('PB' if hint else 'B')+name+('B' if back else
 BRANCHES.update({0xf0:'JMP',0xf1:'JMPB'})
 ISA.update(BRANCHES)
 ADDRESSES={0xf4:'GETA',0xf5:'GETAB'}
+GO_OPS={0x9e:'GO',0x9f:'GOI'}
 SPECIAL_OPS={0xf6:'PUT',0xf7:'PUTI',0xfe:'GET'}
 ISA.update(ADDRESSES)
+ISA.update(GO_OPS)
 ISA.update(SPECIAL_OPS)
 STACK_OPS={0xbe:'PUSHGO',0xbf:'PUSHGOI',0xf2:'PUSHJ',0xf3:'PUSHJB',0xf8:'POP',0xfa:'SAVE',0xfb:'UNSAVE',0xfd:'SWYM'}
 ISA.update(STACK_OPS)
@@ -82,6 +84,10 @@ def required_coverage(op):
     if op==0xfb:
         return ['unsave_round_trip','unsave_special_values','unsave_ring_change','unsave_g_below_32',
                 'unsave_z_unaligned','unsave_ra_masked','unsave_count_fault','unsave_invalid_x']
+    if op in GO_OPS:
+        return ['basic','destination_register0','destination_register255','destination_alias_y',
+                'next_instruction','backward','low_bits','wraparound','target_fault'] + (
+                ['immediate_0','immediate_255'] if op&1 else ['destination_alias_z'])
     if op in ADDRESSES:
         return ['basic','destination_register0','destination_register255','zero','one','sign_before','sign_boundary','max_wyde','enables_preserved']
     if op in SPECIAL_OPS:

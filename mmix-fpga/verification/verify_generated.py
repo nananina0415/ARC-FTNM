@@ -276,6 +276,7 @@ class Checks:
             memory = 0x80<=opcode<=0x8f or store
             store_constant=(opcode&~1)==0xb4
             push_go=opcode in (0xbe,0xbf)
+            go=opcode in (0x9e,0x9f)
             push=push_go or opcode in (0xf2,0xf3)
             pop=opcode==0xf8
             save=opcode==0xfa and y==0 and z==0
@@ -287,11 +288,11 @@ class Checks:
             unit, op = table.get(opcode, (3, 0))
             bits=24 if jump else 16
             displacement=(word&((1<<bits)-1))-((opcode&1)<<bits)
-            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or special or stack or trap or swym)),
-                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or special or stack or trap or swym)),
+            expected = {"valid": int(input_valid and (supported or halt or memory or branch or address_get or go or special or stack or trap or swym)),
+                        "unsupported": int(input_valid and not(supported or halt or memory or branch or address_get or go or special or stack or trap or swym)),
                         "trap": int(input_valid and trap), "swym": int(input_valid and swym),
-                        "writes_x": int(input_valid and (supported or constant or load or address_get or (special and special_get) or push)),
-                        "push": int(input_valid and push), "push_go": int(input_valid and push_go), "pop": int(input_valid and pop),
+                        "writes_x": int(input_valid and (supported or constant or load or address_get or go or (special and special_get) or push)),
+                        "push": int(input_valid and push), "push_go": int(input_valid and push_go), "go": int(input_valid and go), "pop": int(input_valid and pop),
                         "save": int(input_valid and save), "unsave": int(input_valid and unsave),
                         "put_g": int(input_valid and special and special_put and x==19),
                         "put_l": int(input_valid and special and special_put and x==20),
@@ -311,7 +312,7 @@ class Checks:
                         "branch_condition": (opcode>>1)&7,
                         "branch_offset": (4*displacement)&MASK,
                         "arg1_imm": int(input_valid and supported and 0x34 <= opcode <= 0x37),
-                        "arg2_imm": int(input_valid and not constant and (supported or memory or push_go) and opcode & 1),
+                        "arg2_imm": int(input_valid and not constant and (supported or memory or push_go or go) and opcode & 1),
                         "arg1_zero": int(input_valid and 0xe0<=opcode<=0xe3),
                         "arg2_wyde": int(input_valid and constant),
                         "imm_x": x,"imm_y": y, "imm_z": z, "imm_yz": ((y<<8)|z) << (16*(3-(opcode&3)))}

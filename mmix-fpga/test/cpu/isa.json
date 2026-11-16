@@ -3311,6 +3311,41 @@
       ]
     },
     {
+      "mnemonic": "GO",
+      "opcode": "0x9e",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "destination_register0",
+        "destination_register255",
+        "destination_alias_y",
+        "next_instruction",
+        "backward",
+        "low_bits",
+        "wraparound",
+        "target_fault",
+        "destination_alias_z"
+      ]
+    },
+    {
+      "mnemonic": "GOI",
+      "opcode": "0x9f",
+      "supported": true,
+      "required_coverage": [
+        "basic",
+        "destination_register0",
+        "destination_register255",
+        "destination_alias_y",
+        "next_instruction",
+        "backward",
+        "low_bits",
+        "wraparound",
+        "target_fault",
+        "immediate_0",
+        "immediate_255"
+      ]
+    },
+    {
       "mnemonic": "STBU",
       "opcode": "0xa2",
       "supported": true,
@@ -4764,6 +4799,8 @@
         "rBB",
         "rT",
         "rK",
+        "rG",
+        "rL",
         "rA",
         "rF",
         "rP",
@@ -4811,6 +4848,8 @@
         "rBB",
         "rT",
         "rK",
+        "rG",
+        "rL",
         "rA",
         "rF",
         "rP",
@@ -4906,8 +4945,12 @@
         "rM",
         "rR",
         "rBB",
+        "rO",
+        "rS",
         "rT",
         "rK",
+        "rG",
+        "rL",
         "rA",
         "rF",
         "rP",

@@ -48,7 +48,8 @@ ALU의 `Cond`도 같은 Condition 정의를 별도로 인스턴스화한다. 모
 실행 횟수나 예제의 분기 주소를 하드코딩하지 않는다.
 
 지원하는 제어 이동은 #40~#5F의 B/PB, #F0~#F1의 JMP/JMPB, 레지스터 스택의
-PUSHJ/PUSHGO/POP이다. GO는 아직 구현하지 않았다. RelativeAddress는 PUSHJ에서
+PUSHJ/PUSHGO/POP, #9E~#9F의 GO/GOI이다. GO는 EXECUTE에서 $X에 PC+4를 쓰고
+(GETA와 같은 주소 쓰기 경로) PC를 $Y+$Z(또는 $Y+Z)로 옮긴다. RelativeAddress는 PUSHJ에서
 현재 PC, POP에서 rJ를 기준으로 쓴다.
 
 ## 레지스터 스택

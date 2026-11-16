@@ -1,13 +1,13 @@
-"""GETA and GET/PUT operand coverage plus mixed memory/cache programs."""
+"""GETA, GO and GET/PUT operand coverage plus mixed memory/cache programs."""
 import json
 
-from .catalog import ADDRESSES, ISA, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, SPECIAL_STACK_CHECKED, SPECIAL_STACK_READ_ONLY
+from .catalog import ADDRESSES, GO_OPS, ISA, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, SPECIAL_STACK_CHECKED, SPECIAL_STACK_READ_ONLY
 from .reference import execute
 
 
 def save(root,op,label,source,word,*,pc=0,registers=None,special=None,expected=None,
          expected_special=None,memory=None,expected_memory=None,writes=1,stores=0,
-         fault=False,executions=1,final_pc=None):
+         fault=False,executions=1,final_pc=None,reason=None):
     directory=root/'instructions'/ISA[op].lower()
     directory.mkdir(parents=True,exist_ok=True)
     name=ISA[op].lower()+'.'+label
@@ -19,7 +19,7 @@ def save(root,op,label,source,word,*,pc=0,registers=None,special=None,expected=N
           'tags':[label],'initial':{'entry':'0x0',
           'registers':{f'${i}':f'0x{v:016x}' for i,v in (registers or {}).items()},
           'special':initial_special,'memory':{f'0x{i:x}':f'{v:02x}' for i,v in (memory or {}).items()}},
-          'expect':{'stop':'fault' if fault else 'halt','reason':2 if fault else 0,
+          'expect':{'stop':'fault' if fault else 'halt','reason':(2 if fault else 0) if reason is None else reason,
           'pc':f'0x{(pc if fault else pc+4) if final_pc is None else final_pc:016x}',
           'registers':{f'${i}':f'0x{v:016x}' for i,v in (expected or {}).items()},
           'special':{SPECIAL[i]:f'0x{v:016x}' for i,v in (expected_special or {}).items()},
@@ -42,6 +42,27 @@ def address_case(root,op,label,raw=2,x=3):
     for r in (raw>>8,raw&255):
         if r!=x:registers[r]=MASK
     return save(root,op,label,source,(op<<24)|(x<<16)|raw,pc=pc,registers=registers,expected={x:address})
+
+
+def go_case(root,op,label,base,z,*,x=3,y=1,zreg=2,pc=0):
+    """GO $X,$Y,$Z / GOI $X,$Y,Z: $X ← @+4, 다음 명령은 ($Y+$Z) mod 2^64.
+    목표의 하위 2비트는 명령어 위치에서 무시되지만 PC에는 남는다(최종 PC로 확인)."""
+    immediate=bool(op&1)
+    registers={y:base}
+    if not immediate:registers[zreg]=z
+    if x not in registers:registers[x]=0xdeadbeef12345678
+    target=(base+z)&MASK
+    link=pc+4
+    operand=str(z) if immediate else f'${zreg}'
+    source='        LOC 0\n'
+    if pc:source+=f'Main    JMP Start\n        LOC {pc}\n'
+    source+=('Start   ' if pc else 'Main    ')+f'GO ${x},${y},{operand}\n        TRAP 0,Halt,0\n'
+    # 접근할 수 없는 목표는 다음 fetch에서 오류(reason 1). $X는 GO가 이미 썼다.
+    fault=not 0<=target<4096
+    if not fault and target&~3!=link:source+=f'        LOC {target&~3}\n        TRAP 0,Halt,0\n'
+    word=(op<<24)|(x<<16)|(y<<8)|(z if immediate else zreg)
+    return save(root,op,label,source,word,pc=pc,registers=registers,expected={x:link},
+                fault=fault,reason=1 if fault else 0,final_pc=target)
 
 
 def special_case(root,op,label,index=4,value=0x123456789abcdef,*,gpr=3,malformed=None):
@@ -101,6 +122,22 @@ def generate(root):
         for label,raw in [('basic',2),('zero',0),('one',1),('sign_before',0x7fff),('sign_boundary',0x8000),('max_wyde',0xffff),('enables_preserved',0xffff)]:
             names.append(address_case(root,op,label,raw))
         for x in (0,255):names.append(address_case(root,op,f'destination_register{x}',0x1234,x))
+    for op in GO_OPS:
+        def emit(label,*args,**kwargs):names.append(go_case(root,op,label,*args,**kwargs))
+        emit('basic',16,8)
+        emit('destination_register0',16,8,x=0)
+        emit('destination_register255',16,8,x=255)
+        emit('destination_alias_y',16,8,x=1)
+        if op&1:
+            emit('immediate_0',24,0)
+            emit('immediate_255',1,255)
+        else:
+            emit('destination_alias_z',16,8,x=2)
+        emit('next_instruction',0,4)
+        emit('backward',4,4,pc=32)
+        emit('low_bits',16,11)
+        emit('wraparound',MASK-7,40)
+        emit('target_fault',0x40000000,0)
     for op in SPECIAL_OPS:
         names.append(special_case(root,op,'basic'))
         for gpr in (0,255):names.append(special_case(root,op,f'destination_register{gpr}',value=gpr if op==0xf7 else 0x12345678,gpr=gpr))

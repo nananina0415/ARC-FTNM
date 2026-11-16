@@ -22,6 +22,7 @@ seq Control {
     pub decoded_writes_x: In<bit,1>
     pub decoded_push: In<bit,1>
     pub decoded_push_go: In<bit,1>
+    pub decoded_go: In<bit,1>
     pub decoded_pop: In<bit,1>
     pub decoded_put_g: In<bit,1>
     pub decoded_put_l: In<bit,1>
@@ -69,7 +70,7 @@ seq Control {
     next_pc: Mux<4,WORD_SIZE>
     memory_address: Mux<2,WORD_SIZE>
     memory_data: Mux<2,WORD_SIZE>
-    address_source: Mux<2,WORD_SIZE>  // GETA 목표 또는 SAVE의 컨텍스트 주소
+    address_source: Mux<3,WORD_SIZE>  // GETA 목표, SAVE의 컨텍스트 주소, GO의 복귀 주소
 }
 wire Control {
     alias {
@@ -97,7 +98,7 @@ wire Control {
     alias stack_enter=and(active, executing, response_ok, stack.required)
     alias stack_exit=or(stack.retire, stack.retry, stack_fault)
     alias stack_fault=or(stack.range_fault, stack.access_fault)
-    alias non_alu=or(decoded_branch, decoded_geta, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
+    alias non_alu=or(decoded_branch, decoded_geta, decoded_go, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
     alias success=and(response_ok, not(stack.required), or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
     alias retire_execute=and(active, executing, success, not(decoded_halt), not(decoded_memory))
     alias retire_mem=and(active, mem_commit)
@@ -174,16 +175,19 @@ wire Control {
     branch_base.option[1] <- stack_regs.rJ_out
     branch_base.selected -> branch.pc
     branch_offset -> branch.offset
-    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO), 3: rT(TRAP)
+    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO, GO), 3: rT(TRAP)
     next_pc.select[0] <- or(and(retire_execute, branch.taken), and(stack.retire, or(decoded_pop, decoded_trap, and(decoded_push, not(decoded_push_go)))))
-    next_pc.select[1] <- and(stack.retire, or(decoded_push_go, decoded_trap))
+    next_pc.select[1] <- or(and(retire_execute, decoded_go), and(stack.retire, or(decoded_push_go, decoded_trap)))
     next_pc.option[0] <- pc_add.sum
     next_pc.option[1] <- branch.target
     next_pc.option[2] <- effective_address
     next_pc.option[3] <- stack_regs.rT_out
-    address_source.select <- stack.save_write
+    // 0: GETA 목표, 1: SAVE 컨텍스트 주소, 2: GO의 $X = @+4
+    address_source.select[0] <- stack.save_write
+    address_source.select[1] <- decoded_go
     address_source.option[0] <- branch.target
     address_source.option[1] <- stack.save_address
+    address_source.option[2] <- pc_add.sum
     address_source.selected -> address_result
     pc.w_en <- or(retire_execute, retire_mem, stack.retire)
     pc.in <- next_pc.selected
@@ -218,7 +222,7 @@ wire Control {
     store_read_x <- and(mem_request, decoded_store, not(decoded_store_constant))
     execute_en <- and(retire_execute, not(non_alu))
     load_write_en <- and(retire_mem, not(decoded_store))
-    address_write_en <- or(and(retire_execute, decoded_geta), stack.save_write)
+    address_write_en <- or(and(retire_execute, or(decoded_geta, decoded_go)), stack.save_write)
     special_get_en <- and(retire_execute, decoded_get)
     special_put_en <- and(retire_execute, decoded_put)
 

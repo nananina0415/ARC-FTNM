@@ -1,4 +1,4 @@
-// 구현된 ALU/메모리/분기 명령을 해독한다. 실행 단계/PC 저장은 제어유닛 담당.
+// 구현된 ALU/메모리/분기/GO 명령을 해독한다. 실행 단계/PC 저장은 제어유닛 담당.
 // instruction[24..32]=OP, [16..24]=X, [8..16]=Y, [0..8]=Z.
 // 일반 register/immediate 쌍은 OP bit 0으로 Z 입력 선택.
 // #E0~#EF는 별도 형식: $X와 16비트 YZ, opcode 하위 2비트는 wyde 위치.
@@ -24,6 +24,7 @@ bundle DecodeControl {  // InstructionDecode 입장
     writes_x:    Out<bit,1>  // $X가 목적지인 명령. 거짓 조건의 CS*와 PUSH(X<G)도 L을 늘린다
     push:        Out<bit,1>
     push_go:     Out<bit,1>  // PUSHGO: 목표는 $Y+$Z, 아니면 PUSHJ의 상대 주소
+    go:          Out<bit,1>  // GO: $X ← @+4, 목표는 $Y+$Z
     pop:         Out<bit,1>
     put_g:       Out<bit,1>
     put_l:       Out<bit,1>
@@ -77,6 +78,7 @@ wire InstructionDecode {
     alias is_conditional_branch = and(not(instruction[31]), instruction[30], not(instruction[29]))
     alias is_jump = sel_pair.out[120]
     alias is_branch = or(is_conditional_branch, is_jump)
+    alias is_go = sel_pair.out[79]
     alias is_pushj = sel_pair.out[121]
     alias is_pushgo = sel_pair.out[95]
     alias is_push = or(is_pushj, is_pushgo)
@@ -94,16 +96,17 @@ wire InstructionDecode {
     alias default_compare = and(not(supported), not(is_constant))
 
     instruction[25..32] -> sel_pair.in
-    sel_pair.out[1..12,32..48,72..81,82,84,88,89,91..95,104..108,109..120] -> OPENED
+    sel_pair.out[1..12,32..48,72..79,80,82,84,88,89,91..95,104..108,109..120] -> OPENED
     alias is_halt = not(or(instruction[0..32]))
-    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack, is_trap, is_swym))
+    control.valid <- and(instruction_valid, or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_go, is_special, is_stack, is_trap, is_swym))
     control.halt <- and(instruction_valid, is_halt)
-    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_special, is_stack, is_trap, is_swym)))
+    control.unsupported <- and(instruction_valid, not(or(supported, is_halt, is_memory, is_constant, is_branch, is_geta, is_go, is_special, is_stack, is_trap, is_swym)))
     control.trap <- and(instruction_valid, is_trap)
     control.swym <- and(instruction_valid, is_swym)
-    control.writes_x <- and(instruction_valid, or(supported, is_constant, is_load, is_geta, and(is_special, is_get), is_push))
+    control.writes_x <- and(instruction_valid, or(supported, is_constant, is_load, is_geta, is_go, and(is_special, is_get), is_push))
     control.push <- and(instruction_valid, is_push)
     control.push_go <- and(instruction_valid, is_pushgo)
+    control.go <- and(instruction_valid, is_go)
     control.pop <- and(instruction_valid, is_pop)
     control.save <- and(instruction_valid, is_save)
     control.unsave <- and(instruction_valid, is_unsave)
@@ -138,7 +141,7 @@ wire InstructionDecode {
     instruction[0..8] -> control.r2_sel
     instruction[16..24] -> control.w_sel
     control.arg1_imm <- and(enabled, neg)
-    control.arg2_imm <- and(instruction_valid, or(supported, is_memory, is_pushgo), instruction[24])
+    control.arg2_imm <- and(instruction_valid, or(supported, is_memory, is_pushgo, is_go), instruction[24])
     control.arg1_zero <- and(instruction_valid, const_set)
     control.arg2_wyde <- and(instruction_valid, is_constant)
     control.imm_y[0..8] <- [ instruction[8..16] ]

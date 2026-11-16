@@ -69,6 +69,7 @@ wire Cpu {
     decode.control.writes_x -> control.decoded_writes_x
     decode.control.push -> control.decoded_push
     decode.control.push_go -> control.decoded_push_go
+    decode.control.go -> control.decoded_go
     decode.control.pop -> control.decoded_pop
     decode.control.put_g -> control.decoded_put_g
     decode.control.put_l -> control.decoded_put_l
@@ -147,6 +148,7 @@ wire Cpu {
     decode.control.writes_x -> decoded.writes_x
     decode.control.push -> decoded.push
     decode.control.push_go -> decoded.push_go
+    decode.control.go -> decoded.go
     decode.control.pop -> decoded.pop
     decode.control.put_g -> decoded.put_g
     decode.control.put_l -> decoded.put_l

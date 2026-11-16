@@ -164,8 +164,8 @@
 | [ ] | [ ] | #9B | PRELDI | PRELD 즉치 |
 | [ ] | [ ] | #9C | PREGO | 명령어 프리페치 힌트 |
 | [ ] | [ ] | #9D | PREGOI | PREGO 즉치 |
-| [ ] | [ ] | #9E | GO | $X = @+4, @ = $Y+$Z |
-| [ ] | [ ] | #9F | GOI | GO 즉치 |
+| [ ] | [x] | #9E | GO | $X = @+4, @ = $Y+$Z |
+| [ ] | [x] | #9F | GOI | GO 즉치 |
 | [ ] | [ ] | #A0 | STB | 바이트 저장 (signed, 범위 초과 시 V) |
 | [ ] | [ ] | #A1 | STBI | STB 즉치 |
 | [ ] | [x] | #A2 | STBU | 바이트 저장 (unsigned) |

@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 
-from .catalog import ADDRESSES, BRANCHES, CONSTANTS, ISA, LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, STACK_OPS, memory_shape, required_coverage
+from .catalog import ADDRESSES, BRANCHES, CONSTANTS, GO_OPS, ISA, LOAD_BASES, STORE_BASES, MASK, SPECIAL, SPECIAL_IMPLEMENTED, SPECIAL_OPS, SPECIAL_STACK_CHECKED, SPECIAL_STACK_READ_ONLY, STACK_OPS, memory_shape, required_coverage
 from .reference import execute
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -105,7 +105,7 @@ def write_composition(root):
 def generate(root):
     names=[]
     for op,mnemonic in sorted(ISA.items()):
-        if op in BRANCHES or op in ADDRESSES or op in SPECIAL_OPS or op in STACK_OPS:continue
+        if op in BRANCHES or op in ADDRESSES or op in GO_OPS or op in SPECIAL_OPS or op in STACK_OPS:continue
         def emit(label,*args,**kwargs): names.append(write_case(root,op,label,*args,**kwargs))
         if op == 0:
             emit("stop");continue
@@ -196,9 +196,13 @@ def generate(root):
     names.extend(generate_extended(root))
     from .stack_cases import generate as generate_stack
     names.extend(generate_stack(root))
+    # GET은 rO/rS 읽기와 rG/rL 읽기, PUT은 rG/rL 쓰기(값 제약 검사)도 받는다.
+    def special_registers(op):
+        accepted=SPECIAL_IMPLEMENTED|SPECIAL_STACK_CHECKED|(SPECIAL_STACK_READ_ONLY if op==0xfe else set())
+        return [SPECIAL[i] for i in sorted(accepted)]
     catalog=[{"mnemonic":name,"opcode":f"0x{op:02x}","supported":True,
               "required_coverage":required_coverage(op),
-              **({'special_registers':[SPECIAL[i] for i in sorted(SPECIAL_IMPLEMENTED)],'ra_mask':'0xc0c0'} if op in SPECIAL_OPS else {})}
+              **({'special_registers':special_registers(op),'ra_mask':'0xc0c0'} if op in SPECIAL_OPS else {})}
              for op,name in sorted(ISA.items())]
     (root/"isa.json").write_text(json.dumps({"schema":1,"instructions":catalog},indent=2)+"\n",encoding="utf-8")
     (root/"profiles.json").write_text(json.dumps({"no_stall":{"id":0},"backpressure":{"id":1}},indent=2)+"\n",encoding="utf-8")

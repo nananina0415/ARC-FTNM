@@ -1,8 +1,8 @@
 # CPU 어셈블리 회귀 테스트 설계
 
-상태: 명령어별 프로그램 테스트를 구현했다. 현재 182개 구현 항목(ALU/상수 106 opcode,
-메모리 28 opcode, 분기 34 opcode, GETA 2 opcode, GET/PUT 3 opcode, 레지스터 스택 7 opcode,
-SWYM, HALT와 TRAP을 함께 다루는 #00)에 대해 3,790개 `.mms`/`.case.json` 쌍이 있다. TRAP/SWYM
+상태: 명령어별 프로그램 테스트를 구현했다. 현재 184개 구현 항목(ALU/상수 106 opcode,
+메모리 28 opcode, 분기 34 opcode, GETA 2 opcode, GO 2 opcode, GET/PUT 3 opcode, 레지스터 스택 7 opcode,
+SWYM, HALT와 TRAP을 함께 다루는 #00)에 대해 3,811개 `.mms`/`.case.json` 쌍이 있다. TRAP/SWYM/GO
 추가 후 현재 RTL은 아직 실행하지 않았다.
 아래의 번호별 절은 확장 설계이며, 아직 구현하지 않은 기능은 아래 현황과 구분한다.
 

@@ -1,5 +1,6 @@
 // L1 I-cache: 한 라인에 명령어 8개, 32바이트 라인 8개. 요청은 한 번에 하나.
-// valid && ready인 클록 상승 에지에서 요청/응답 전달. PC는 4바이트 정렬.
+// valid && ready인 클록 상승 에지에서 요청/응답 전달.
+// PC 하위 2비트는 명령어 위치 선택에 쓰지 않는다(MMIX: GO 목표의 하위 2비트는 무시되고 PC에만 남는다).
 // 응답은 제어유닛이 받을 때까지 유지. error=1이면 instruction 실행 금지.
 // PC 갱신(+4/분기)과 예외 처리는 제어유닛 담당.
 // 분기로 불필요해진 응답도 받아 버린 뒤 다음 주소를 요청.
@@ -13,7 +14,7 @@ bundle FetchIO {  // Fetch 입장
     res_ready: In<bit,1>
     res_pc:    WordOut
     instruction: Out<bit,32>
-    error:     Out<bit,1>  // PC 정렬/30비트 주소 범위 오류 또는 AXI 읽기 오류
+    error:     Out<bit,1>  // 30비트 주소 범위 오류 또는 AXI 읽기 오류
 }
 
 seq Fetch {
@@ -43,9 +44,8 @@ seq Fetch {
 wire Fetch {
     alias active = not(reset)
     alias accept = and(control.req_valid, control.req_ready)
-    alias unaligned = or(control.req_pc[0,1])
     alias out_of_range = or(control.req_pc[30..WORD_SIZE])
-    alias invalid_pc = or(unaligned, out_of_range)
+    alias invalid_pc = out_of_range
     alias bad_pc = and(accept, invalid_pc)
     alias start = and(accept, not(invalid_pc))
     alias cached = and(start, cache.hit, not(invalidate))
