@@ -9,7 +9,8 @@
  *
  *   offset 0x00  STATUS   [1:0]=typ (0=없음 3=게임패드)  [2]=connerr  [3]=busy
  *   offset 0x08  AXES     [0]=game_l  [1]=game_r  [8]=game_u  [9]=game_d
- *   offset 0x10  BUTTONS  [0]=A [1]=B [2]=X [3]=Y [4]=sel [5]=sta [9:6]=extra
+ *   offset 0x10  BUTTONS  [0]=a [1]=b [2]=c [3]=d [4]=w [5]=x [6]=y [7]=z [8]=p [9]=m
+ *                         아케이드 패널 버튼 이름 (nnix-os/kernel/device/usb.h JOY_BTN_*)
  *
  * J11 IIC 헤더 핀 연결:
  *   IO_L16P_16 → usb_dp (D+)

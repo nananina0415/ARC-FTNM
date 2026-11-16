@@ -62,6 +62,10 @@ target_include_directories(doom PRIVATE
 target_compile_definitions(doom PRIVATE
     $<$<BOOL:${MMIX_SIM}>:MMIX_SIM>
     __BIG_ENDIAN__          # MMIX는 빅엔디언; patch_puredoom.h의 #ifdef 가드에 사용
+    # PureDOOM 선택 기능 (PureDOOM/src/DOOM/doom_config.h 설명). 정의하지 않으면 원본 동작.
+    DOOM_AUTOMAP_NO_FOLLOW  # 자동 지도 따라가기를 쓰지 않고 직접 이동만
+    DOOM_WEAPON_CYCLE       # 이전/다음 무기 전환 키 ([ / ])
+    DOOM_AUTOMAP_PAUSE      # 자동 지도가 열린 동안 게임 진행 멈춤
 )
 
 # 표준 라이브러리 없이 빌드 (커스텀 libc 사용)
