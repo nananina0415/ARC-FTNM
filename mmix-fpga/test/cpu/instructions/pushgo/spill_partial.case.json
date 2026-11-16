@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "id": "pushgo.spill_partial",
+  "target": {
+    "mnemonic": "PUSHGO",
+    "opcode": "0xbe",
+    "pc": "0x4",
+    "word": "0xbe1dfefd",
+    "executions": 2
+  },
+  "tags": [
+    "stack",
+    "spill_partial"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {
+      "$2": "0x0000000000000010",
+      "$3": "0x0000000000000011",
+      "$4": "0x0000000000000012",
+      "$5": "0x0000000000000013",
+      "$6": "0x0000000000000014"
+    },
+    "special": {
+      "rO": "0x0000000000000810",
+      "rS": "0x0000000000000800",
+      "rG": "0x0000000000000020",
+      "rL": "0x000000000000001d"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000008",
+    "registers": {
+      "$31": "0x000000000000001d",
+      "$254": "0x000000000000000c"
+    },
+    "special": {
+      "rJ": "0x0000000000000008",
+      "rS": "0x0000000000000810"
+    },
+    "memory": {
+      "0x800": "00",
+      "0x801": "00",
+      "0x802": "00",
+      "0x803": "00",
+      "0x804": "00",
+      "0x805": "00",
+      "0x806": "00",
+      "0x807": "00",
+      "0x808": "00",
+      "0x809": "00",
+      "0x80a": "00",
+      "0x80b": "00",
+      "0x80c": "00",
+      "0x80d": "00",
+      "0x80e": "00",
+      "0x80f": "00"
+    },
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 1
+    }
+  },
+  "coverage": [
+    "spill_partial"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

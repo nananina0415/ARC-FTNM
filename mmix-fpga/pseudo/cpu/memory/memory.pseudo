@@ -6,9 +6,15 @@ bundle MemoryIO { // MemoryAccess 입장, 요청/응답 각 한 건씩
     size: In<bit,2>  // log2(bytes): 0/1/2/3
     zero_extend: In<bit,1>
     write_data: WordIn
+    // 레지스터 스택 spill/fill: 32바이트 라인 하나 안의 octa 여러 개를 한 번에 옮긴다.
+    // octa j는 라인 [64j..64j+64)이고 MMIX 값 그대로다. 쓰기는 line_mask의 octa만 바꾼다.
+    line: In<bit,1>
+    line_mask: In<bit,4>
+    line_write_data: In<bit,256>
     res_valid: Out<bit,1>
     res_ready: In<bit,1>
     read_data: WordOut
+    line_read_data: Out<bit,256>  // 읽은 라인 전체 (line 요청과 일반 읽기 모두)
     error: Out<bit,1>
 }
 seq MemoryAccess {
@@ -31,8 +37,16 @@ seq MemoryAccess {
     mut error: reg::ValueReg<1>
     mut size: reg::ValueReg<2>
     mut zero_extend: reg::ValueReg<1>
+    mut line: reg::ValueReg<1>
+    mut line_mask: reg::ValueReg<4>
+    mut line_store: reg::ValueReg<256>
+    mut line_load: reg::ValueReg<256>
     load_lane: LoadLane
     store_lane: StoreLane
+    store_swap: LineSwap
+    load_swap: LineSwap
+    write_data: Mux<2,256>
+    write_strobe: Mux<2,32>
     mut cache: cache::LineCache8
     line_source: Mux<2,256>
     load_address: Mux<2,5>
@@ -57,8 +71,8 @@ wire MemoryAccess {
     alias b_error = or(axi.write.bresp[0..2], axi.write.bid[0..4])
     alias finish = or(bad, read_done, b_fire, cached)
     alias consume = and(control.res_valid, control.res_ready)
-    clock => { size.clock, zero_extend.clock, address.clock, store_value.clock, load_value.clock, ar_pending.clock, r_pending.clock, aw_pending.clock, w_pending.clock, b_pending.clock, full.clock, bus_error.clock, error.clock }
-    reset => { size.reset, zero_extend.reset, address.reset, store_value.reset, load_value.reset, ar_pending.reset, r_pending.reset, aw_pending.reset, w_pending.reset, b_pending.reset, full.reset, bus_error.reset, error.reset }
+    clock => { size.clock, zero_extend.clock, address.clock, store_value.clock, load_value.clock, ar_pending.clock, r_pending.clock, aw_pending.clock, w_pending.clock, b_pending.clock, full.clock, bus_error.clock, error.clock, line.clock, line_mask.clock, line_store.clock, line_load.clock }
+    reset => { size.reset, zero_extend.reset, address.reset, store_value.reset, load_value.reset, ar_pending.reset, r_pending.reset, aw_pending.reset, w_pending.reset, b_pending.reset, full.reset, bus_error.reset, error.reset, line.reset, line_mask.reset, line_store.reset, line_load.reset }
     clock -> cache.clock
     reset -> cache.reset
     cache.invalidate <- and(active, b_fire, b_error)
@@ -67,8 +81,8 @@ wire MemoryAccess {
     cache.fill_en <- and(active, read_done, not(bus_error.out), not(r_error))
     cache.fill_data <- axi.read.rdata
     cache.store_en <- and(active, b_fire, not(b_error))
-    cache.store_data <- store_lane.data
-    cache.store_mask <- store_lane.mask
+    write_data.selected -> cache.store_data
+    write_strobe.selected -> cache.store_mask
     instruction_invalidate <- and(active, b_fire)
     line_source.select <- cached
     line_source.option[0] <- axi.read.rdata
@@ -92,6 +106,12 @@ wire MemoryAccess {
     address.out[30..WORD_SIZE] -> OPENED
     store_value.w_en <- accept
     store_value.in <- control.write_data
+    line.w_en <- accept
+    line.in <- control.line
+    line_mask.w_en <- accept
+    line_mask.in <- control.line_mask
+    line_store.w_en <- accept
+    line_store.in <- control.line_write_data
 
     ar_pending.w_en <- 1
     ar_pending.in <- or(start_read, and(ar_pending.out, not(ar_fire)))
@@ -135,6 +155,10 @@ wire MemoryAccess {
     load_unsigned.selected -> load_lane.zero_extend
     load_value.w_en <- or(read_done, cached)
     load_value.in <- load_lane.out
+    line_source.selected -> load_swap.in
+    line_load.w_en <- or(read_done, cached)
+    load_swap.out -> line_load.in
+    line_load.out -> control.line_read_data
 
     { axi.write.awaddr[0..5] } <= 0
     axi.write.awaddr[5..30] <- [ address.out[5..30] ]
@@ -155,6 +179,17 @@ wire MemoryAccess {
     store_value.out -> store_lane.value
     address.out[0..5] -> store_lane.address
     size.out -> store_lane.size
-    store_lane.data -> axi.write.wdata
-    store_lane.mask -> axi.write.wstrb
+    // 라인 쓰기: 바이트 순서를 바꾼 octa 4개, 마스크 비트 하나가 octa 하나(8바이트)를 고른다.
+    line_store.out -> store_swap.in
+    write_data.select <- line.out
+    write_data.option[0] <- store_lane.data
+    write_data.option[1] <- store_swap.out
+    write_strobe.select <- line.out
+    write_strobe.option[0] <- store_lane.mask
+    { write_strobe.option[1][0..8] } <= line_mask.out[0]
+    { write_strobe.option[1][8..16] } <= line_mask.out[1]
+    { write_strobe.option[1][16..24] } <= line_mask.out[2]
+    { write_strobe.option[1][24..32] } <= line_mask.out[3]
+    write_data.selected -> axi.write.wdata
+    write_strobe.selected -> axi.write.wstrb
 }

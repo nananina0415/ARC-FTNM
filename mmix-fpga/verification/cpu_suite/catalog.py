@@ -74,7 +74,7 @@ def required_coverage(op):
     if op==0xfd:return ['swym_zero','swym_fields','swym_no_grow']
     if op in (0xbe,0xbf,0xf2,0xf3):
         return ['basic','x_zero','x_marginal','x_global','x_global_l_zero','return_value','ring_wrap',
-                'spill_fill_r32','spill_fill_r64','spill_fill_r128']
+                'spill_fill_r32','spill_fill_r64','spill_fill_r128','spill_fill_unaligned','spill_partial']
     if op==0xf8:
         return ['pop_zero','pop_one','pop_two','pop_above_l','pop_return_offset','pop_g_clamp_fault',
                 'pop_range_fault','pop_multi_fill']

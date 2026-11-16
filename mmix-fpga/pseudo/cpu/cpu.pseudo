@@ -243,6 +243,10 @@ wire Cpu {
     control.memory.size -> memory.control.size
     control.memory.zero_extend -> memory.control.zero_extend
     control.memory.write_data -> memory.control.write_data
+    control.memory.line -> memory.control.line
+    control.memory.line_mask -> memory.control.line_mask
+    control.memory.line_write_data -> memory.control.line_write_data
+    memory.control.line_read_data -> control.memory.line_read_data
     control.memory.res_ready -> memory.control.res_ready
     memory.control.req_ready -> control.memory.req_ready
     memory.control.res_valid -> control.memory.res_valid

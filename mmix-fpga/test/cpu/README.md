@@ -2,7 +2,7 @@
 
 상태: 명령어별 프로그램 테스트를 구현했다. 현재 184개 구현 항목(ALU/상수 106 opcode,
 메모리 28 opcode, 분기 34 opcode, GETA 2 opcode, GO 2 opcode, GET/PUT 3 opcode, 레지스터 스택 7 opcode,
-SWYM, HALT와 TRAP을 함께 다루는 #00)에 대해 3,811개 `.mms`/`.case.json` 쌍이 있다. TRAP/SWYM/GO
+SWYM, HALT와 TRAP을 함께 다루는 #00)에 대해 3,819개 `.mms`/`.case.json` 쌍이 있다. TRAP/SWYM/GO와 spill/fill 묶음 전송
 추가 후 현재 RTL은 아직 실행하지 않았다.
 아래의 번호별 절은 확장 설계이며, 아직 구현하지 않은 기능은 아래 현황과 구분한다.
 
@@ -44,7 +44,8 @@ python -m verification.cpu_suite --instruction SETH --instruction SETMH --instru
 레지스터 기대값은 논리 번호가 아니라 물리 슬롯 256개의 최종 값이다. `stack_cases.py`의 프로그램과
 `stack_model.py`의 독립 모델로 기대값을 만든다. 대상 PC의 `executions`는 EXECUTE에 머문 횟수이므로
 marginal `$X`로 L을 늘릴 때마다 1씩 늘어난다. 내부 0 쓰기, hole, fill은 `register_writes`에 세지
-않고 spill은 `memory_writes`에 센다.
+않고 spill은 `memory_writes`에 센다. spill은 32바이트 라인 안 최대 4칸을 쓰기 1회로 내보내므로
+AXI 쓰기 트랜잭션 하나가 1로 세어진다([spill/fill 단위](../../pseudo/cpu/reg/README.md)).
 
 ## 실행 가능한 도구
 

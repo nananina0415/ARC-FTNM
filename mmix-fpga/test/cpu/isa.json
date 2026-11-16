@@ -3665,7 +3665,9 @@
         "ring_wrap",
         "spill_fill_r32",
         "spill_fill_r64",
-        "spill_fill_r128"
+        "spill_fill_r128",
+        "spill_fill_unaligned",
+        "spill_partial"
       ]
     },
     {
@@ -3682,7 +3684,9 @@
         "ring_wrap",
         "spill_fill_r32",
         "spill_fill_r64",
-        "spill_fill_r128"
+        "spill_fill_r128",
+        "spill_fill_unaligned",
+        "spill_partial"
       ]
     },
     {
@@ -4714,7 +4718,9 @@
         "ring_wrap",
         "spill_fill_r32",
         "spill_fill_r64",
-        "spill_fill_r128"
+        "spill_fill_r128",
+        "spill_fill_unaligned",
+        "spill_partial"
       ]
     },
     {
@@ -4731,7 +4737,9 @@
         "ring_wrap",
         "spill_fill_r32",
         "spill_fill_r64",
-        "spill_fill_r128"
+        "spill_fill_r128",
+        "spill_fill_unaligned",
+        "spill_partial"
       ]
     },
     {

@@ -218,6 +218,11 @@ wire Control {
     memory.res_valid -> stack.mem_res_valid
     memory.error -> stack.mem_error
     memory.read_data -> stack.mem_read_data // CPU도 결과 쓰기 mux에서 별도로 사용
+    // spill/fill의 라인 단위 전송. 스택 상태가 아니면 stack.mem_line은 0이다.
+    stack.mem_line -> memory.line
+    stack.mem_line_mask -> memory.line_mask
+    stack.mem_line_data -> memory.line_write_data
+    memory.line_read_data -> stack.mem_line_read
     memory_active <- or(mem_request, mem_wait, mem_commit, stack_active)
     store_read_x <- and(mem_request, decoded_store, not(decoded_store_constant))
     execute_en <- and(retire_execute, not(non_alu))

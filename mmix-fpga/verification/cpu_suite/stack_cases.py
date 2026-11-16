@@ -163,6 +163,12 @@ def push_cases(root, op):
         lines, target = recursion(op, depth)
         r = 128 if g >= 128 else 64 if g >= 64 else 32
         names.append(save(root, op, f'spill_fill_r{r}', lines, target, g=g, l=2, registers={0:0x10, 1:0x11, 253:0}))
+    # rS가 라인 중간(octa 1)에서 시작하면 첫 spill은 라인 끝까지 3칸, 이후는 4칸씩 옮긴다.
+    lines, target = recursion(op, 24)
+    names.append(save(root, op, 'spill_fill_unaligned', lines, target, g=40, l=2, offset=1,
+                      registers={0:0x10, 1:0x11, 253:0}))
+    # pending이 2뿐일 때 ring이 차면 2칸만 내보낸다(현재 로컬은 내보내지 않는다).
+    emit('spill_partial', 29, l=29, g=32, offset=2, pending=2)
     return names
 
 

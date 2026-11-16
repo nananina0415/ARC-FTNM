@@ -2,6 +2,8 @@
 
 Slots are physical: k>=G uses slot k, k<L uses (alpha+k) mod R, where R is the largest
 power of two not above G. It never reads the RTL or the crosscompiler output.
+Spill and POP fill move up to four octas within one 32-byte line per memory access
+(pseudo/cpu/reg/README.md 'spill/fill 단위'); UNSAVE still fills one octa at a time.
 """
 from .catalog import MASK, SPECIAL
 
@@ -54,11 +56,29 @@ class StackModel:
         self.register_writes += 1
 
     def spill(self):
-        value = self.slots[self.gamma]
-        address = self.get('rS')
-        for i, byte in enumerate(value.to_bytes(8, 'big')): self.memory[address+i] = byte
-        self.put('rS', address+8)
+        """Write the oldest pending slots that lie in rS's 32-byte line, at most 4, as one store."""
+        address, gamma = self.get('rS'), self.gamma
+        count = min(self.pending(), 4-((address >> 3) & 3))
+        for j in range(count):
+            value = self.slots[(gamma+j) & (self.R-1)]
+            for i, byte in enumerate(value.to_bytes(8, 'big')): self.memory[address+8*j+i] = byte
+        self.put('rS', address+8*count)
         self.stores += 1
+
+    def fill_line(self):
+        """POP fill: load the slots below rS back to the start of their line, limited by free ring slots."""
+        address = self.get('rS')
+        position = (address >> 3) & 3
+        bound = position if position else 4
+        level = self.pending()+self.get('rL')
+        free = (-level) & (self.R-1)
+        cap = 4 if level == 0 else 1 if free == 0 else min(free, 4)
+        count = min(bound, cap)
+        self.put('rS', address-8*count)
+        base, gamma = self.get('rS'), self.gamma
+        for j in range(count):
+            self.slots[(gamma+j) & (self.R-1)] = int.from_bytes(
+                bytes(self.memory.get(base+8*j+i, 0xa5) for i in range(8)), 'big')
 
     def fill(self):
         self.put('rS', self.get('rS')-8)
@@ -93,10 +113,10 @@ class StackModel:
     def pop(self, x, yz):
         L = self.get('rL')
         y = self.slots[self.ring(x-1)] if x != 0 and x <= L else 0
-        if self.pending() == 0: self.fill()
+        if self.pending() == 0: self.fill_line()
         k = self.slots[self.ring(-1)] & 0xff
         if k >= self.R: raise StackFault(2)
-        while self.pending() <= k: self.fill()
+        while self.pending() <= k: self.fill_line()
         new_l = min(k+(x if x <= L else L+1), self.get('rG'))
         if new_l >= self.R: raise StackFault(2)
         if new_l > k: self.slots[self.ring(-1)] = y

@@ -60,10 +60,10 @@ STACK으로 넘어가고 ALU 쓰기, PC 진행, 메모리 시작을 하지 않�
 | StackControl 단계 | 동작 |
 |---|---|
 | GROW, CHECK | `l[α+L]←0`, L+1. `(미저장 칸 수 + L) mod R = 0`이면 SPILL. 끝나면 EXECUTE 재실행 |
-| SPILL_REQUEST, SPILL_WAIT | `M8[rS]←l[γ]`, rS+8 |
+| SPILL_GATHER, SPILL_REQUEST, SPILL_WAIT | n = min(미저장 칸 수, 4 − (rS/8 mod 4))칸을 한 클록에 하나씩 모아 `M8[rS..rS+8n)←l[γ..γ+n)`을 라인 쓰기 1회로, rS+8n |
 | PUSH_COMMIT | `l[α+n]←n`, rJ←PC+4, L−(n+1), rO+8(n+1), PC←목표 |
 | POP_READ, POP_BASE, POP_HOLE | y 읽기, 빈 ring이면 FILL, hole에서 k 읽기, 미저장 칸 수 <= k이면 FILL |
-| FILL_ADDRESS, FILL_REQUEST, FILL_WAIT | rS−8, `l[γ]←M8[rS]` |
+| FILL_ADDRESS, FILL_REQUEST, FILL_WAIT | m칸: rS−8m, 라인 읽기 1회 뒤 한 클록에 하나씩 `l[γ..γ+m)←M8[rS..rS+8m)`. POP은 m = min(rS 앞 라인 칸 수(rS 정렬이면 4), ring 빈칸), UNSAVE는 1 |
 | POP_COMMIT | `L←min(k+X',G)`, L>k이면 `l[α-1]←y`, PC←rJ+4YZ, rO−8(k+1) |
 | G_FLUSH, G_CLEAR, G_COMMIT | R이 바뀌면 전부 SPILL, 새로 글로벌이 된 칸을 0으로, G 갱신 |
 
@@ -77,7 +77,7 @@ STACK으로 넘어가고 ALU 쓰기, PC 진행, 메모리 시작을 하지 않�
 
 X<G인 PUSH는 일반 목적지와 같이 marginal이면 GROW를 거친다. X>=G인 PUSH는 GROW를 한 번
 거쳐 n=L-1로 hole을 쓴다. `$X`가 목적지인 명령은 조건이 거짓인 CS*여도 먼저 L을 늘린다.
-spill/fill은 octa 크기로 MemoryAccess를 사용하며 접근 오류는 fault_reason bit 0이다.
+spill/fill은 MemoryAccess의 라인 경로(32바이트 라인 안 octa 여러 개)를 사용하며 접근 오류는 fault_reason bit 0이다.
 L이 R에 닿는 경우와 hole 값 k가 R 이상인 경우는 fault_reason bit 1이다.
 
 ## 메모리·정지·오류

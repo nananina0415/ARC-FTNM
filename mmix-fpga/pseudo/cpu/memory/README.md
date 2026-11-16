@@ -28,6 +28,12 @@ store는 해당 바이트만 WSTRB로 활성화하며, read-modify-write를 하�
 AW와 W는 독립적으로 수락될 때까지 VALID와 payload를 유지하고 이후 B 응답을 기다린다.
 잘못된 응답 ID와 RRESP/BRESP는 오류로 처리하며 읽기는 RLAST까지 소비한다.
 
+레지스터 스택 spill/fill은 `line` 경로를 쓴다. 요청 하나가 32바이트 라인 안의 octa 여러 개를
+옮긴다. `line_write_data`의 octa j(비트 64j부터)는 MMIX 값 그대로이며 `line.pseudo`의
+`LineSwap`이 byte lane 순서로 바꾼다. 쓰기는 `line_mask`에서 고른 octa의 8바이트씩만
+WSTRB로 활성화하고 캐시도 같은 마스크로 갱신한다. 읽기는 라인 전체를 같은 형식으로
+`line_read_data`에 돌려준다. 일반 load/store 경로는 바뀌지 않는다.
+
 Control은 EXECUTE에서 주소를 캡처하고 MEMORY_REQUEST에서 일반 store의 읽기 포트 1을
 $X로 전환한다. STCO는 별도 상수 입력을 선택한다. load 결과만 MEMORY_COMMIT에서
 GPR에 쓰며, store는 GPR을 쓰지 않는다. 데이터 오류는 fault_reason bit 0이다.

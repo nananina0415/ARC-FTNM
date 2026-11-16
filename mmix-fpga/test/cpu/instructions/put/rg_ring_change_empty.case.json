@@ -75,7 +75,7 @@
     "unchanged_other_state": true,
     "subject_effects": {
       "register_writes": 0,
-      "memory_writes": 4
+      "memory_writes": 1
     }
   },
   "coverage": [
