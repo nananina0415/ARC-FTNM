@@ -274,7 +274,11 @@ static patch_t* marknums[10]; // numbers used for marking by the automap
 static mpoint_t markpoints[AM_NUMMARKPOINTS]; // where the points are
 static int markpointnum = 0; // next point to be assigned
 
+#ifdef DOOM_AUTOMAP_NO_FOLLOW
+static int followplayer = 0; // 따라가기를 쓰지 않는다. 지도는 열 때 플레이어 위치에서 시작해 직접 이동한다
+#else
 static int followplayer = 1; // specifies whether to follow the player around
+#endif
 
 static unsigned char cheat_amap_seq[] = { 0xb2, 0x26, 0x26, 0x2e, 0xff };
 static cheatseq_t cheat_amap = { cheat_amap_seq, 0 };
@@ -664,11 +668,13 @@ doom_boolean AM_Responder(event_t* ev)
                 }
                 else AM_restoreScaleAndLoc();
                 break;
+#ifndef DOOM_AUTOMAP_NO_FOLLOW
             case AM_FOLLOWKEY:
                 followplayer = !followplayer;
                 f_oldloc.x = DOOM_MAXINT;
                 plr->message = followplayer ? AMSTR_FOLLOWON : AMSTR_FOLLOWOFF;
                 break;
+#endif
             case AM_GRIDKEY:
                 grid = !grid;
                 plr->message = grid ? AMSTR_GRIDON : AMSTR_GRIDOFF;

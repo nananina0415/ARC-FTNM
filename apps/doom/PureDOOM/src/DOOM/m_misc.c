@@ -100,6 +100,10 @@ extern int key_fire;
 extern int key_use;
 extern int key_strafe;
 extern int key_speed;
+#ifdef DOOM_WEAPON_CYCLE
+extern int key_prevweapon;
+extern int key_nextweapon;
+#endif
 
 extern int mousebfire;
 extern int mousebstrafe;
@@ -155,6 +159,10 @@ default_t defaults[] =
     {"key_use",&key_use, ' '},
     {"key_strafe",&key_strafe, KEY_RALT},
     {"key_speed",&key_speed, KEY_RSHIFT},
+#ifdef DOOM_WEAPON_CYCLE
+    {"key_prevweapon",&key_prevweapon, '['},
+    {"key_nextweapon",&key_nextweapon, ']'},
+#endif
 
     {"use_mouse",&usemouse, 1},
     {"mouseb_fire",&mousebfire,0},

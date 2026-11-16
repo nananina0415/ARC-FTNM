@@ -14,6 +14,13 @@
 #include "DOOM.h"
 
 
+// 선택 기능. 컴파일할 때 정의하면 켜지고, 정의하지 않으면 원본과 같게 동작한다.
+//   DOOM_AUTOMAP_PAUSE     싱글플레이에서 자동 지도가 열려 있는 동안 게임 진행을 멈춘다.
+//   DOOM_AUTOMAP_NO_FOLLOW 자동 지도 따라가기 모드를 쓰지 않는다(f 키 무시). 지도는 직접 이동한다.
+//   DOOM_WEAPON_CYCLE      이전/다음 무기 전환 키 key_prevweapon('['), key_nextweapon(']')를 쓴다.
+//                          갖고 있지 않거나 한 발 쏠 탄약이 없는 무기는 건너뛴다.
+
+
 #define doom_abs(x) ((x) < 0 ? -(x) : (x))
 
 

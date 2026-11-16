@@ -125,6 +125,17 @@ void P_Ticker(void)
         return;
     }
 
+#ifdef DOOM_AUTOMAP_PAUSE
+    // 싱글플레이에서 자동 지도가 열려 있는 동안 진행을 멈춘다.
+    // 지도 이동·확대는 G_Ticker의 AM_Ticker가 따로 처리한다.
+    if (!netgame
+        && automapactive
+        && !demoplayback)
+    {
+        return;
+    }
+#endif
+
     for (i = 0; i < MAXPLAYERS; i++)
         if (playeringame[i])
             P_PlayerThink(&players[i]);

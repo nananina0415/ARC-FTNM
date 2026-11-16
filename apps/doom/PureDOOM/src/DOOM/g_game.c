@@ -140,6 +140,10 @@ int key_fire;
 int key_use;
 int key_strafe;
 int key_speed;
+#ifdef DOOM_WEAPON_CYCLE
+int key_prevweapon;
+int key_nextweapon;
+#endif
 
 int mousebfire;
 int mousebstrafe;
@@ -233,6 +237,61 @@ int G_CmdChecksum(ticcmd_t* cmd)
 
     return sum;
 }
+
+
+#ifdef DOOM_WEAPON_CYCLE
+// 이전/다음 무기 전환 순서
+static const weapontype_t weapon_cycle[] =
+{
+    wp_fist, wp_chainsaw, wp_pistol, wp_shotgun, wp_supershotgun,
+    wp_chaingun, wp_missile, wp_plasma, wp_bfg
+};
+#define WEAPON_CYCLE_COUNT ((int)(sizeof(weapon_cycle) / sizeof(weapon_cycle[0])))
+
+// 이전/다음 전환으로 고를 무기인지. p_user.c의 BT_CHANGE 처리 규칙에 더해
+// 한 발 쏠 탄약이 없는 무기는 건너뛴다(최소량은 p_pspr.c P_CheckAmmo와 같다: BFG 40, 슈퍼샷건 2, 나머지 1).
+static doom_boolean G_WeaponSelectable(player_t* player, weapontype_t weapon)
+{
+    ammotype_t ammo = weaponinfo[weapon].ammo;
+    int count = weapon == wp_bfg ? 40 : weapon == wp_supershotgun ? 2 : 1;
+
+    if (ammo != am_noammo && player->ammo[ammo] < count)
+        return false;
+    if (!player->weaponowned[weapon])
+        return false;
+    if (weapon == wp_supershotgun && gamemode != commercial)
+        return false;
+    if ((weapon == wp_plasma || weapon == wp_bfg) && gamemode == shareware)
+        return false;
+    // 전기톱이 있으면 주먹 번호는 전기톱으로 바뀐다. 버서커가 있을 때만 주먹을 고를 수 있다.
+    if (weapon == wp_fist && player->weaponowned[wp_chainsaw] && !player->powers[pw_strength])
+        return false;
+    return true;
+}
+
+// 현재 무기(교체 대기 중이면 그 무기)에서 step(+1/-1) 방향으로 고를 수 있는 다음 무기
+static weapontype_t G_CycleWeapon(player_t* player, int step)
+{
+    weapontype_t current = player->pendingweapon != wp_nochange
+        ? player->pendingweapon : player->readyweapon;
+    int start = 0;
+    int i;
+
+    for (i = 0; i < WEAPON_CYCLE_COUNT; i++)
+        if (weapon_cycle[i] == current)
+        {
+            start = i;
+            break;
+        }
+    for (i = 1; i < WEAPON_CYCLE_COUNT; i++)
+    {
+        weapontype_t weapon = weapon_cycle[(start + step * i + WEAPON_CYCLE_COUNT) % WEAPON_CYCLE_COUNT];
+        if (G_WeaponSelectable(player, weapon))
+            return weapon;
+    }
+    return wp_nochange;
+}
+#endif
 
 
 //
@@ -352,6 +411,33 @@ void G_BuildTiccmd(ticcmd_t* cmd)
             cmd->buttons |= i << BT_WEAPONSHIFT;
             break;
         }
+
+#ifdef DOOM_WEAPON_CYCLE
+    // 이전/다음 무기: 키를 누른 순간 한 번만 바꾼다. 숫자키가 함께 눌렸으면 숫자키가 우선한다.
+    // 무기 번호는 3비트라 슈퍼샷건은 샷건 번호로 보낸다(p_user.c가 슈퍼샷건으로 바꾼다).
+    {
+        static doom_boolean prev_held = false;
+        static doom_boolean next_held = false;
+        int step = 0;
+
+        if (gamekeydown[key_prevweapon] && !prev_held)
+            step = -1;
+        if (gamekeydown[key_nextweapon] && !next_held)
+            step = 1;
+        prev_held = gamekeydown[key_prevweapon];
+        next_held = gamekeydown[key_nextweapon];
+
+        if (step && !(cmd->buttons & BT_CHANGE))
+        {
+            weapontype_t weapon = G_CycleWeapon(&players[consoleplayer], step);
+            if (weapon != wp_nochange)
+            {
+                cmd->buttons |= BT_CHANGE;
+                cmd->buttons |= (weapon == wp_supershotgun ? wp_shotgun : weapon) << BT_WEAPONSHIFT;
+            }
+        }
+    }
+#endif
 
     // mouse
     if (mousebuttons[mousebforward])
