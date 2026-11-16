@@ -1,82 +1,57 @@
 # mmix-fpga Vivado 배치 빌드 스크립트
-# 사용법:
-#   vivado -mode batch -source build.tcl              (합성 + 구현 + 비트스트림)
-#   vivado -mode batch -source build.tcl -tclargs upload (+ 보드 프로그래밍)
+# 사용법: vivado -mode batch -source build.tcl -tclargs <보드명>
+#
+# 현재 단계: CPU 코어(Cpu, AXI 마스터)를 out-of-context로 합성해 사용량과 타이밍을 보고한다.
+# CPU·MIG·클럭·주변장치를 묶는 보드 최상위 모듈이 생기면 구현과 비트스트림 단계를 붙인다.
+#
+# 입력: src/cpu/sources.f (crosscompiler가 의사코드에서 생성한 Verilog 목록)
+# 출력: build/synth/ (보고서와 체크포인트)
 
 set SCRIPT_DIR [file dirname [file normalize [info script]]]
 
-# 인자 파싱: argv[0]=보드명, argv[1]=upload 여부
 if {[llength $argv] < 1 || [lindex $argv 0] eq ""} {
     error "보드명을 지정하세요. 예: -tclargs PA100T-EDU"
 }
 set BOARD [lindex $argv 0]
-set do_upload 0
-if {[llength $argv] > 1 && [lindex $argv 1] eq "upload"} {
-    set do_upload 1
-}
-
 set BOARD_DIR "$SCRIPT_DIR/board/$BOARD"
 if {![file exists "$BOARD_DIR/board.tcl"]} {
     error "board/$BOARD/board.tcl 을 찾을 수 없습니다"
 }
 source "$BOARD_DIR/board.tcl"
 
-set PROJECT_DIR "$SCRIPT_DIR/vivado/mmix_fpga"
-set PROJECT_NAME "mmix_fpga"
-set SV_FILE   "$SCRIPT_DIR/build/MMIX.sv"
-# XDC_FILE은 board.tcl에서 정의됨
-set BIT_FILE "$PROJECT_DIR/${PROJECT_NAME}.runs/impl_1/MMIX.bit"
+set RTL_DIR "$SCRIPT_DIR/src/cpu"
+set OUT_DIR "$SCRIPT_DIR/build/synth"
+file mkdir $OUT_DIR
 
-# 프로젝트 생성 또는 열기 (이미 열려있으면 먼저 닫기)
-catch {close_project}
-if {![file exists "$PROJECT_DIR/${PROJECT_NAME}.xpr"]} {
-    create_project $PROJECT_NAME $PROJECT_DIR -part $PART
+# CPU 최상위 모듈과 클럭 포트 (crosscompiler가 만든 이름)
+set CPU_TOP   "s_3_cpu_3_Cpu"
+set CPU_CLOCK "s_4_port_5_clock"
+# CPU는 MIG ui_clk로 동작한다. PA-EDU MIG 설정(PHY 4:1, 400MHz DDR3)에서 ui_clk는 100MHz다.
+set CLOCK_PERIOD_NS 10.0
+
+set fp [open "$RTL_DIR/sources.f" r]
+set count 0
+foreach line [split [read $fp] "\n"] {
+    set path [string trim $line]
+    if {$path eq ""} { continue }
+    read_verilog [file join $RTL_DIR $path]
+    incr count
 }
-open_project "$PROJECT_DIR/${PROJECT_NAME}.xpr"
+close $fp
+puts "Verilog 파일 $count 개를 읽었다"
 
-# 소스 갱신: 기존 파일 제거 후 재임포트
-if {[llength [get_files -quiet *.sv]] > 0} {
-    remove_files -fileset sources_1 [get_files *.sv]
-}
-import_files -force -fileset sources_1 $SV_FILE
-set_property top MMIX [get_filesets sources_1]
+# 합성 단계부터 클럭을 알도록 제약을 XDC로 읽는다.
+set xdc "$OUT_DIR/cpu_clock.xdc"
+set fp [open $xdc w]
+puts $fp "create_clock -name ui_clk -period $CLOCK_PERIOD_NS \[get_ports $CPU_CLOCK\]"
+close $fp
+read_xdc -mode out_of_context $xdc
 
-if {[llength [get_files -quiet *.xdc]] > 0} {
-    remove_files -fileset constrs_1 [get_files *.xdc]
-}
-import_files -force -fileset constrs_1 $XDC_FILE
+synth_design -top $CPU_TOP -part $PART -mode out_of_context
 
-# 합성
-reset_run synth_1
-launch_runs synth_1 -jobs 8
-wait_on_run synth_1
-if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
-    error "합성 실패"
-}
+report_utilization                -file "$OUT_DIR/utilization.rpt"
+report_utilization -hierarchical  -file "$OUT_DIR/utilization_hier.rpt"
+report_timing_summary             -file "$OUT_DIR/timing_summary.rpt"
+write_checkpoint -force           "$OUT_DIR/cpu_synth.dcp"
 
-# 구현 + 비트스트림
-reset_run impl_1
-launch_runs impl_1 -to_step write_bitstream -jobs 8
-wait_on_run impl_1
-if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
-    error "구현 실패"
-}
-
-puts "Bitstream: $BIT_FILE"
-
-# 보드 프로그래밍
-if {$do_upload} {
-    open_hw_manager
-    connect_hw_server -url localhost:3121
-    set targets [get_hw_targets]
-    if {[llength $targets] == 0} {
-        error "JTAG 타겟 없음. VirtualHere 연결 확인."
-    }
-    open_hw_target [lindex $targets 0]
-    set_property PARAM.FREQUENCY 1000000 [lindex $targets 0]
-    set hw_dev [get_hw_devices $HW_DEVICE]
-    create_hw_bitstream -hw_device $hw_dev $BIT_FILE
-    program_hw_devices $hw_dev
-    close_hw_manager
-    puts "업로드 완료"
-}
+puts "보고서: $OUT_DIR"

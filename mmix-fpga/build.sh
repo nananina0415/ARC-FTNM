@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# 사용법: build.sh [보드명] [upload]
+# 사용법: build.sh [보드명]
 #   build.sh                  — 보드가 하나면 자동 선택
 #   build.sh PA100T-EDU       — 보드 지정 (앞부분 일치도 허용)
-#   build.sh PA100T-EDU upload
+#
+# 1. crosscompiler로 의사코드(pseudo/)에서 CPU Verilog(src/cpu/)를 생성한다.
+# 2. Vivado로 CPU를 out-of-context 합성하고 사용량·타이밍 보고서를 build/synth/에 낸다.
+# 보드 최상위 모듈이 생기면 구현·비트스트림·업로드 단계를 붙인다.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,11 +22,8 @@ if [ ${#BOARDS[@]} -eq 0 ]; then
 fi
 
 ARG1="${1:-}"
-ARG2="${2:-}"
 
-# ARG1이 비어있거나 "upload"이면 보드 인자 없는 것으로 처리
-if [ -z "$ARG1" ] || [ "$ARG1" = "upload" ]; then
-    DO_UPLOAD="$ARG1"
+if [ -z "$ARG1" ]; then
     if [ ${#BOARDS[@]} -eq 1 ]; then
         BOARD="${BOARDS[0]}"
         echo "[build] 보드 자동 선택: $BOARD"
@@ -32,7 +32,6 @@ if [ -z "$ARG1" ] || [ "$ARG1" = "upload" ]; then
         exit 1
     fi
 else
-    DO_UPLOAD="$ARG2"
     # 정확히 일치하는 보드 먼저, 없으면 앞부분 일치
     BOARD=""
     for b in "${BOARDS[@]}"; do
@@ -59,7 +58,7 @@ fi
 if command -v vivado > /dev/null 2>&1; then
     VIVADO=$(command -v vivado)
 else
-    VIVADO=$(find /opt/Xilinx /tools/Xilinx -name "vivado" -type f 2>/dev/null \
+    VIVADO=$(find /opt/Xilinx /tools/Xilinx -path "*/bin/vivado" -type f 2>/dev/null \
              | sort -V | tail -1)
     if [ -z "$VIVADO" ]; then
         echo "[error] Vivado를 찾을 수 없습니다"
@@ -67,31 +66,18 @@ else
     fi
 fi
 
-# 1. Chisel → SystemVerilog
-echo "[build] sbt run..."
+# 1. 의사코드 → Verilog
+echo "[build] crosscompiler..."
 cd "$SCRIPT_DIR"
-sbt run
+python3 -m crosscompiler pseudo --top cpu::Cpu --out src/cpu
 
-# upload 전 JTAG 연결 확인: 로컬 USB 먼저, 없으면 VirtualHere
-if [ "$DO_UPLOAD" = "upload" ]; then
-    if lsusb 2>/dev/null | grep -qiE "digilent|0403:601[04]"; then
-        : # 로컬 USB에서 Digilent 또는 FTDI JTAG 발견
-    elif pgrep -xE "vhclient|vhuit64|vhuit32" > /dev/null 2>&1; then
-        : # VirtualHere 클라이언트로 연결
-    elif pgrep -a "vhci" > /dev/null 2>&1; then
-        : # USB/IP vhci 커널 활성
-    else
-        echo "[error] JTAG 장치를 찾을 수 없습니다 (로컬 USB 또는 VirtualHere 필요)"
-        exit 1
-    fi
-fi
-
-# 2. Vivado: 합성 + 구현 + 비트스트림 (upload 인자 있으면 보드 업로드까지)
+# 2. Vivado: CPU out-of-context 합성
 echo "[build] vivado..."
+mkdir -p "$SCRIPT_DIR/build"
 "$VIVADO" -mode batch \
-    -log     "$SCRIPT_DIR/vivado/vivado.log" \
-    -journal "$SCRIPT_DIR/vivado/vivado.jou" \
+    -log     "$SCRIPT_DIR/build/vivado.log" \
+    -journal "$SCRIPT_DIR/build/vivado.jou" \
     -source  "$SCRIPT_DIR/build.tcl" \
-    -tclargs "$BOARD" "$DO_UPLOAD"
+    -tclargs "$BOARD"
 
-echo "[build] done."
+echo "[build] done. 보고서: $SCRIPT_DIR/build/synth/"

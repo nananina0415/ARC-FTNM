@@ -20,17 +20,18 @@ MMIX 크로스컴파일러(`mmix-gcc`)가 필요하다.
 
 nnix-os는 파일명을 nnix.os로 하여 SD카드 루트에 두어야 부트로더가 인식한다.
 
-### FPGA 비트스트림 (mmix-fpga)
+### FPGA (mmix-fpga)
 
-[Spade HDL](https://spade-lang.org) swim과 Xilinx Vivado가 필요하다.
+CPU는 회로 의사코드(`mmix-fpga/pseudo/`)로 작성하고, 변환기(`mmix-fpga/crosscompiler/`)가 Verilog(`mmix-fpga/src/cpu/`)로 바꾼다.
+Python 3.10 이상과 Xilinx Vivado가 필요하다.
 
 ```sh
-# 합성 + 구현 + 비트스트림
+# 의사코드 → Verilog → CPU out-of-context 합성 (사용량·타이밍 보고서: mmix-fpga/build/synth/)
 mmix-fpga/build.sh [보드명]
-
-# 합성 + 구현 + 비트스트림 + 보드 업로드 (JTAG)
-mmix-fpga/build.sh [보드명] upload
 ```
+
+보드 최상위 모듈(CPU·MIG·주변장치 연결)은 아직 없어 구현·비트스트림·업로드 단계는 없다.
+CPU 설계와 검증 도구는 `mmix-fpga/AGENTS.md`, `mmix-fpga/test/cpu/README.md` 참고.
 
 `board/` 아래에 보드가 하나뿐이면 보드명 생략 가능. 앞부분만 입력해도 유일하게 특정되면 자동 선택된다.
 
@@ -69,22 +70,21 @@ ARC-FTNM/
 │       ├── video.c                — HDMI·LCD 프레임버퍼 출력
 │       ├── timer.c                — 하드웨어 타이머 (미구현, 항상 0)
 │       └── sd_card.h              — SD 카드 SPI 인터페이스
-├── mmix-fpga/                     — FPGA RTL (Spade HDL)
-│   ├── swim.toml                  — Spade 프로젝트 설정
-│   ├── build.sh                   — 빌드 자동화 (swim → Vivado, 업로드 포함)
-│   ├── build.tcl                  — Vivado 배치 스크립트 (합성/구현/비트스트림)
+├── mmix-fpga/                     — FPGA CPU (회로 의사코드 → Verilog)
+│   ├── build.sh                   — 빌드 자동화 (crosscompiler → Vivado 합성)
+│   ├── build.tcl                  — Vivado 배치 스크립트 (CPU out-of-context 합성과 보고서)
 │   ├── board/                     — 빌드에 필요한 보드와 칩에 종속적인 설정들
 │   │   └── PA100T-EDU/
 │   │       ├── board.tcl          — 보드 종속 설정 (파트번호, JTAG 장치명, XDC 경로)
 │   │       └── pins.xdc           — 핀 배치 제약
-│   ├── src/
-│   │   ├── main.spade             — Spade 최상위 진입점
-│   │   ├── cpu/                   — MMIX CPU 코어
-│   │   ├── mem/                   — 메모리 컨트롤러(DDR3) 및 MMU, IOMMU
-│   │   ├── video/                 — HDMI 비디오 출력
-│   │   ├── audio/                 — OPL3 인터페이스·PCM 믹서
-│   │   ├── timer/                 — 하드웨어 타이머
-│   │   └── rom/                   — BIOS+부트로더
+│   ├── pa_edu_ddr3_mig.xdc        — DDR3 MIG 핀 배치
+│   ├── pseudo/                    — CPU 회로 의사코드 (문법: pseudo/grammar.md)
+│   ├── crosscompiler/             — 의사코드 → Verilog 변환기
+│   ├── src/cpu/                   — 생성된 CPU Verilog (sources.f)
+│   ├── verification/              — 생성 RTL 검증과 명령어별 회귀 테스트 실행기
+│   ├── test/cpu/                  — 명령어별 MMIXAL 프로그램과 기대값
+│   ├── docs/                      — 분석 보고서
+│   ├── src/rom/                   — BIOS 동작 메모 (ROM 코드는 nnix-os/rom/)
 │   └── third_party/
 │       ├── gtaylormb_opl3_fpga/   — OPL3 FM 합성기 RTL (LGPL v3)
 │       ├── hdl-util_hdmi/         — HDMI 인코더 RTL (MIT / Apache-2.0)
