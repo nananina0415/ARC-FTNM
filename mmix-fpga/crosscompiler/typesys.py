@@ -38,7 +38,8 @@ class Context:
 
 
 ARITIES = {"D_FlipFlop": 0, "Mux": 2, "Decoder": 2, "TriState": 1,
-           "Adder": 1, "Multiplier": 1, "Divider": 1}
+           "Adder": 1, "Multiplier": 1, "Divider": 1, "SyncRam": 3}
+SEQUENTIAL_PRIMITIVES = ("D_FlipFlop", "SyncRam")
 
 
 def leaves(type_, prefix=()):

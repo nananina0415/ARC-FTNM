@@ -1,10 +1,26 @@
 
-여러 레지스터 초기값넣는거 필요
+여러 레지스터 초기값넣는거 — 구현함: 실행파일 레지스터 영역(tools/mkexe.py)을 BIOS가 UNSAVE로 넣음
 
 레지스터 스택 spill/fill을 32바이트 라인 단위(최대 4워드)로 묶기 — 구현함, 시뮬레이션 미실행
   설명: pseudo/cpu/reg/README.md "spill/fill 단위"
 
 
-리눅스 연결해서 베릴로그 빌드 원격되나 확인 -> axi있는 프로젝트로 골라야함
+리눅스 연결해서 베릴로그 빌드 원격되나 확인 — 됨: build.sh로 CPU out-of-context 합성(타이밍 최적화에서 Vivado 크래시, -no_timing_driven으로는 됨)
 
-원래 저장소에 의사코드랑 전부 이동하기
+원래 저장소에 의사코드랑 전부 이동하기 — 됨 (ARC-FTNM/mmix-fpga)
+
+
+파이프라인화 (진행 중, 단계별 커밋)
+  1. 의사코드/변환기에 BRAM 소자 SyncRam 추가
+  2. 범용 레지스터(BRAM 3벌: $Y, $Z, store의 $X 읽기용)와 특수 레지스터(GET/PUT 전용)를 SyncRam으로
+     ALU·스택이 직접 배선으로 읽는 rA rD rH rM rR rJ rO rS rG rL은 플립플롭 유지
+  3. I-cache, D-cache를 SyncRam으로, 각각 16KB(32바이트 라인 512개). I-cache는 store한 주소의 라인만 무효화
+  4. 중간 합성으로 LUT 확인 (CPU 목표 30,000~35,000 LUT)
+  5. 5단계 IF -> ID -> RF -> EX -> WB, 파이프라인 제어 유닛(진행/멈춤/비움)
+     분기 예측: PB*는 taken, B*는 not-taken. 목표는 ID에서 계산
+  6. 검증 하네스 조정 (executions = 비워지지 않고 EX를 지난 횟수)
+  7. 원격 합성과 타이밍(MIG ui_clk 100MHz)
+
+  최적화 여지: marginal 쓰기로 L이 늘어나는 명령은 지금 설계에서 직렬화(앞 명령을 모두 끝낸 뒤 단독 실행)한다.
+  ID 단계에서 L을 미리 갱신하고, 분기 예측 실패로 비울 때 되돌리면 멈추지 않고 처리할 수 있다.
+  GCC 코드는 함수 앞부분마다 L을 늘리므로 성능 차이가 날 수 있다.

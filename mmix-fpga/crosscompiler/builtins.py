@@ -40,6 +40,16 @@ def interface(spec):
         width, = args
         port("dividend", "in", 2 * width); port("divisor", "in", width)
         port("quotient", "out", width); port("remainder", "out", width)
+    elif name == "SyncRam":
+        depth, width, lanes = args
+        if depth < 2 or depth & (depth - 1):
+            raise CompileError("SyncRam depth must be a power of two, at least 2")
+        if width < 1 or lanes < 1 or width % lanes:
+            raise CompileError("SyncRam width must be a positive multiple of its write lane count")
+        address = (depth - 1).bit_length()
+        port("clock", "in")
+        port("w_en", "in", lanes); port("w_addr", "in", address); port("w_data", "in", width)
+        port("r_en", "in"); port("r_addr", "in", address); port("r_data", "out", width)
     else:
         raise CompileError(f"Unknown primitive {name}")
     return Record(tuple(fields))
@@ -80,4 +90,22 @@ def body(spec):
                 f"wire [{2 * width - 1}:0] remainder_full = ({p('divisor')} == {width}'d0) ? {2 * width}'bx : ({p('dividend')} % divisor_ext);",
                 f"assign {p('quotient')} = quotient_full[{width - 1}:0];",
                 f"assign {p('remainder')} = remainder_full[{width - 1}:0];"]
+    if name == "SyncRam":
+        # Vivado block RAM template: one write port with per-lane enables, one registered read port.
+        # Read and write in the same always block give read-first (old data) on an address collision.
+        depth, width, lanes = args
+        lane = width // lanes
+        return [f'(* ram_style = "block" *) reg [{width - 1}:0] mem [0:{depth - 1}];',
+                f"reg [{width - 1}:0] q;",
+                "integer i;",
+                "initial begin",
+                f"  for (i = 0; i < {depth}; i = i + 1) mem[i] = {width}'d0;",
+                f"  q = {width}'d0;",
+                "end",
+                f"always @(posedge {p('clock')}) begin",
+                f"  for (i = 0; i < {lanes}; i = i + 1)",
+                f"    if ({p('w_en')}[i]) mem[{p('w_addr')}][i*{lane} +: {lane}] <= {p('w_data')}[i*{lane} +: {lane}];",
+                f"  if ({p('r_en')}) q <= mem[{p('r_addr')}];",
+                "end",
+                f"assign {p('r_data')} = q;"]
     raise CompileError(f"No backend for primitive {name}")

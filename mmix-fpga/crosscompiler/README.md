@@ -44,7 +44,7 @@ python -m crosscompiler pseudo --top cpu::Cpu --out build/rtl --single-file
 | typesys.py | 폴더 이름 공간, alias, 상수, 타입과 번들 해석 |
 | elaborator.py | 제네릭 특수화, 배열/번들 전개, 회로 연결과 정적 검사 |
 | ir.py | 모듈/인스턴스/핀/게이트와 union-find net 자료구조 |
-| builtins.py | DFF/Mux/Decoder/TriState/Adder/Multiplier/Divider 계약과 RTL |
+| builtins.py | DFF/Mux/Decoder/TriState/Adder/Multiplier/Divider/SyncRam 계약과 RTL |
 | verilog.py | 모듈별 Verilog 출력, 펼친 포트, 파일 목록과 소스 맵 |
 | compiler.py | 소스 수집부터 결과 생성까지의 API |
 | output.py | 생성 파일 소유권, staging, 이전 생성물 교체와 I/O 실패 복원 |

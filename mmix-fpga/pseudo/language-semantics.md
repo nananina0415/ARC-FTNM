@@ -103,7 +103,7 @@
 ## 6. 저장과 표준 소자
 
 - comb/seq 모두 module로 출력한다. seq 전체가 클록 always 블록인 것은 아니다.
-- seq 인스턴스는 mut가 필요하다. 원시 내장 D_FlipFlop은 mut 없이 선언하는 예외이며,
+- seq 인스턴스는 mut가 필요하다(SyncRam 포함). 원시 내장 D_FlipFlop은 mut 없이 선언하는 예외이며,
   DFF 포함 여부는 순차성 검사에 여전히 반영한다. comb의 직접/간접 순차 소자 포함은 오류다.
 - clock/reset/초기화는 소스가 명시한다. 변환기가 자동 reset이나 초기값을 삽입하지 않는다.
 - 순차 피드백은 허용하지만 순수 조합 루프는 오류다.
@@ -117,11 +117,25 @@
 | Adder<N> | a,b,sum N비트, c_in/c_out 1비트. N+1비트 합의 하위/최상위 분리 |
 | Multiplier<N> | a,b N비트. signed=0 unsigned, 1이면 2의 보수 signed 곱. 2N비트 hi/lo |
 | Divider<N> | dividend 2N비트, divisor N비트 unsigned. quotient/remainder N비트 |
+| SyncRam<d,w,l> | d는 2 이상 2의 거듭제곱, w는 l의 배수. 주소 폭 ceil(log2(d)). 아래 참고 |
 
 Divider의 몫이 N비트를 넘으면 하위 N비트로 내보낸다. divisor=0이면 결과는 X다.
 관련 MMIX 예외/대체 결과는 Div 회로가 처리하며 표준 소자가 MMIX 명령을 해석하지 않는다.
 unknown 제어/산술 입력은 4상태 RTL 의미를 따른다. Decoder의 unknown 입력은 X 출력을 낸다.
 조합 소자를 다중 사이클 IP로 바꾸거나 파이프라인을 삽입하지 않는다.
+
+SyncRam<d,w,l>은 d개 칸의 w비트 메모리이며 seq 소자다(mut로 선언).
+
+- 쓰기: 상승 에지에서 `w_en`의 레인 i가 1이면 칸 `w_addr`의 비트 [i*w/l, (i+1)*w/l)에 `w_data`의 같은 비트를 쓴다.
+  레인이 l개라 칸의 일부만 바꿀 수 있다(바이트 쓰기 활성화 등).
+- 읽기: 상승 에지에서 `r_en`=1이면 칸 `r_addr`의 값을 출력 레지스터에 담고 `r_data`로 내보낸다.
+  `r_en`=0이면 출력은 이전 값을 유지한다. 주소를 준 다음 클록부터 값이 보이는 동기 읽기다.
+- 같은 에지에 같은 칸을 읽고 쓰면 읽기는 쓰기 전 값을 낸다(read-first).
+  새 값이 필요한 회로는 우회 경로를 소스에 명시한다.
+- 내용과 출력 레지스터의 초기값은 0이다(FPGA 구성 시 값). reset 입력은 없고 reset으로 지워지지 않는다.
+- 주소나 `r_en`이 unknown이면 읽기 결과는 X이고, unknown 주소 쓰기는 어느 칸이 바뀌었는지 보장하지 않는다.
+- 변환기는 Vivado 블록 RAM 추론 형태(메모리 배열 + 레인별 쓰기 + 등록 읽기, `ram_style = "block"`)로
+  출력한다. 조합 읽기 포트나 두 번째 쓰기 포트는 이 소자에 없다.
 
 ## 7. OPENED와 미정의
 

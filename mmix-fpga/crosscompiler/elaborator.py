@@ -5,7 +5,7 @@ from collections import defaultdict
 from . import builtins
 from .ir import Gate, Instance, Module, Pin, Vector
 from .model import CompileError, Declaration
-from .typesys import Array, Context, Port, Record, Spec, leaves
+from .typesys import SEQUENTIAL_PRIMITIVES, Array, Context, Port, Record, Spec, leaves
 
 
 OPEN = object()
@@ -49,7 +49,7 @@ class Elaborator:
 
     def _compile(self, spec):
         if spec.builtin:
-            module = Module(spec, builtins.interface(spec), spec.name[-1] == "D_FlipFlop")
+            module = Module(spec, builtins.interface(spec), spec.name[-1] in SEQUENTIAL_PRIMITIVES)
             ports = list(leaves(module.interface))
             if not module.sequential:
                 for out_path, output in ports:
