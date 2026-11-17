@@ -27,7 +27,6 @@ seq Cpu {
     mut memory: MemoryAccess
     read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
-    read1_mux: Mux<2,8>
     read1_slot: Mux<2,8>  // 레지스터 스택 내부 읽기는 슬롯을 직접 지정
     writeback_mux: Mux<4,WORD_SIZE>
     store_data_mux: Mux<2,WORD_SIZE>
@@ -82,6 +81,8 @@ wire Cpu {
     reg.special.data -> control.stack_special_data
     special_source.selected -> control.special_value
     reg.general.r1_data -> control.stack_r1_data
+    reg.general.r1_valid -> control.stack_r1_valid
+    reg.special.valid -> control.stack_special_valid
     reg.stack.rJ_out -> control.stack_regs.rJ_out
     control.stack_regs.rJ_in -> reg.stack.rJ_in
     control.stack_regs.rJ_w_en -> reg.stack.rJ_w_en
@@ -172,15 +173,13 @@ wire Cpu {
 
     decode.control.alu_sel -> alu.alu_sel
     decode.control.op -> alu.op
-    read1_mux.select <- control.store_read_x
-    read1_mux.option[0] <- decode.control.r1_sel
-    read1_mux.option[1] <- decode.control.w_sel
     read1_slot.select <- control.stack_r1_physical
-    read1_slot.option[0] <- read1_mux.selected
+    read1_slot.option[0] <- decode.control.r1_sel
     read1_slot.option[1] <- control.stack_r1_slot
     read1_slot.selected -> reg.general.r1_sel
     decode.control.r2_sel -> reg.general.r2_sel
     decode.control.w_sel -> reg.general.w_sel
+    decode.control.w_sel -> reg.general.x_sel  // store 데이터 $X
 
     // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
     arg1_mux.select[0] <- decode.control.arg1_imm
@@ -205,7 +204,7 @@ wire Cpu {
     address_add.c_out -> OPENED
     address_add.sum -> control.effective_address
     store_data_mux.select <- decode.control.store_constant
-    store_data_mux.option[0] <- reg.general.r1_data
+    store_data_mux.option[0] <- reg.general.x_data
     store_data_mux.option[1] <- decode.control.imm_x
     store_data_mux.selected -> control.store_data
     writeback_mux.select[0] <- or(control.load_write_en, control.special_get_en)
@@ -236,7 +235,7 @@ wire Cpu {
     fetch.control.instruction -> control.fetch.instruction
     fetch.control.error -> control.fetch.error
 
-    // 주소 캡처 뒤 기존 읽기 포트 1을 $X로 전환해 store 데이터를 준비.
+    // 데이터 메모리 접근. store 데이터 $X는 레지스터 읽기 포트 3에서 온다.
     control.memory.req_valid -> memory.control.req_valid
     control.memory.address -> memory.control.address
     control.memory.store -> memory.control.store

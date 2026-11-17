@@ -1,9 +1,24 @@
 # 레지스터 접근
 
-`Registers`는 범용 레지스터의 읽기 2포트·쓰기 1포트와 특수 레지스터 GET/PUT 버스를
+`Registers`는 범용 레지스터의 읽기 3포트·쓰기 1포트와 특수 레지스터 GET/PUT 버스를
 제공한다. rA/rD/rH/rM/rR는 ALU 직접 배선과 GET/PUT에서 같은 저장 상태를 사용하고,
 rJ/rO/rS/rG/rL은 레지스터 스택 직접 배선과 GET에서 같은 저장 상태를 사용한다.
 CPU는 GET/PUT 실행 중 ALU 쓰기를 차단해 두 쓰기 경로가 동시에 활성화되지 않게 한다.
+
+## 저장 위치
+
+| 대상 | 저장 | 비고 |
+|---|---|---|
+| 범용 슬롯 256개 | 블록 RAM 3벌 (`SyncRam<256,64,1>`) | 쓰기는 세 벌에 함께, 읽기 포트 r1($Y·분기/상수의 $X·스택 슬롯), r2($Z), x(store $X) |
+| GET/PUT 전용 특수 레지스터 | 블록 RAM 1개 (`SyncRam<32,64,1>`) | rB rE rBB rC rN rI rTT rK rQ rU rV rF rP rW rX rY rZ rWW rXX rYY rZZ |
+| rA rD rH rM rR rJ rO rS rG rL rT | 플립플롭 | ALU·레지스터 스택·TRAP이 직접 배선으로 매 클록 읽는다 |
+
+- 읽기는 동기식이다. 번호를 준 다음 클록에 값이 나오고, 같은 클록에 같은 칸을 쓰면 쓰기 전 값이 나온다.
+  Control은 명령마다 READ 한 클록을 거쳐 EXECUTE에서 값을 쓴다.
+- marginal 번호는 읽기 번호와 함께 등록해 두었다가 다음 클록 값을 0으로 바꾼다.
+- `r1_valid`, `special.valid`: 직전 클록 번호가 지금 번호와 같고 그 클록에 같은 칸을 쓰지 않았으면 1.
+  StackControl이 같은 상태 안에서 번호를 바꾸며 읽을 때 쓴다.
+- 블록 RAM 내용은 reset으로 지워지지 않는다. FPGA 구성 시 0이다.
 
 ## 레지스터 스택 구조
 
@@ -72,5 +87,5 @@ GET은 나머지 비트를 0으로 읽는다. PUT 값에 마스크 `0xc0c0` 밖�
 
 SAVE의 $X는 글로벌이어야 하며 아니면 같은 방식으로 무효 명령 fault가 된다.
 
-현재 접근 경로와 생성 RTL은 구현했으며 TRAP/SWYM 추가 후 테스트·시뮬레이션은
+현재 접근 경로와 생성 RTL은 구현했으며 블록 RAM 전환 후 테스트·시뮬레이션은
 실행하지 않았다.

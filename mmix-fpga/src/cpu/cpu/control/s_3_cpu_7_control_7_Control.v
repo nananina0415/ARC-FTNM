@@ -73,6 +73,8 @@ module s_3_cpu_7_control_7_Control (
     output wire [0:0] s_4_port_17_stack_r1_physical,
     output wire [7:0] s_4_port_13_stack_r1_slot,
     input wire [63:0] s_4_port_13_stack_r1_data,
+    input wire [0:0] s_4_port_14_stack_r1_valid,
+    input wire [0:0] s_4_port_19_stack_special_valid,
     output wire [0:0] s_4_port_10_stack_w_en,
     output wire [7:0] s_4_port_12_stack_w_slot,
     output wire [63:0] s_4_port_12_stack_w_data,
@@ -91,12 +93,10 @@ module s_3_cpu_7_control_7_Control (
     output wire [0:0] s_4_port_14_special_put_en,
     output wire [63:0] s_4_port_14_address_result,
     output wire [0:0] s_4_port_13_memory_active,
-    output wire [0:0] s_4_port_12_store_read_x,
     output wire [0:0] s_4_port_4_done,
     output wire [0:0] s_4_port_5_fault,
     output wire [2:0] s_4_port_12_fault_reason
 );
-wire net_2085;
 wire net_2086;
 wire net_2087;
 wire net_2088;
@@ -105,7 +105,7 @@ wire net_2090;
 wire net_2091;
 wire net_2092;
 wire net_2093;
-wire net_2096;
+wire net_2094;
 wire net_2097;
 wire net_2098;
 wire net_2099;
@@ -170,8 +170,8 @@ wire net_2157;
 wire net_2158;
 wire net_2159;
 wire net_2160;
-wire net_2227;
-wire net_2292;
+wire net_2161;
+wire net_2228;
 wire net_2293;
 wire net_2294;
 wire net_2295;
@@ -235,18 +235,16 @@ wire net_2352;
 wire net_2353;
 wire net_2354;
 wire net_2355;
-wire net_2358;
+wire net_2356;
 wire net_2359;
 wire net_2360;
 wire net_2361;
-wire net_2367;
-wire net_2372;
-wire net_2964;
-wire net_2965;
-wire net_2966;
+wire net_2362;
+wire net_2368;
+wire net_2373;
+wire net_2967;
 wire net_2968;
 wire net_2969;
-wire net_2970;
 wire net_2971;
 wire net_2972;
 wire net_2973;
@@ -311,9 +309,9 @@ wire net_3031;
 wire net_3032;
 wire net_3033;
 wire net_3034;
-wire net_3252;
-wire net_3253;
-wire net_3254;
+wire net_3035;
+wire net_3036;
+wire net_3037;
 wire net_3255;
 wire net_3256;
 wire net_3257;
@@ -377,10 +375,10 @@ wire net_3314;
 wire net_3315;
 wire net_3316;
 wire net_3317;
+wire net_3318;
+wire net_3319;
 wire net_3320;
-wire net_3907;
-wire net_3908;
-wire net_3909;
+wire net_3323;
 wire net_3910;
 wire net_3911;
 wire net_3912;
@@ -394,9 +392,9 @@ wire net_3919;
 wire net_3920;
 wire net_3921;
 wire net_3922;
-wire net_3987;
-wire net_3988;
-wire net_3989;
+wire net_3923;
+wire net_3924;
+wire net_3925;
 wire net_3990;
 wire net_3991;
 wire net_3992;
@@ -459,10 +457,10 @@ wire net_4048;
 wire net_4049;
 wire net_4050;
 wire net_4051;
-wire net_4116;
-wire net_4186;
-wire net_4187;
-wire net_4188;
+wire net_4052;
+wire net_4053;
+wire net_4054;
+wire net_4119;
 wire net_4189;
 wire net_4190;
 wire net_4191;
@@ -524,9 +522,9 @@ wire net_4246;
 wire net_4247;
 wire net_4248;
 wire net_4249;
-wire net_4314;
-wire net_4315;
-wire net_4316;
+wire net_4250;
+wire net_4251;
+wire net_4252;
 wire net_4317;
 wire net_4318;
 wire net_4319;
@@ -589,11 +587,11 @@ wire net_4375;
 wire net_4376;
 wire net_4377;
 wire net_4378;
-wire net_4572;
-wire net_4573;
-wire net_5539;
-wire net_5540;
-wire net_5541;
+wire net_4379;
+wire net_4380;
+wire net_4381;
+wire net_4575;
+wire net_4576;
 wire net_5542;
 wire net_5543;
 wire net_5544;
@@ -616,12 +614,12 @@ wire net_5560;
 wire net_5561;
 wire net_5562;
 wire net_5563;
+wire net_5564;
 wire net_5565;
 wire net_5566;
 wire net_5567;
 wire net_5568;
 wire net_5569;
-wire net_5570;
 wire net_5571;
 wire net_5572;
 wire net_5573;
@@ -632,9 +630,9 @@ wire net_5577;
 wire net_5578;
 wire net_5579;
 wire net_5580;
+wire net_5581;
 wire net_5582;
 wire net_5583;
-wire net_5584;
 wire net_5585;
 wire net_5586;
 wire net_5587;
@@ -661,34 +659,34 @@ wire net_5607;
 wire net_5608;
 wire net_5609;
 wire net_5610;
+wire net_5611;
 wire net_5612;
 wire net_5613;
-wire net_5614;
 wire net_5615;
 wire net_5616;
 wire net_5617;
 wire net_5618;
 wire net_5619;
+wire net_5620;
 wire net_5621;
 wire net_5622;
 wire net_5623;
+wire net_5624;
 wire net_5625;
-wire net_5626;
 wire net_5627;
 wire net_5628;
 wire net_5629;
-wire net_5630;
 wire net_5631;
 wire net_5632;
 wire net_5633;
 wire net_5634;
 wire net_5635;
-wire net_5702;
-wire net_5703;
-wire net_5704;
-wire net_5705;
-wire net_5706;
-wire net_5707;
+wire net_5636;
+wire net_5637;
+wire net_5638;
+wire net_5639;
+wire net_5640;
+wire net_5641;
 wire net_5708;
 wire net_5709;
 wire net_5710;
@@ -699,12 +697,12 @@ wire net_5714;
 wire net_5715;
 wire net_5716;
 wire net_5717;
+wire net_5718;
 wire net_5719;
 wire net_5720;
 wire net_5721;
 wire net_5722;
 wire net_5723;
-wire net_5724;
 wire net_5725;
 wire net_5726;
 wire net_5727;
@@ -713,12 +711,12 @@ wire net_5729;
 wire net_5730;
 wire net_5731;
 wire net_5732;
+wire net_5733;
 wire net_5734;
 wire net_5735;
 wire net_5736;
 wire net_5737;
 wire net_5738;
-wire net_5739;
 wire net_5740;
 wire net_5741;
 wire net_5742;
@@ -726,22 +724,22 @@ wire net_5743;
 wire net_5744;
 wire net_5745;
 wire net_5746;
+wire net_5747;
 wire net_5748;
 wire net_5749;
 wire net_5750;
 wire net_5751;
 wire net_5752;
-wire net_5753;
 wire net_5754;
 wire net_5755;
 wire net_5756;
+wire net_5757;
 wire net_5758;
+wire net_5759;
 wire net_5760;
 wire net_5761;
 wire net_5762;
-wire net_5763;
 wire net_5764;
-wire net_5765;
 wire net_5766;
 wire net_5767;
 wire net_5768;
@@ -759,16 +757,17 @@ wire net_5779;
 wire net_5780;
 wire net_5781;
 wire net_5782;
+wire net_5783;
 wire net_5784;
 wire net_5785;
+wire net_5786;
+wire net_5787;
+wire net_5788;
 wire net_5790;
 wire net_5791;
-wire net_5792;
-wire net_5795;
+wire net_5796;
 wire net_5797;
 wire net_5798;
-wire net_5799;
-wire net_5800;
 wire net_5801;
 wire net_5802;
 wire net_5803;
@@ -778,13 +777,13 @@ wire net_5806;
 wire net_5807;
 wire net_5808;
 wire net_5809;
+wire net_5810;
 wire net_5811;
 wire net_5812;
 wire net_5813;
 wire net_5815;
 wire net_5816;
 wire net_5817;
-wire net_5818;
 wire net_5819;
 wire net_5820;
 wire net_5821;
@@ -794,10 +793,10 @@ wire net_5824;
 wire net_5825;
 wire net_5826;
 wire net_5827;
+wire net_5828;
 wire net_5829;
 wire net_5830;
 wire net_5831;
-wire net_5832;
 wire net_5833;
 wire net_5834;
 wire net_5835;
@@ -805,10 +804,10 @@ wire net_5836;
 wire net_5837;
 wire net_5838;
 wire net_5839;
+wire net_5840;
 wire net_5841;
 wire net_5842;
 wire net_5843;
-wire net_5844;
 wire net_5845;
 wire net_5846;
 wire net_5847;
@@ -816,10 +815,10 @@ wire net_5848;
 wire net_5849;
 wire net_5850;
 wire net_5851;
+wire net_5852;
 wire net_5853;
 wire net_5854;
 wire net_5855;
-wire net_5856;
 wire net_5857;
 wire net_5858;
 wire net_5859;
@@ -836,33 +835,34 @@ wire net_5869;
 wire net_5870;
 wire net_5871;
 wire net_5872;
+wire net_5873;
 wire net_5874;
 wire net_5875;
-wire net_5877;
+wire net_5876;
 wire net_5878;
 wire net_5879;
-wire net_5880;
 wire net_5881;
 wire net_5882;
 wire net_5883;
 wire net_5884;
 wire net_5885;
 wire net_5886;
+wire net_5887;
 wire net_5888;
 wire net_5889;
 wire net_5890;
-wire net_5891;
 wire net_5892;
 wire net_5893;
+wire net_5894;
 wire net_5895;
+wire net_5896;
 wire net_5897;
+wire net_5899;
+wire net_5901;
 assign s_4_port_6_memory_11_zero_extend[0] = s_4_port_21_decoded_load_unsigned[0];
-assign net_2085 = 1'd1;
-assign net_3987 = 1'd0;
-assign net_3988 = 1'd0;
+assign net_2086 = 1'd1;
 assign net_3990 = 1'd0;
 assign net_3991 = 1'd0;
-assign net_3992 = 1'd0;
 assign net_3993 = 1'd0;
 assign net_3994 = 1'd0;
 assign net_3995 = 1'd0;
@@ -921,340 +921,344 @@ assign net_4047 = 1'd0;
 assign net_4048 = 1'd0;
 assign net_4049 = 1'd0;
 assign net_4050 = 1'd0;
-assign net_3989 = 1'd1;
 assign net_4051 = 1'd0;
-assign net_5539 = (s_4_port_5_fetch_9_req_valid[0] & s_4_port_5_fetch_9_req_ready[0]);
-assign net_5540 = (net_3907 & net_5539);
-assign net_5541 = ~(s_4_port_5_fetch_9_res_valid[0]);
-assign net_5542 = (net_3908 & net_5541);
-assign net_5543 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5544 = (s_4_port_5_fetch_9_res_valid[0] & net_5543 & s_4_port_13_decoded_valid[0]);
-assign net_5545 = ~(net_2964);
-assign net_5546 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5547 = ~(s_4_port_8_trip_req[0]);
-assign net_5548 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5546 | net_5547);
-assign net_5549 = (net_5544 & net_5545 & net_5548);
-assign net_5550 = (net_3909 & net_5549 & s_4_port_12_decoded_halt[0]);
-assign net_5551 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5552 = (s_4_port_5_fetch_9_res_valid[0] & net_5551 & s_4_port_13_decoded_valid[0]);
-assign net_5553 = ~(net_2964);
-assign net_5554 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5555 = ~(s_4_port_8_trip_req[0]);
-assign net_5556 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5554 | net_5555);
-assign net_5557 = (net_5552 & net_5553 & net_5556);
-assign net_5558 = (net_3909 & net_5557 & s_4_port_14_decoded_memory[0]);
-assign net_5559 = (s_4_port_6_memory_9_req_valid[0] & s_4_port_6_memory_9_req_ready[0]);
-assign net_5560 = ~(net_5559);
-assign net_5561 = (net_3912 & net_5560);
-assign net_5562 = ~(s_4_port_6_memory_5_error[0]);
-assign net_5563 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & net_5562);
-assign net_2086 = (net_5540 | net_5542 | net_5550 | net_3910 | net_5558 | net_5561 | net_5563);
-assign net_5565 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5566 = (s_4_port_5_fetch_9_res_valid[0] & net_5565 & s_4_port_13_decoded_valid[0]);
-assign net_5567 = (net_3908 & net_5566);
-assign net_5568 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5569 = (s_4_port_5_fetch_9_res_valid[0] & net_5568 & s_4_port_13_decoded_valid[0]);
-assign net_5570 = ~(net_2964);
-assign net_5571 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5572 = ~(s_4_port_8_trip_req[0]);
-assign net_5573 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5571 | net_5572);
-assign net_5574 = (net_5569 & net_5570 & net_5573);
-assign net_5575 = (net_3909 & net_5574 & s_4_port_12_decoded_halt[0]);
-assign net_5576 = (s_4_port_6_memory_9_req_valid[0] & s_4_port_6_memory_9_req_ready[0]);
-assign net_5577 = (net_3912 & net_5576);
-assign net_5578 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5579 = ~(net_5578);
-assign net_5580 = (net_3913 & net_5579);
-assign net_2087 = (net_5567 | net_5575 | net_3910 | net_5577 | net_5580 | net_2965);
-assign net_5582 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5583 = (s_4_port_5_fetch_9_res_valid[0] & net_5582 & s_4_port_13_decoded_valid[0]);
-assign net_5584 = ~(net_5583);
-assign net_5585 = (net_3908 & s_4_port_5_fetch_9_res_valid[0] & net_5584);
-assign net_5586 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5587 = (s_4_port_5_fetch_9_res_valid[0] & net_5586 & s_4_port_13_decoded_valid[0]);
-assign net_5588 = ~(net_2964);
-assign net_5589 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5590 = ~(s_4_port_8_trip_req[0]);
-assign net_5591 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5589 | net_5590);
-assign net_5592 = (net_5587 & net_5588 & net_5591);
-assign net_5593 = ~(net_5592);
-assign net_5594 = ~(s_4_port_5_reset[0]);
-assign net_5595 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5596 = (s_4_port_5_fetch_9_res_valid[0] & net_5595 & s_4_port_13_decoded_valid[0]);
-assign net_5597 = (net_5594 & net_3909 & net_5596 & net_2964);
-assign net_5598 = ~(net_5597);
-assign net_5599 = (net_3909 & net_5593 & net_5598);
-assign net_5600 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5601 = (net_3033 | net_3034);
-assign net_5602 = (net_5585 | net_5599 | net_5600 | net_5601);
-assign net_5603 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5604 = (s_4_port_5_fetch_9_res_valid[0] & net_5603 & s_4_port_13_decoded_valid[0]);
-assign net_5605 = ~(net_2964);
-assign net_5606 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5607 = ~(s_4_port_8_trip_req[0]);
-assign net_5608 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5606 | net_5607);
-assign net_5609 = (net_5604 & net_5605 & net_5608);
-assign net_5610 = (net_3909 & net_5609 & s_4_port_14_decoded_memory[0]);
-assign net_2088 = (net_5602 | net_3911 | net_5610 | net_3912 | net_3913);
-assign net_5612 = ~(s_4_port_5_reset[0]);
-assign net_5613 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5614 = (s_4_port_5_fetch_9_res_valid[0] & net_5613 & s_4_port_13_decoded_valid[0]);
-assign net_5615 = (net_5612 & net_3909 & net_5614 & net_2964);
-assign net_5616 = (net_3033 | net_3034);
-assign net_5617 = (net_2966 | net_2965 | net_5616);
-assign net_5618 = ~(net_5617);
-assign net_5619 = (net_3915 & net_5618);
-assign net_2089 = (net_5615 | net_5619);
-assign net_5621 = ~(s_4_port_5_reset[0]);
-assign net_5622 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5623 = (s_4_port_5_fetch_9_res_valid[0] & net_5622 & s_4_port_13_decoded_valid[0]);
-assign net_2367 = (net_5621 & net_3909 & net_5623 & net_2964);
-assign net_5625 = ~(s_4_port_5_reset[0]);
-assign net_5626 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5627 = (s_4_port_5_fetch_9_res_valid[0] & net_5626 & s_4_port_13_decoded_valid[0]);
-assign net_5628 = ~(net_2964);
-assign net_5629 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5630 = ~(s_4_port_8_trip_req[0]);
-assign net_5631 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5629 | net_5630);
-assign net_5632 = (net_5627 & net_5628 & net_5631);
-assign net_5633 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5634 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5635 = (net_5625 & net_3909 & net_5632 & net_5633 & net_5634);
-assign net_2372 = (net_5635 & s_4_port_13_decoded_put_l[0]);
-assign net_5702 = ~(s_4_port_5_reset[0]);
-assign net_5703 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5704 = (s_4_port_5_fetch_9_res_valid[0] & net_5703 & s_4_port_13_decoded_valid[0]);
-assign net_5705 = ~(net_2964);
-assign net_5706 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5707 = ~(s_4_port_8_trip_req[0]);
-assign net_5708 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5706 | net_5707);
-assign net_5709 = (net_5704 & net_5705 & net_5708);
-assign net_5710 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5711 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5712 = (net_5702 & net_3909 & net_5709 & net_5710 & net_5711);
-assign net_5713 = (net_5712 & net_4314);
-assign net_5714 = ~(s_4_port_15_decoded_push_go[0]);
-assign net_5715 = (s_4_port_12_decoded_push[0] & net_5714);
-assign net_5716 = (s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_trap[0] | net_5715);
-assign net_5717 = (net_2966 & net_5716);
-assign net_4572 = (net_5713 | net_5717);
-assign net_5719 = ~(s_4_port_5_reset[0]);
-assign net_5720 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5721 = (s_4_port_5_fetch_9_res_valid[0] & net_5720 & s_4_port_13_decoded_valid[0]);
-assign net_5722 = ~(net_2964);
-assign net_5723 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5724 = ~(s_4_port_8_trip_req[0]);
-assign net_5725 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5723 | net_5724);
-assign net_5726 = (net_5721 & net_5722 & net_5725);
-assign net_5727 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5728 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5729 = (net_5719 & net_3909 & net_5726 & net_5727 & net_5728);
-assign net_5730 = (net_5729 & s_4_port_10_decoded_go[0]);
-assign net_5731 = (s_4_port_15_decoded_push_go[0] | s_4_port_12_decoded_trap[0]);
-assign net_5732 = (net_2966 & net_5731);
-assign net_4573 = (net_5730 | net_5732);
-assign net_5734 = ~(s_4_port_5_reset[0]);
-assign net_5735 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5736 = (s_4_port_5_fetch_9_res_valid[0] & net_5735 & s_4_port_13_decoded_valid[0]);
-assign net_5737 = ~(net_2964);
-assign net_5738 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5739 = ~(s_4_port_8_trip_req[0]);
-assign net_5740 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5738 | net_5739);
-assign net_5741 = (net_5736 & net_5737 & net_5740);
-assign net_5742 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5743 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5744 = (net_5734 & net_3909 & net_5741 & net_5742 & net_5743);
-assign net_5745 = ~(s_4_port_5_reset[0]);
-assign net_5746 = (net_5745 & net_3914);
-assign net_2096 = (net_5744 | net_5746 | net_2966);
-assign net_5748 = ~(s_4_port_5_reset[0]);
-assign net_5749 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5750 = (s_4_port_5_fetch_9_res_valid[0] & net_5749 & s_4_port_13_decoded_valid[0]);
-assign net_5751 = ~(net_2964);
-assign net_5752 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5753 = ~(s_4_port_8_trip_req[0]);
-assign net_5754 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5752 | net_5753);
-assign net_5755 = (net_5750 & net_5751 & net_5754);
-assign net_5756 = (net_3909 & net_5755 & s_4_port_14_decoded_memory[0]);
-assign net_2227 = (net_5748 & net_5756);
-assign net_5758 = ~(s_4_port_5_reset[0]);
-assign s_4_port_5_fetch_9_req_valid[0] = (net_5758 & net_3907);
-assign net_5760 = ~(s_4_port_5_reset[0]);
-assign net_5761 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5762 = (s_4_port_5_fetch_9_res_valid[0] & net_5761 & s_4_port_13_decoded_valid[0]);
-assign net_5763 = ~(net_2964);
-assign net_5764 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5765 = ~(s_4_port_8_trip_req[0]);
-assign net_5766 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5764 | net_5765);
-assign net_5767 = (net_5762 & net_5763 & net_5766);
-assign net_5768 = (net_3909 & net_5767 & s_4_port_14_decoded_memory[0]);
-assign net_5769 = ~(net_5768);
-assign net_5770 = ~(s_4_port_5_reset[0]);
-assign net_5771 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5772 = (s_4_port_5_fetch_9_res_valid[0] & net_5771 & s_4_port_13_decoded_valid[0]);
-assign net_5773 = (net_5770 & net_3909 & net_5772 & net_2964);
-assign net_5774 = ~(net_5773);
-assign net_5775 = (net_3909 & net_5769 & net_5774);
-assign net_5776 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5777 = (s_4_port_5_fetch_9_res_valid[0] & net_5776 & s_4_port_13_decoded_valid[0]);
-assign net_5778 = ~(net_5777);
-assign net_5779 = (net_3908 & s_4_port_5_fetch_9_res_valid[0] & net_5778);
-assign net_5780 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5781 = (net_3033 | net_3034);
-assign net_5782 = (net_5775 | net_3914 | net_5779 | net_5780 | net_2966 | net_5781);
-assign s_4_port_5_fetch_9_res_ready[0] = (net_5760 & net_5782);
-assign net_5784 = ~(s_4_port_5_reset[0]);
-assign net_5785 = (net_3912 | net_3252);
-assign s_4_port_6_memory_9_req_valid[0] = (net_5784 & net_5785);
-assign s_4_port_6_memory_5_store[0] = (s_4_port_13_decoded_store[0] | net_3253);
-assign s_4_port_6_memory_4_size[0] = (s_4_port_19_decoded_memory_size[0] | net_3915);
-assign s_4_port_6_memory_4_size[1] = (s_4_port_19_decoded_memory_size[1] | net_3915);
+assign net_4052 = 1'd0;
+assign net_4053 = 1'd0;
+assign net_3992 = 1'd1;
+assign net_4054 = 1'd0;
+assign net_5542 = (s_4_port_5_fetch_9_req_valid[0] & s_4_port_5_fetch_9_req_ready[0]);
+assign net_5543 = (net_3910 & net_5542);
+assign net_5544 = ~(s_4_port_5_fetch_9_res_valid[0]);
+assign net_5545 = (net_3911 & net_5544);
+assign net_5546 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5547 = (s_4_port_5_fetch_9_res_valid[0] & net_5546 & s_4_port_13_decoded_valid[0]);
+assign net_5548 = (net_3911 & net_5547);
+assign net_5549 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5550 = (s_4_port_5_fetch_9_res_valid[0] & net_5549 & s_4_port_13_decoded_valid[0]);
+assign net_5551 = ~(net_2967);
+assign net_5552 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5553 = ~(s_4_port_8_trip_req[0]);
+assign net_5554 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5552 | net_5553);
+assign net_5555 = (net_5550 & net_5551 & net_5554);
+assign net_5556 = (net_3912 & net_5555 & s_4_port_12_decoded_halt[0]);
+assign net_5557 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5558 = (s_4_port_5_fetch_9_res_valid[0] & net_5557 & s_4_port_13_decoded_valid[0]);
+assign net_5559 = ~(net_2967);
+assign net_5560 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5561 = ~(s_4_port_8_trip_req[0]);
+assign net_5562 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5560 | net_5561);
+assign net_5563 = (net_5558 & net_5559 & net_5562);
+assign net_5564 = (net_3912 & net_5563 & s_4_port_14_decoded_memory[0]);
+assign net_5565 = (s_4_port_6_memory_9_req_valid[0] & s_4_port_6_memory_9_req_ready[0]);
+assign net_5566 = ~(net_5565);
+assign net_5567 = (net_3915 & net_5566);
+assign net_5568 = ~(s_4_port_6_memory_5_error[0]);
+assign net_5569 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & net_5568);
+assign net_2087 = (net_5543 | net_5545 | net_5548 | net_5556 | net_3913 | net_5564 | net_5567 | net_5569 | net_2968);
+assign net_5571 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5572 = (s_4_port_5_fetch_9_res_valid[0] & net_5571 & s_4_port_13_decoded_valid[0]);
+assign net_5573 = ~(net_2967);
+assign net_5574 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5575 = ~(s_4_port_8_trip_req[0]);
+assign net_5576 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5574 | net_5575);
+assign net_5577 = (net_5572 & net_5573 & net_5576);
+assign net_5578 = (net_3912 & net_5577 & s_4_port_12_decoded_halt[0]);
+assign net_5579 = (s_4_port_6_memory_9_req_valid[0] & s_4_port_6_memory_9_req_ready[0]);
+assign net_5580 = (net_3915 & net_5579);
+assign net_5581 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5582 = ~(net_5581);
+assign net_5583 = (net_3916 & net_5582);
+assign net_2088 = (net_3919 | net_5578 | net_3913 | net_5580 | net_5583);
+assign net_5585 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5586 = (s_4_port_5_fetch_9_res_valid[0] & net_5585 & s_4_port_13_decoded_valid[0]);
+assign net_5587 = ~(net_5586);
+assign net_5588 = (net_3911 & s_4_port_5_fetch_9_res_valid[0] & net_5587);
+assign net_5589 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5590 = (s_4_port_5_fetch_9_res_valid[0] & net_5589 & s_4_port_13_decoded_valid[0]);
+assign net_5591 = ~(net_2967);
+assign net_5592 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5593 = ~(s_4_port_8_trip_req[0]);
+assign net_5594 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5592 | net_5593);
+assign net_5595 = (net_5590 & net_5591 & net_5594);
+assign net_5596 = ~(net_5595);
+assign net_5597 = ~(s_4_port_5_reset[0]);
+assign net_5598 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5599 = (s_4_port_5_fetch_9_res_valid[0] & net_5598 & s_4_port_13_decoded_valid[0]);
+assign net_5600 = (net_5597 & net_3912 & net_5599 & net_2967);
+assign net_5601 = ~(net_5600);
+assign net_5602 = (net_3912 & net_5596 & net_5601);
+assign net_5603 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5604 = (net_3036 | net_3037);
+assign net_5605 = (net_5588 | net_5602 | net_5603 | net_5604);
+assign net_5606 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5607 = (s_4_port_5_fetch_9_res_valid[0] & net_5606 & s_4_port_13_decoded_valid[0]);
+assign net_5608 = ~(net_2967);
+assign net_5609 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5610 = ~(s_4_port_8_trip_req[0]);
+assign net_5611 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5609 | net_5610);
+assign net_5612 = (net_5607 & net_5608 & net_5611);
+assign net_5613 = (net_3912 & net_5612 & s_4_port_14_decoded_memory[0]);
+assign net_2089 = (net_5605 | net_3914 | net_5613 | net_3915 | net_3916);
+assign net_5615 = ~(s_4_port_5_reset[0]);
+assign net_5616 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5617 = (s_4_port_5_fetch_9_res_valid[0] & net_5616 & s_4_port_13_decoded_valid[0]);
+assign net_5618 = (net_5615 & net_3912 & net_5617 & net_2967);
+assign net_5619 = (net_3036 | net_3037);
+assign net_5620 = (net_2969 | net_2968 | net_5619);
+assign net_5621 = ~(net_5620);
+assign net_5622 = (net_3918 & net_5621);
+assign net_5623 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5624 = (s_4_port_5_fetch_9_res_valid[0] & net_5623 & s_4_port_13_decoded_valid[0]);
+assign net_5625 = (net_3911 & net_5624);
+assign net_2090 = (net_5618 | net_5622 | net_5625 | net_2968);
+assign net_5627 = ~(s_4_port_5_reset[0]);
+assign net_5628 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5629 = (s_4_port_5_fetch_9_res_valid[0] & net_5628 & s_4_port_13_decoded_valid[0]);
+assign net_2368 = (net_5627 & net_3912 & net_5629 & net_2967);
+assign net_5631 = ~(s_4_port_5_reset[0]);
+assign net_5632 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5633 = (s_4_port_5_fetch_9_res_valid[0] & net_5632 & s_4_port_13_decoded_valid[0]);
+assign net_5634 = ~(net_2967);
+assign net_5635 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5636 = ~(s_4_port_8_trip_req[0]);
+assign net_5637 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5635 | net_5636);
+assign net_5638 = (net_5633 & net_5634 & net_5637);
+assign net_5639 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5640 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5641 = (net_5631 & net_3912 & net_5638 & net_5639 & net_5640);
+assign net_2373 = (net_5641 & s_4_port_13_decoded_put_l[0]);
+assign net_5708 = ~(s_4_port_5_reset[0]);
+assign net_5709 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5710 = (s_4_port_5_fetch_9_res_valid[0] & net_5709 & s_4_port_13_decoded_valid[0]);
+assign net_5711 = ~(net_2967);
+assign net_5712 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5713 = ~(s_4_port_8_trip_req[0]);
+assign net_5714 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5712 | net_5713);
+assign net_5715 = (net_5710 & net_5711 & net_5714);
+assign net_5716 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5717 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5718 = (net_5708 & net_3912 & net_5715 & net_5716 & net_5717);
+assign net_5719 = (net_5718 & net_4317);
+assign net_5720 = ~(s_4_port_15_decoded_push_go[0]);
+assign net_5721 = (s_4_port_12_decoded_push[0] & net_5720);
+assign net_5722 = (s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_trap[0] | net_5721);
+assign net_5723 = (net_2969 & net_5722);
+assign net_4575 = (net_5719 | net_5723);
+assign net_5725 = ~(s_4_port_5_reset[0]);
+assign net_5726 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5727 = (s_4_port_5_fetch_9_res_valid[0] & net_5726 & s_4_port_13_decoded_valid[0]);
+assign net_5728 = ~(net_2967);
+assign net_5729 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5730 = ~(s_4_port_8_trip_req[0]);
+assign net_5731 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5729 | net_5730);
+assign net_5732 = (net_5727 & net_5728 & net_5731);
+assign net_5733 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5734 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5735 = (net_5725 & net_3912 & net_5732 & net_5733 & net_5734);
+assign net_5736 = (net_5735 & s_4_port_10_decoded_go[0]);
+assign net_5737 = (s_4_port_15_decoded_push_go[0] | s_4_port_12_decoded_trap[0]);
+assign net_5738 = (net_2969 & net_5737);
+assign net_4576 = (net_5736 | net_5738);
+assign net_5740 = ~(s_4_port_5_reset[0]);
+assign net_5741 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5742 = (s_4_port_5_fetch_9_res_valid[0] & net_5741 & s_4_port_13_decoded_valid[0]);
+assign net_5743 = ~(net_2967);
+assign net_5744 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5745 = ~(s_4_port_8_trip_req[0]);
+assign net_5746 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5744 | net_5745);
+assign net_5747 = (net_5742 & net_5743 & net_5746);
+assign net_5748 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5749 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5750 = (net_5740 & net_3912 & net_5747 & net_5748 & net_5749);
+assign net_5751 = ~(s_4_port_5_reset[0]);
+assign net_5752 = (net_5751 & net_3917);
+assign net_2097 = (net_5750 | net_5752 | net_2969);
+assign net_5754 = ~(s_4_port_5_reset[0]);
+assign net_5755 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5756 = (s_4_port_5_fetch_9_res_valid[0] & net_5755 & s_4_port_13_decoded_valid[0]);
+assign net_5757 = ~(net_2967);
+assign net_5758 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5759 = ~(s_4_port_8_trip_req[0]);
+assign net_5760 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5758 | net_5759);
+assign net_5761 = (net_5756 & net_5757 & net_5760);
+assign net_5762 = (net_3912 & net_5761 & s_4_port_14_decoded_memory[0]);
+assign net_2228 = (net_5754 & net_5762);
+assign net_5764 = ~(s_4_port_5_reset[0]);
+assign s_4_port_5_fetch_9_req_valid[0] = (net_5764 & net_3910);
+assign net_5766 = ~(s_4_port_5_reset[0]);
+assign net_5767 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5768 = (s_4_port_5_fetch_9_res_valid[0] & net_5767 & s_4_port_13_decoded_valid[0]);
+assign net_5769 = ~(net_2967);
+assign net_5770 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5771 = ~(s_4_port_8_trip_req[0]);
+assign net_5772 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5770 | net_5771);
+assign net_5773 = (net_5768 & net_5769 & net_5772);
+assign net_5774 = (net_3912 & net_5773 & s_4_port_14_decoded_memory[0]);
+assign net_5775 = ~(net_5774);
+assign net_5776 = ~(s_4_port_5_reset[0]);
+assign net_5777 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5778 = (s_4_port_5_fetch_9_res_valid[0] & net_5777 & s_4_port_13_decoded_valid[0]);
+assign net_5779 = (net_5776 & net_3912 & net_5778 & net_2967);
+assign net_5780 = ~(net_5779);
+assign net_5781 = (net_3912 & net_5775 & net_5780);
+assign net_5782 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5783 = (s_4_port_5_fetch_9_res_valid[0] & net_5782 & s_4_port_13_decoded_valid[0]);
+assign net_5784 = ~(net_5783);
+assign net_5785 = (net_3911 & s_4_port_5_fetch_9_res_valid[0] & net_5784);
+assign net_5786 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5787 = (net_3036 | net_3037);
+assign net_5788 = (net_5781 | net_3917 | net_5785 | net_5786 | net_2969 | net_5787);
+assign s_4_port_5_fetch_9_res_ready[0] = (net_5766 & net_5788);
 assign net_5790 = ~(s_4_port_5_reset[0]);
-assign net_5791 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5792 = (net_3914 | net_5791 | net_3320);
-assign s_4_port_6_memory_9_res_ready[0] = (net_5790 & net_5792);
-assign s_4_port_13_memory_active[0] = (net_3912 | net_3913 | net_3914 | net_3915);
-assign net_5795 = ~(s_4_port_22_decoded_store_constant[0]);
-assign s_4_port_12_store_read_x[0] = (net_3912 & s_4_port_13_decoded_store[0] & net_5795);
-assign net_5797 = ~(s_4_port_5_reset[0]);
-assign net_5798 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5799 = (s_4_port_5_fetch_9_res_valid[0] & net_5798 & s_4_port_13_decoded_valid[0]);
-assign net_5800 = ~(net_2964);
-assign net_5801 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5802 = ~(s_4_port_8_trip_req[0]);
-assign net_5803 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5801 | net_5802);
-assign net_5804 = (net_5799 & net_5800 & net_5803);
-assign net_5805 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5806 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5807 = (net_5797 & net_3909 & net_5804 & net_5805 & net_5806);
-assign net_5808 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5809 = ~(net_5808);
-assign s_4_port_10_execute_en[0] = (net_5807 & net_5809);
-assign net_5811 = ~(s_4_port_5_reset[0]);
-assign net_5812 = (net_5811 & net_3914);
-assign net_5813 = ~(s_4_port_13_decoded_store[0]);
-assign s_4_port_13_load_write_en[0] = (net_5812 & net_5813);
+assign net_5791 = (net_3915 | net_3255);
+assign s_4_port_6_memory_9_req_valid[0] = (net_5790 & net_5791);
+assign s_4_port_6_memory_5_store[0] = (s_4_port_13_decoded_store[0] | net_3256);
+assign s_4_port_6_memory_4_size[0] = (s_4_port_19_decoded_memory_size[0] | net_3918);
+assign s_4_port_6_memory_4_size[1] = (s_4_port_19_decoded_memory_size[1] | net_3918);
+assign net_5796 = ~(s_4_port_5_reset[0]);
+assign net_5797 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5798 = (net_3917 | net_5797 | net_3323);
+assign s_4_port_6_memory_9_res_ready[0] = (net_5796 & net_5798);
+assign s_4_port_13_memory_active[0] = (net_3915 | net_3916 | net_3917 | net_3918);
+assign net_5801 = ~(s_4_port_5_reset[0]);
+assign net_5802 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5803 = (s_4_port_5_fetch_9_res_valid[0] & net_5802 & s_4_port_13_decoded_valid[0]);
+assign net_5804 = ~(net_2967);
+assign net_5805 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5806 = ~(s_4_port_8_trip_req[0]);
+assign net_5807 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5805 | net_5806);
+assign net_5808 = (net_5803 & net_5804 & net_5807);
+assign net_5809 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5810 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5811 = (net_5801 & net_3912 & net_5808 & net_5809 & net_5810);
+assign net_5812 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5813 = ~(net_5812);
+assign s_4_port_10_execute_en[0] = (net_5811 & net_5813);
 assign net_5815 = ~(s_4_port_5_reset[0]);
-assign net_5816 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5817 = (s_4_port_5_fetch_9_res_valid[0] & net_5816 & s_4_port_13_decoded_valid[0]);
-assign net_5818 = ~(net_2964);
-assign net_5819 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5820 = ~(s_4_port_8_trip_req[0]);
-assign net_5821 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5819 | net_5820);
-assign net_5822 = (net_5817 & net_5818 & net_5821);
-assign net_5823 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5824 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5825 = (net_5815 & net_3909 & net_5822 & net_5823 & net_5824);
-assign net_5826 = (s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0]);
-assign net_5827 = (net_5825 & net_5826);
-assign s_4_port_16_address_write_en[0] = (net_5827 | net_2968);
-assign net_5829 = ~(s_4_port_5_reset[0]);
-assign net_5830 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5831 = (s_4_port_5_fetch_9_res_valid[0] & net_5830 & s_4_port_13_decoded_valid[0]);
-assign net_5832 = ~(net_2964);
-assign net_5833 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5834 = ~(s_4_port_8_trip_req[0]);
-assign net_5835 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5833 | net_5834);
-assign net_5836 = (net_5831 & net_5832 & net_5835);
-assign net_5837 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5838 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5839 = (net_5829 & net_3909 & net_5836 & net_5837 & net_5838);
-assign s_4_port_14_special_get_en[0] = (net_5839 & s_4_port_11_decoded_get[0]);
-assign net_5841 = ~(s_4_port_5_reset[0]);
-assign net_5842 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5843 = (s_4_port_5_fetch_9_res_valid[0] & net_5842 & s_4_port_13_decoded_valid[0]);
-assign net_5844 = ~(net_2964);
-assign net_5845 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5846 = ~(s_4_port_8_trip_req[0]);
-assign net_5847 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5845 | net_5846);
-assign net_5848 = (net_5843 & net_5844 & net_5847);
-assign net_5849 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5850 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5851 = (net_5841 & net_3909 & net_5848 & net_5849 & net_5850);
-assign s_4_port_14_special_put_en[0] = (net_5851 & s_4_port_11_decoded_put[0]);
-assign net_5853 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5854 = (s_4_port_5_fetch_9_res_valid[0] & net_5853 & s_4_port_13_decoded_valid[0]);
-assign net_5855 = ~(net_5854);
-assign net_5856 = (net_3908 & s_4_port_5_fetch_9_res_valid[0] & net_5855);
+assign net_5816 = (net_5815 & net_3917);
+assign net_5817 = ~(s_4_port_13_decoded_store[0]);
+assign s_4_port_13_load_write_en[0] = (net_5816 & net_5817);
+assign net_5819 = ~(s_4_port_5_reset[0]);
+assign net_5820 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5821 = (s_4_port_5_fetch_9_res_valid[0] & net_5820 & s_4_port_13_decoded_valid[0]);
+assign net_5822 = ~(net_2967);
+assign net_5823 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5824 = ~(s_4_port_8_trip_req[0]);
+assign net_5825 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5823 | net_5824);
+assign net_5826 = (net_5821 & net_5822 & net_5825);
+assign net_5827 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5828 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5829 = (net_5819 & net_3912 & net_5826 & net_5827 & net_5828);
+assign net_5830 = (s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0]);
+assign net_5831 = (net_5829 & net_5830);
+assign s_4_port_16_address_write_en[0] = (net_5831 | net_2971);
+assign net_5833 = ~(s_4_port_5_reset[0]);
+assign net_5834 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5835 = (s_4_port_5_fetch_9_res_valid[0] & net_5834 & s_4_port_13_decoded_valid[0]);
+assign net_5836 = ~(net_2967);
+assign net_5837 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5838 = ~(s_4_port_8_trip_req[0]);
+assign net_5839 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5837 | net_5838);
+assign net_5840 = (net_5835 & net_5836 & net_5839);
+assign net_5841 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5842 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5843 = (net_5833 & net_3912 & net_5840 & net_5841 & net_5842);
+assign s_4_port_14_special_get_en[0] = (net_5843 & s_4_port_11_decoded_get[0]);
+assign net_5845 = ~(s_4_port_5_reset[0]);
+assign net_5846 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5847 = (s_4_port_5_fetch_9_res_valid[0] & net_5846 & s_4_port_13_decoded_valid[0]);
+assign net_5848 = ~(net_2967);
+assign net_5849 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5850 = ~(s_4_port_8_trip_req[0]);
+assign net_5851 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5849 | net_5850);
+assign net_5852 = (net_5847 & net_5848 & net_5851);
+assign net_5853 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5854 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5855 = (net_5845 & net_3912 & net_5852 & net_5853 & net_5854);
+assign s_4_port_14_special_put_en[0] = (net_5855 & s_4_port_11_decoded_put[0]);
 assign net_5857 = ~(s_4_port_5_fetch_5_error[0]);
 assign net_5858 = (s_4_port_5_fetch_9_res_valid[0] & net_5857 & s_4_port_13_decoded_valid[0]);
-assign net_5859 = ~(net_2964);
-assign net_5860 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5861 = ~(s_4_port_8_trip_req[0]);
-assign net_5862 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5860 | net_5861);
-assign net_5863 = (net_5858 & net_5859 & net_5862);
-assign net_5864 = ~(net_5863);
-assign net_5865 = ~(s_4_port_5_reset[0]);
-assign net_5866 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5867 = (s_4_port_5_fetch_9_res_valid[0] & net_5866 & s_4_port_13_decoded_valid[0]);
-assign net_5868 = (net_5865 & net_3909 & net_5867 & net_2964);
-assign net_5869 = ~(net_5868);
-assign net_5870 = (net_3909 & net_5864 & net_5869);
-assign net_5871 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5872 = (net_3033 | net_3034);
-assign net_2358 = (net_5856 | net_5870 | net_5871 | net_5872);
-assign net_5874 = (s_4_port_5_fetch_9_res_valid[0] & s_4_port_5_fetch_5_error[0]);
-assign net_5875 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_2359 = (net_5874 | net_5875 | net_3034);
-assign net_5877 = (net_3913 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
-assign net_5878 = ~(net_5877);
-assign net_5879 = ~(net_3034);
-assign net_5880 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5881 = ~(s_4_port_13_decoded_valid[0]);
-assign net_5882 = (net_5880 & net_5881);
-assign net_5883 = ~(s_4_port_5_fetch_9_res_valid[0]);
-assign net_5884 = (net_3909 & net_5883);
-assign net_5885 = (net_5882 | net_5884);
-assign net_5886 = (net_5878 & net_5879 & net_5885);
-assign net_2360 = (net_3033 | net_5886);
-assign net_5888 = ~(s_4_port_5_fetch_5_error[0]);
-assign net_5889 = (s_4_port_5_fetch_9_res_valid[0] & net_5888 & s_4_port_13_decoded_valid[0]);
-assign net_5890 = ~(s_4_port_14_decoded_memory[0]);
-assign net_5891 = ~(s_4_port_12_decoded_halt[0]);
-assign net_5892 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
-assign net_5893 = ~(net_5892);
-assign net_2361 = (net_3909 & net_5889 & net_5890 & net_5891 & net_5893 & s_4_port_8_trip_req[0]);
-assign net_5895 = ~(s_4_port_5_reset[0]);
-assign s_4_port_4_done[0] = (net_5895 & net_3910);
-assign net_5897 = ~(s_4_port_5_reset[0]);
-assign s_4_port_5_fault[0] = (net_5897 & net_3911);
+assign net_5859 = ~(net_5858);
+assign net_5860 = (net_3911 & s_4_port_5_fetch_9_res_valid[0] & net_5859);
+assign net_5861 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5862 = (s_4_port_5_fetch_9_res_valid[0] & net_5861 & s_4_port_13_decoded_valid[0]);
+assign net_5863 = ~(net_2967);
+assign net_5864 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5865 = ~(s_4_port_8_trip_req[0]);
+assign net_5866 = (s_4_port_12_decoded_halt[0] | s_4_port_14_decoded_memory[0] | net_5864 | net_5865);
+assign net_5867 = (net_5862 & net_5863 & net_5866);
+assign net_5868 = ~(net_5867);
+assign net_5869 = ~(s_4_port_5_reset[0]);
+assign net_5870 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5871 = (s_4_port_5_fetch_9_res_valid[0] & net_5870 & s_4_port_13_decoded_valid[0]);
+assign net_5872 = (net_5869 & net_3912 & net_5871 & net_2967);
+assign net_5873 = ~(net_5872);
+assign net_5874 = (net_3912 & net_5868 & net_5873);
+assign net_5875 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5876 = (net_3036 | net_3037);
+assign net_2359 = (net_5860 | net_5874 | net_5875 | net_5876);
+assign net_5878 = (s_4_port_5_fetch_9_res_valid[0] & s_4_port_5_fetch_5_error[0]);
+assign net_5879 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_2360 = (net_5878 | net_5879 | net_3037);
+assign net_5881 = (net_3916 & s_4_port_6_memory_9_res_valid[0] & s_4_port_6_memory_5_error[0]);
+assign net_5882 = ~(net_5881);
+assign net_5883 = ~(net_3037);
+assign net_5884 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5885 = ~(s_4_port_13_decoded_valid[0]);
+assign net_5886 = (net_5884 & net_5885);
+assign net_5887 = ~(s_4_port_5_fetch_9_res_valid[0]);
+assign net_5888 = (net_3912 & net_5887);
+assign net_5889 = (net_5886 | net_5888);
+assign net_5890 = (net_5882 & net_5883 & net_5889);
+assign net_2361 = (net_3036 | net_5890);
+assign net_5892 = ~(s_4_port_5_fetch_5_error[0]);
+assign net_5893 = (s_4_port_5_fetch_9_res_valid[0] & net_5892 & s_4_port_13_decoded_valid[0]);
+assign net_5894 = ~(s_4_port_14_decoded_memory[0]);
+assign net_5895 = ~(s_4_port_12_decoded_halt[0]);
+assign net_5896 = (s_4_port_14_decoded_branch[0] | s_4_port_12_decoded_geta[0] | s_4_port_10_decoded_go[0] | s_4_port_11_decoded_get[0] | s_4_port_11_decoded_put[0] | s_4_port_12_decoded_push[0] | s_4_port_11_decoded_pop[0] | s_4_port_12_decoded_save[0] | s_4_port_14_decoded_unsave[0] | s_4_port_12_decoded_trap[0] | s_4_port_12_decoded_swym[0]);
+assign net_5897 = ~(net_5896);
+assign net_2362 = (net_3912 & net_5893 & net_5894 & net_5895 & net_5897 & s_4_port_8_trip_req[0]);
+assign net_5899 = ~(s_4_port_5_reset[0]);
+assign s_4_port_4_done[0] = (net_5899 & net_3913);
+assign net_5901 = ~(s_4_port_5_reset[0]);
+assign s_4_port_5_fault[0] = (net_5901 & net_3914);
 s_3_cpu_3_reg_8_ValueReg_args_3912a1d67a34110e64fafba35d047a5c5a25d02720a2a3951311518803e6fc47 s_8_instance_5_state (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
     .s_4_port_5_reset(s_4_port_5_reset[0]),
-    .s_4_port_4_w_en(net_2085),
-    .s_4_port_2_in({net_2089, net_2088, net_2087, net_2086}),
-    .s_4_port_3_out({net_2093, net_2092, net_2091, net_2090})
+    .s_4_port_4_w_en(net_2086),
+    .s_4_port_2_in({net_2090, net_2089, net_2088, net_2087}),
+    .s_4_port_3_out({net_2094, net_2093, net_2092, net_2091})
 );
 s_3_cpu_3_reg_8_ValueReg_args_9782456255fe8170249b8dfb10717825e64c71c5e7216f2f28ed301b837e5e27 s_8_instance_2_pc (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
     .s_4_port_5_reset(s_4_port_5_reset[0]),
-    .s_4_port_4_w_en(net_2096),
-    .s_4_port_2_in({net_2160, net_2159, net_2158, net_2157, net_2156, net_2155, net_2154, net_2153, net_2152, net_2151, net_2150, net_2149, net_2148, net_2147, net_2146, net_2145, net_2144, net_2143, net_2142, net_2141, net_2140, net_2139, net_2138, net_2137, net_2136, net_2135, net_2134, net_2133, net_2132, net_2131, net_2130, net_2129, net_2128, net_2127, net_2126, net_2125, net_2124, net_2123, net_2122, net_2121, net_2120, net_2119, net_2118, net_2117, net_2116, net_2115, net_2114, net_2113, net_2112, net_2111, net_2110, net_2109, net_2108, net_2107, net_2106, net_2105, net_2104, net_2103, net_2102, net_2101, net_2100, net_2099, net_2098, net_2097}),
+    .s_4_port_4_w_en(net_2097),
+    .s_4_port_2_in({net_2161, net_2160, net_2159, net_2158, net_2157, net_2156, net_2155, net_2154, net_2153, net_2152, net_2151, net_2150, net_2149, net_2148, net_2147, net_2146, net_2145, net_2144, net_2143, net_2142, net_2141, net_2140, net_2139, net_2138, net_2137, net_2136, net_2135, net_2134, net_2133, net_2132, net_2131, net_2130, net_2129, net_2128, net_2127, net_2126, net_2125, net_2124, net_2123, net_2122, net_2121, net_2120, net_2119, net_2118, net_2117, net_2116, net_2115, net_2114, net_2113, net_2112, net_2111, net_2110, net_2109, net_2108, net_2107, net_2106, net_2105, net_2104, net_2103, net_2102, net_2101, net_2100, net_2099, net_2098}),
     .s_4_port_3_out({s_4_port_5_fetch_6_req_pc[63], s_4_port_5_fetch_6_req_pc[62], s_4_port_5_fetch_6_req_pc[61], s_4_port_5_fetch_6_req_pc[60], s_4_port_5_fetch_6_req_pc[59], s_4_port_5_fetch_6_req_pc[58], s_4_port_5_fetch_6_req_pc[57], s_4_port_5_fetch_6_req_pc[56], s_4_port_5_fetch_6_req_pc[55], s_4_port_5_fetch_6_req_pc[54], s_4_port_5_fetch_6_req_pc[53], s_4_port_5_fetch_6_req_pc[52], s_4_port_5_fetch_6_req_pc[51], s_4_port_5_fetch_6_req_pc[50], s_4_port_5_fetch_6_req_pc[49], s_4_port_5_fetch_6_req_pc[48], s_4_port_5_fetch_6_req_pc[47], s_4_port_5_fetch_6_req_pc[46], s_4_port_5_fetch_6_req_pc[45], s_4_port_5_fetch_6_req_pc[44], s_4_port_5_fetch_6_req_pc[43], s_4_port_5_fetch_6_req_pc[42], s_4_port_5_fetch_6_req_pc[41], s_4_port_5_fetch_6_req_pc[40], s_4_port_5_fetch_6_req_pc[39], s_4_port_5_fetch_6_req_pc[38], s_4_port_5_fetch_6_req_pc[37], s_4_port_5_fetch_6_req_pc[36], s_4_port_5_fetch_6_req_pc[35], s_4_port_5_fetch_6_req_pc[34], s_4_port_5_fetch_6_req_pc[33], s_4_port_5_fetch_6_req_pc[32], s_4_port_5_fetch_6_req_pc[31], s_4_port_5_fetch_6_req_pc[30], s_4_port_5_fetch_6_req_pc[29], s_4_port_5_fetch_6_req_pc[28], s_4_port_5_fetch_6_req_pc[27], s_4_port_5_fetch_6_req_pc[26], s_4_port_5_fetch_6_req_pc[25], s_4_port_5_fetch_6_req_pc[24], s_4_port_5_fetch_6_req_pc[23], s_4_port_5_fetch_6_req_pc[22], s_4_port_5_fetch_6_req_pc[21], s_4_port_5_fetch_6_req_pc[20], s_4_port_5_fetch_6_req_pc[19], s_4_port_5_fetch_6_req_pc[18], s_4_port_5_fetch_6_req_pc[17], s_4_port_5_fetch_6_req_pc[16], s_4_port_5_fetch_6_req_pc[15], s_4_port_5_fetch_6_req_pc[14], s_4_port_5_fetch_6_req_pc[13], s_4_port_5_fetch_6_req_pc[12], s_4_port_5_fetch_6_req_pc[11], s_4_port_5_fetch_6_req_pc[10], s_4_port_5_fetch_6_req_pc[9], s_4_port_5_fetch_6_req_pc[8], s_4_port_5_fetch_6_req_pc[7], s_4_port_5_fetch_6_req_pc[6], s_4_port_5_fetch_6_req_pc[5], s_4_port_5_fetch_6_req_pc[4], s_4_port_5_fetch_6_req_pc[3], s_4_port_5_fetch_6_req_pc[2], s_4_port_5_fetch_6_req_pc[1], s_4_port_5_fetch_6_req_pc[0]})
 );
 s_3_cpu_3_reg_8_ValueReg_args_9782456255fe8170249b8dfb10717825e64c71c5e7216f2f28ed301b837e5e27 s_8_instance_7_address (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
     .s_4_port_5_reset(s_4_port_5_reset[0]),
-    .s_4_port_4_w_en(net_2227),
+    .s_4_port_4_w_en(net_2228),
     .s_4_port_2_in({s_4_port_17_effective_address[63], s_4_port_17_effective_address[62], s_4_port_17_effective_address[61], s_4_port_17_effective_address[60], s_4_port_17_effective_address[59], s_4_port_17_effective_address[58], s_4_port_17_effective_address[57], s_4_port_17_effective_address[56], s_4_port_17_effective_address[55], s_4_port_17_effective_address[54], s_4_port_17_effective_address[53], s_4_port_17_effective_address[52], s_4_port_17_effective_address[51], s_4_port_17_effective_address[50], s_4_port_17_effective_address[49], s_4_port_17_effective_address[48], s_4_port_17_effective_address[47], s_4_port_17_effective_address[46], s_4_port_17_effective_address[45], s_4_port_17_effective_address[44], s_4_port_17_effective_address[43], s_4_port_17_effective_address[42], s_4_port_17_effective_address[41], s_4_port_17_effective_address[40], s_4_port_17_effective_address[39], s_4_port_17_effective_address[38], s_4_port_17_effective_address[37], s_4_port_17_effective_address[36], s_4_port_17_effective_address[35], s_4_port_17_effective_address[34], s_4_port_17_effective_address[33], s_4_port_17_effective_address[32], s_4_port_17_effective_address[31], s_4_port_17_effective_address[30], s_4_port_17_effective_address[29], s_4_port_17_effective_address[28], s_4_port_17_effective_address[27], s_4_port_17_effective_address[26], s_4_port_17_effective_address[25], s_4_port_17_effective_address[24], s_4_port_17_effective_address[23], s_4_port_17_effective_address[22], s_4_port_17_effective_address[21], s_4_port_17_effective_address[20], s_4_port_17_effective_address[19], s_4_port_17_effective_address[18], s_4_port_17_effective_address[17], s_4_port_17_effective_address[16], s_4_port_17_effective_address[15], s_4_port_17_effective_address[14], s_4_port_17_effective_address[13], s_4_port_17_effective_address[12], s_4_port_17_effective_address[11], s_4_port_17_effective_address[10], s_4_port_17_effective_address[9], s_4_port_17_effective_address[8], s_4_port_17_effective_address[7], s_4_port_17_effective_address[6], s_4_port_17_effective_address[5], s_4_port_17_effective_address[4], s_4_port_17_effective_address[3], s_4_port_17_effective_address[2], s_4_port_17_effective_address[1], s_4_port_17_effective_address[0]}),
-    .s_4_port_3_out({net_2355, net_2354, net_2353, net_2352, net_2351, net_2350, net_2349, net_2348, net_2347, net_2346, net_2345, net_2344, net_2343, net_2342, net_2341, net_2340, net_2339, net_2338, net_2337, net_2336, net_2335, net_2334, net_2333, net_2332, net_2331, net_2330, net_2329, net_2328, net_2327, net_2326, net_2325, net_2324, net_2323, net_2322, net_2321, net_2320, net_2319, net_2318, net_2317, net_2316, net_2315, net_2314, net_2313, net_2312, net_2311, net_2310, net_2309, net_2308, net_2307, net_2306, net_2305, net_2304, net_2303, net_2302, net_2301, net_2300, net_2299, net_2298, net_2297, net_2296, net_2295, net_2294, net_2293, net_2292})
+    .s_4_port_3_out({net_2356, net_2355, net_2354, net_2353, net_2352, net_2351, net_2350, net_2349, net_2348, net_2347, net_2346, net_2345, net_2344, net_2343, net_2342, net_2341, net_2340, net_2339, net_2338, net_2337, net_2336, net_2335, net_2334, net_2333, net_2332, net_2331, net_2330, net_2329, net_2328, net_2327, net_2326, net_2325, net_2324, net_2323, net_2322, net_2321, net_2320, net_2319, net_2318, net_2317, net_2316, net_2315, net_2314, net_2313, net_2312, net_2311, net_2310, net_2309, net_2308, net_2307, net_2306, net_2305, net_2304, net_2303, net_2302, net_2301, net_2300, net_2299, net_2298, net_2297, net_2296, net_2295, net_2294, net_2293})
 );
 s_3_cpu_3_reg_8_ValueReg_args_4079e4af87d7d813c698db35d58eab6fd13988b0ab8eeb87523f8eccae2d2e98 s_8_instance_6_reason (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
     .s_4_port_5_reset(s_4_port_5_reset[0]),
-    .s_4_port_4_w_en(net_2358),
-    .s_4_port_2_in({net_2361, net_2360, net_2359}),
+    .s_4_port_4_w_en(net_2359),
+    .s_4_port_2_in({net_2362, net_2361, net_2360}),
     .s_4_port_3_out({s_4_port_12_fault_reason[2], s_4_port_12_fault_reason[1], s_4_port_12_fault_reason[0]})
 );
 s_3_cpu_7_control_12_StackControl s_8_instance_5_stack (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
     .s_4_port_5_reset(s_4_port_5_reset[0]),
-    .s_4_port_5_start(net_2367),
+    .s_4_port_5_start(net_2368),
     .s_4_port_8_writes_x(s_4_port_16_decoded_writes_x[0]),
     .s_4_port_4_push(s_4_port_12_decoded_push[0]),
     .s_4_port_3_pop(s_4_port_11_decoded_pop[0]),
     .s_4_port_5_put_g(s_4_port_13_decoded_put_g[0]),
-    .s_4_port_5_put_l(net_2372),
+    .s_4_port_5_put_l(net_2373),
     .s_4_port_4_save(s_4_port_12_decoded_save[0]),
     .s_4_port_6_unsave(s_4_port_14_decoded_unsave[0]),
     .s_4_port_4_trap(s_4_port_12_decoded_trap[0]),
@@ -1264,6 +1268,8 @@ s_3_cpu_7_control_12_StackControl s_8_instance_5_stack (
     .s_4_port_1_x({s_4_port_9_decoded_x[7], s_4_port_9_decoded_x[6], s_4_port_9_decoded_x[5], s_4_port_9_decoded_x[4], s_4_port_9_decoded_x[3], s_4_port_9_decoded_x[2], s_4_port_9_decoded_x[1], s_4_port_9_decoded_x[0]}),
     .s_4_port_5_value({s_4_port_13_special_value[63], s_4_port_13_special_value[62], s_4_port_13_special_value[61], s_4_port_13_special_value[60], s_4_port_13_special_value[59], s_4_port_13_special_value[58], s_4_port_13_special_value[57], s_4_port_13_special_value[56], s_4_port_13_special_value[55], s_4_port_13_special_value[54], s_4_port_13_special_value[53], s_4_port_13_special_value[52], s_4_port_13_special_value[51], s_4_port_13_special_value[50], s_4_port_13_special_value[49], s_4_port_13_special_value[48], s_4_port_13_special_value[47], s_4_port_13_special_value[46], s_4_port_13_special_value[45], s_4_port_13_special_value[44], s_4_port_13_special_value[43], s_4_port_13_special_value[42], s_4_port_13_special_value[41], s_4_port_13_special_value[40], s_4_port_13_special_value[39], s_4_port_13_special_value[38], s_4_port_13_special_value[37], s_4_port_13_special_value[36], s_4_port_13_special_value[35], s_4_port_13_special_value[34], s_4_port_13_special_value[33], s_4_port_13_special_value[32], s_4_port_13_special_value[31], s_4_port_13_special_value[30], s_4_port_13_special_value[29], s_4_port_13_special_value[28], s_4_port_13_special_value[27], s_4_port_13_special_value[26], s_4_port_13_special_value[25], s_4_port_13_special_value[24], s_4_port_13_special_value[23], s_4_port_13_special_value[22], s_4_port_13_special_value[21], s_4_port_13_special_value[20], s_4_port_13_special_value[19], s_4_port_13_special_value[18], s_4_port_13_special_value[17], s_4_port_13_special_value[16], s_4_port_13_special_value[15], s_4_port_13_special_value[14], s_4_port_13_special_value[13], s_4_port_13_special_value[12], s_4_port_13_special_value[11], s_4_port_13_special_value[10], s_4_port_13_special_value[9], s_4_port_13_special_value[8], s_4_port_13_special_value[7], s_4_port_13_special_value[6], s_4_port_13_special_value[5], s_4_port_13_special_value[4], s_4_port_13_special_value[3], s_4_port_13_special_value[2], s_4_port_13_special_value[1], s_4_port_13_special_value[0]}),
     .s_4_port_7_r1_data({s_4_port_13_stack_r1_data[63], s_4_port_13_stack_r1_data[62], s_4_port_13_stack_r1_data[61], s_4_port_13_stack_r1_data[60], s_4_port_13_stack_r1_data[59], s_4_port_13_stack_r1_data[58], s_4_port_13_stack_r1_data[57], s_4_port_13_stack_r1_data[56], s_4_port_13_stack_r1_data[55], s_4_port_13_stack_r1_data[54], s_4_port_13_stack_r1_data[53], s_4_port_13_stack_r1_data[52], s_4_port_13_stack_r1_data[51], s_4_port_13_stack_r1_data[50], s_4_port_13_stack_r1_data[49], s_4_port_13_stack_r1_data[48], s_4_port_13_stack_r1_data[47], s_4_port_13_stack_r1_data[46], s_4_port_13_stack_r1_data[45], s_4_port_13_stack_r1_data[44], s_4_port_13_stack_r1_data[43], s_4_port_13_stack_r1_data[42], s_4_port_13_stack_r1_data[41], s_4_port_13_stack_r1_data[40], s_4_port_13_stack_r1_data[39], s_4_port_13_stack_r1_data[38], s_4_port_13_stack_r1_data[37], s_4_port_13_stack_r1_data[36], s_4_port_13_stack_r1_data[35], s_4_port_13_stack_r1_data[34], s_4_port_13_stack_r1_data[33], s_4_port_13_stack_r1_data[32], s_4_port_13_stack_r1_data[31], s_4_port_13_stack_r1_data[30], s_4_port_13_stack_r1_data[29], s_4_port_13_stack_r1_data[28], s_4_port_13_stack_r1_data[27], s_4_port_13_stack_r1_data[26], s_4_port_13_stack_r1_data[25], s_4_port_13_stack_r1_data[24], s_4_port_13_stack_r1_data[23], s_4_port_13_stack_r1_data[22], s_4_port_13_stack_r1_data[21], s_4_port_13_stack_r1_data[20], s_4_port_13_stack_r1_data[19], s_4_port_13_stack_r1_data[18], s_4_port_13_stack_r1_data[17], s_4_port_13_stack_r1_data[16], s_4_port_13_stack_r1_data[15], s_4_port_13_stack_r1_data[14], s_4_port_13_stack_r1_data[13], s_4_port_13_stack_r1_data[12], s_4_port_13_stack_r1_data[11], s_4_port_13_stack_r1_data[10], s_4_port_13_stack_r1_data[9], s_4_port_13_stack_r1_data[8], s_4_port_13_stack_r1_data[7], s_4_port_13_stack_r1_data[6], s_4_port_13_stack_r1_data[5], s_4_port_13_stack_r1_data[4], s_4_port_13_stack_r1_data[3], s_4_port_13_stack_r1_data[2], s_4_port_13_stack_r1_data[1], s_4_port_13_stack_r1_data[0]}),
+    .s_4_port_8_r1_valid(s_4_port_14_stack_r1_valid[0]),
+    .s_4_port_13_special_valid(s_4_port_19_stack_special_valid[0]),
     .s_4_port_2_rG({s_4_port_10_stack_regs_6_rG_out[7], s_4_port_10_stack_regs_6_rG_out[6], s_4_port_10_stack_regs_6_rG_out[5], s_4_port_10_stack_regs_6_rG_out[4], s_4_port_10_stack_regs_6_rG_out[3], s_4_port_10_stack_regs_6_rG_out[2], s_4_port_10_stack_regs_6_rG_out[1], s_4_port_10_stack_regs_6_rG_out[0]}),
     .s_4_port_2_rL({s_4_port_10_stack_regs_6_rL_out[7], s_4_port_10_stack_regs_6_rL_out[6], s_4_port_10_stack_regs_6_rL_out[5], s_4_port_10_stack_regs_6_rL_out[4], s_4_port_10_stack_regs_6_rL_out[3], s_4_port_10_stack_regs_6_rL_out[2], s_4_port_10_stack_regs_6_rL_out[1], s_4_port_10_stack_regs_6_rL_out[0]}),
     .s_4_port_2_rO({s_4_port_10_stack_regs_6_rO_out[63], s_4_port_10_stack_regs_6_rO_out[62], s_4_port_10_stack_regs_6_rO_out[61], s_4_port_10_stack_regs_6_rO_out[60], s_4_port_10_stack_regs_6_rO_out[59], s_4_port_10_stack_regs_6_rO_out[58], s_4_port_10_stack_regs_6_rO_out[57], s_4_port_10_stack_regs_6_rO_out[56], s_4_port_10_stack_regs_6_rO_out[55], s_4_port_10_stack_regs_6_rO_out[54], s_4_port_10_stack_regs_6_rO_out[53], s_4_port_10_stack_regs_6_rO_out[52], s_4_port_10_stack_regs_6_rO_out[51], s_4_port_10_stack_regs_6_rO_out[50], s_4_port_10_stack_regs_6_rO_out[49], s_4_port_10_stack_regs_6_rO_out[48], s_4_port_10_stack_regs_6_rO_out[47], s_4_port_10_stack_regs_6_rO_out[46], s_4_port_10_stack_regs_6_rO_out[45], s_4_port_10_stack_regs_6_rO_out[44], s_4_port_10_stack_regs_6_rO_out[43], s_4_port_10_stack_regs_6_rO_out[42], s_4_port_10_stack_regs_6_rO_out[41], s_4_port_10_stack_regs_6_rO_out[40], s_4_port_10_stack_regs_6_rO_out[39], s_4_port_10_stack_regs_6_rO_out[38], s_4_port_10_stack_regs_6_rO_out[37], s_4_port_10_stack_regs_6_rO_out[36], s_4_port_10_stack_regs_6_rO_out[35], s_4_port_10_stack_regs_6_rO_out[34], s_4_port_10_stack_regs_6_rO_out[33], s_4_port_10_stack_regs_6_rO_out[32], s_4_port_10_stack_regs_6_rO_out[31], s_4_port_10_stack_regs_6_rO_out[30], s_4_port_10_stack_regs_6_rO_out[29], s_4_port_10_stack_regs_6_rO_out[28], s_4_port_10_stack_regs_6_rO_out[27], s_4_port_10_stack_regs_6_rO_out[26], s_4_port_10_stack_regs_6_rO_out[25], s_4_port_10_stack_regs_6_rO_out[24], s_4_port_10_stack_regs_6_rO_out[23], s_4_port_10_stack_regs_6_rO_out[22], s_4_port_10_stack_regs_6_rO_out[21], s_4_port_10_stack_regs_6_rO_out[20], s_4_port_10_stack_regs_6_rO_out[19], s_4_port_10_stack_regs_6_rO_out[18], s_4_port_10_stack_regs_6_rO_out[17], s_4_port_10_stack_regs_6_rO_out[16], s_4_port_10_stack_regs_6_rO_out[15], s_4_port_10_stack_regs_6_rO_out[14], s_4_port_10_stack_regs_6_rO_out[13], s_4_port_10_stack_regs_6_rO_out[12], s_4_port_10_stack_regs_6_rO_out[11], s_4_port_10_stack_regs_6_rO_out[10], s_4_port_10_stack_regs_6_rO_out[9], s_4_port_10_stack_regs_6_rO_out[8], s_4_port_10_stack_regs_6_rO_out[7], s_4_port_10_stack_regs_6_rO_out[6], s_4_port_10_stack_regs_6_rO_out[5], s_4_port_10_stack_regs_6_rO_out[4], s_4_port_10_stack_regs_6_rO_out[3], s_4_port_10_stack_regs_6_rO_out[2], s_4_port_10_stack_regs_6_rO_out[1], s_4_port_10_stack_regs_6_rO_out[0]}),
@@ -1276,14 +1282,14 @@ s_3_cpu_7_control_12_StackControl s_8_instance_5_stack (
     .s_4_port_7_rO_w_en(s_4_port_10_stack_regs_7_rO_w_en[0]),
     .s_4_port_5_rS_in({s_4_port_10_stack_regs_5_rS_in[63], s_4_port_10_stack_regs_5_rS_in[62], s_4_port_10_stack_regs_5_rS_in[61], s_4_port_10_stack_regs_5_rS_in[60], s_4_port_10_stack_regs_5_rS_in[59], s_4_port_10_stack_regs_5_rS_in[58], s_4_port_10_stack_regs_5_rS_in[57], s_4_port_10_stack_regs_5_rS_in[56], s_4_port_10_stack_regs_5_rS_in[55], s_4_port_10_stack_regs_5_rS_in[54], s_4_port_10_stack_regs_5_rS_in[53], s_4_port_10_stack_regs_5_rS_in[52], s_4_port_10_stack_regs_5_rS_in[51], s_4_port_10_stack_regs_5_rS_in[50], s_4_port_10_stack_regs_5_rS_in[49], s_4_port_10_stack_regs_5_rS_in[48], s_4_port_10_stack_regs_5_rS_in[47], s_4_port_10_stack_regs_5_rS_in[46], s_4_port_10_stack_regs_5_rS_in[45], s_4_port_10_stack_regs_5_rS_in[44], s_4_port_10_stack_regs_5_rS_in[43], s_4_port_10_stack_regs_5_rS_in[42], s_4_port_10_stack_regs_5_rS_in[41], s_4_port_10_stack_regs_5_rS_in[40], s_4_port_10_stack_regs_5_rS_in[39], s_4_port_10_stack_regs_5_rS_in[38], s_4_port_10_stack_regs_5_rS_in[37], s_4_port_10_stack_regs_5_rS_in[36], s_4_port_10_stack_regs_5_rS_in[35], s_4_port_10_stack_regs_5_rS_in[34], s_4_port_10_stack_regs_5_rS_in[33], s_4_port_10_stack_regs_5_rS_in[32], s_4_port_10_stack_regs_5_rS_in[31], s_4_port_10_stack_regs_5_rS_in[30], s_4_port_10_stack_regs_5_rS_in[29], s_4_port_10_stack_regs_5_rS_in[28], s_4_port_10_stack_regs_5_rS_in[27], s_4_port_10_stack_regs_5_rS_in[26], s_4_port_10_stack_regs_5_rS_in[25], s_4_port_10_stack_regs_5_rS_in[24], s_4_port_10_stack_regs_5_rS_in[23], s_4_port_10_stack_regs_5_rS_in[22], s_4_port_10_stack_regs_5_rS_in[21], s_4_port_10_stack_regs_5_rS_in[20], s_4_port_10_stack_regs_5_rS_in[19], s_4_port_10_stack_regs_5_rS_in[18], s_4_port_10_stack_regs_5_rS_in[17], s_4_port_10_stack_regs_5_rS_in[16], s_4_port_10_stack_regs_5_rS_in[15], s_4_port_10_stack_regs_5_rS_in[14], s_4_port_10_stack_regs_5_rS_in[13], s_4_port_10_stack_regs_5_rS_in[12], s_4_port_10_stack_regs_5_rS_in[11], s_4_port_10_stack_regs_5_rS_in[10], s_4_port_10_stack_regs_5_rS_in[9], s_4_port_10_stack_regs_5_rS_in[8], s_4_port_10_stack_regs_5_rS_in[7], s_4_port_10_stack_regs_5_rS_in[6], s_4_port_10_stack_regs_5_rS_in[5], s_4_port_10_stack_regs_5_rS_in[4], s_4_port_10_stack_regs_5_rS_in[3], s_4_port_10_stack_regs_5_rS_in[2], s_4_port_10_stack_regs_5_rS_in[1], s_4_port_10_stack_regs_5_rS_in[0]}),
     .s_4_port_7_rS_w_en(s_4_port_10_stack_regs_7_rS_w_en[0]),
-    .s_4_port_8_required(net_2964),
-    .s_4_port_5_retry(net_2965),
-    .s_4_port_6_retire(net_2966),
+    .s_4_port_8_required(net_2967),
+    .s_4_port_5_retry(net_2968),
+    .s_4_port_6_retire(net_2969),
     .s_4_port_11_push_retire(s_4_port_10_stack_regs_7_rJ_w_en[0]),
-    .s_4_port_10_save_write(net_2968),
-    .s_4_port_12_save_address({net_3032, net_3031, net_3030, net_3029, net_3028, net_3027, net_3026, net_3025, net_3024, net_3023, net_3022, net_3021, net_3020, net_3019, net_3018, net_3017, net_3016, net_3015, net_3014, net_3013, net_3012, net_3011, net_3010, net_3009, net_3008, net_3007, net_3006, net_3005, net_3004, net_3003, net_3002, net_3001, net_3000, net_2999, net_2998, net_2997, net_2996, net_2995, net_2994, net_2993, net_2992, net_2991, net_2990, net_2989, net_2988, net_2987, net_2986, net_2985, net_2984, net_2983, net_2982, net_2981, net_2980, net_2979, net_2978, net_2977, net_2976, net_2975, net_2974, net_2973, net_2972, net_2971, net_2970, net_2969}),
-    .s_4_port_11_range_fault(net_3033),
-    .s_4_port_12_access_fault(net_3034),
+    .s_4_port_10_save_write(net_2971),
+    .s_4_port_12_save_address({net_3035, net_3034, net_3033, net_3032, net_3031, net_3030, net_3029, net_3028, net_3027, net_3026, net_3025, net_3024, net_3023, net_3022, net_3021, net_3020, net_3019, net_3018, net_3017, net_3016, net_3015, net_3014, net_3013, net_3012, net_3011, net_3010, net_3009, net_3008, net_3007, net_3006, net_3005, net_3004, net_3003, net_3002, net_3001, net_3000, net_2999, net_2998, net_2997, net_2996, net_2995, net_2994, net_2993, net_2992, net_2991, net_2990, net_2989, net_2988, net_2987, net_2986, net_2985, net_2984, net_2983, net_2982, net_2981, net_2980, net_2979, net_2978, net_2977, net_2976, net_2975, net_2974, net_2973, net_2972}),
+    .s_4_port_11_range_fault(net_3036),
+    .s_4_port_12_access_fault(net_3037),
     .s_4_port_11_r1_physical(s_4_port_17_stack_r1_physical[0]),
     .s_4_port_7_r1_slot({s_4_port_13_stack_r1_slot[7], s_4_port_13_stack_r1_slot[6], s_4_port_13_stack_r1_slot[5], s_4_port_13_stack_r1_slot[4], s_4_port_13_stack_r1_slot[3], s_4_port_13_stack_r1_slot[2], s_4_port_13_stack_r1_slot[1], s_4_port_13_stack_r1_slot[0]}),
     .s_4_port_4_w_en(s_4_port_10_stack_w_en[0]),
@@ -1294,12 +1300,12 @@ s_3_cpu_7_control_12_StackControl s_8_instance_5_stack (
     .s_4_port_11_special_sel({s_4_port_17_stack_special_sel[4], s_4_port_17_stack_special_sel[3], s_4_port_17_stack_special_sel[2], s_4_port_17_stack_special_sel[1], s_4_port_17_stack_special_sel[0]}),
     .s_4_port_12_special_data({s_4_port_18_stack_special_data[63], s_4_port_18_stack_special_data[62], s_4_port_18_stack_special_data[61], s_4_port_18_stack_special_data[60], s_4_port_18_stack_special_data[59], s_4_port_18_stack_special_data[58], s_4_port_18_stack_special_data[57], s_4_port_18_stack_special_data[56], s_4_port_18_stack_special_data[55], s_4_port_18_stack_special_data[54], s_4_port_18_stack_special_data[53], s_4_port_18_stack_special_data[52], s_4_port_18_stack_special_data[51], s_4_port_18_stack_special_data[50], s_4_port_18_stack_special_data[49], s_4_port_18_stack_special_data[48], s_4_port_18_stack_special_data[47], s_4_port_18_stack_special_data[46], s_4_port_18_stack_special_data[45], s_4_port_18_stack_special_data[44], s_4_port_18_stack_special_data[43], s_4_port_18_stack_special_data[42], s_4_port_18_stack_special_data[41], s_4_port_18_stack_special_data[40], s_4_port_18_stack_special_data[39], s_4_port_18_stack_special_data[38], s_4_port_18_stack_special_data[37], s_4_port_18_stack_special_data[36], s_4_port_18_stack_special_data[35], s_4_port_18_stack_special_data[34], s_4_port_18_stack_special_data[33], s_4_port_18_stack_special_data[32], s_4_port_18_stack_special_data[31], s_4_port_18_stack_special_data[30], s_4_port_18_stack_special_data[29], s_4_port_18_stack_special_data[28], s_4_port_18_stack_special_data[27], s_4_port_18_stack_special_data[26], s_4_port_18_stack_special_data[25], s_4_port_18_stack_special_data[24], s_4_port_18_stack_special_data[23], s_4_port_18_stack_special_data[22], s_4_port_18_stack_special_data[21], s_4_port_18_stack_special_data[20], s_4_port_18_stack_special_data[19], s_4_port_18_stack_special_data[18], s_4_port_18_stack_special_data[17], s_4_port_18_stack_special_data[16], s_4_port_18_stack_special_data[15], s_4_port_18_stack_special_data[14], s_4_port_18_stack_special_data[13], s_4_port_18_stack_special_data[12], s_4_port_18_stack_special_data[11], s_4_port_18_stack_special_data[10], s_4_port_18_stack_special_data[9], s_4_port_18_stack_special_data[8], s_4_port_18_stack_special_data[7], s_4_port_18_stack_special_data[6], s_4_port_18_stack_special_data[5], s_4_port_18_stack_special_data[4], s_4_port_18_stack_special_data[3], s_4_port_18_stack_special_data[2], s_4_port_18_stack_special_data[1], s_4_port_18_stack_special_data[0]}),
     .s_4_port_13_special_value({s_4_port_19_stack_special_value[63], s_4_port_19_stack_special_value[62], s_4_port_19_stack_special_value[61], s_4_port_19_stack_special_value[60], s_4_port_19_stack_special_value[59], s_4_port_19_stack_special_value[58], s_4_port_19_stack_special_value[57], s_4_port_19_stack_special_value[56], s_4_port_19_stack_special_value[55], s_4_port_19_stack_special_value[54], s_4_port_19_stack_special_value[53], s_4_port_19_stack_special_value[52], s_4_port_19_stack_special_value[51], s_4_port_19_stack_special_value[50], s_4_port_19_stack_special_value[49], s_4_port_19_stack_special_value[48], s_4_port_19_stack_special_value[47], s_4_port_19_stack_special_value[46], s_4_port_19_stack_special_value[45], s_4_port_19_stack_special_value[44], s_4_port_19_stack_special_value[43], s_4_port_19_stack_special_value[42], s_4_port_19_stack_special_value[41], s_4_port_19_stack_special_value[40], s_4_port_19_stack_special_value[39], s_4_port_19_stack_special_value[38], s_4_port_19_stack_special_value[37], s_4_port_19_stack_special_value[36], s_4_port_19_stack_special_value[35], s_4_port_19_stack_special_value[34], s_4_port_19_stack_special_value[33], s_4_port_19_stack_special_value[32], s_4_port_19_stack_special_value[31], s_4_port_19_stack_special_value[30], s_4_port_19_stack_special_value[29], s_4_port_19_stack_special_value[28], s_4_port_19_stack_special_value[27], s_4_port_19_stack_special_value[26], s_4_port_19_stack_special_value[25], s_4_port_19_stack_special_value[24], s_4_port_19_stack_special_value[23], s_4_port_19_stack_special_value[22], s_4_port_19_stack_special_value[21], s_4_port_19_stack_special_value[20], s_4_port_19_stack_special_value[19], s_4_port_19_stack_special_value[18], s_4_port_19_stack_special_value[17], s_4_port_19_stack_special_value[16], s_4_port_19_stack_special_value[15], s_4_port_19_stack_special_value[14], s_4_port_19_stack_special_value[13], s_4_port_19_stack_special_value[12], s_4_port_19_stack_special_value[11], s_4_port_19_stack_special_value[10], s_4_port_19_stack_special_value[9], s_4_port_19_stack_special_value[8], s_4_port_19_stack_special_value[7], s_4_port_19_stack_special_value[6], s_4_port_19_stack_special_value[5], s_4_port_19_stack_special_value[4], s_4_port_19_stack_special_value[3], s_4_port_19_stack_special_value[2], s_4_port_19_stack_special_value[1], s_4_port_19_stack_special_value[0]}),
-    .s_4_port_9_mem_valid(net_3252),
-    .s_4_port_9_mem_store(net_3253),
-    .s_4_port_14_mem_write_data({net_3317, net_3316, net_3315, net_3314, net_3313, net_3312, net_3311, net_3310, net_3309, net_3308, net_3307, net_3306, net_3305, net_3304, net_3303, net_3302, net_3301, net_3300, net_3299, net_3298, net_3297, net_3296, net_3295, net_3294, net_3293, net_3292, net_3291, net_3290, net_3289, net_3288, net_3287, net_3286, net_3285, net_3284, net_3283, net_3282, net_3281, net_3280, net_3279, net_3278, net_3277, net_3276, net_3275, net_3274, net_3273, net_3272, net_3271, net_3270, net_3269, net_3268, net_3267, net_3266, net_3265, net_3264, net_3263, net_3262, net_3261, net_3260, net_3259, net_3258, net_3257, net_3256, net_3255, net_3254}),
+    .s_4_port_9_mem_valid(net_3255),
+    .s_4_port_9_mem_store(net_3256),
+    .s_4_port_14_mem_write_data({net_3320, net_3319, net_3318, net_3317, net_3316, net_3315, net_3314, net_3313, net_3312, net_3311, net_3310, net_3309, net_3308, net_3307, net_3306, net_3305, net_3304, net_3303, net_3302, net_3301, net_3300, net_3299, net_3298, net_3297, net_3296, net_3295, net_3294, net_3293, net_3292, net_3291, net_3290, net_3289, net_3288, net_3287, net_3286, net_3285, net_3284, net_3283, net_3282, net_3281, net_3280, net_3279, net_3278, net_3277, net_3276, net_3275, net_3274, net_3273, net_3272, net_3271, net_3270, net_3269, net_3268, net_3267, net_3266, net_3265, net_3264, net_3263, net_3262, net_3261, net_3260, net_3259, net_3258, net_3257}),
     .s_4_port_9_mem_ready(s_4_port_6_memory_9_req_ready[0]),
     .s_4_port_13_mem_res_valid(s_4_port_6_memory_9_res_valid[0]),
-    .s_4_port_13_mem_res_ready(net_3320),
+    .s_4_port_13_mem_res_ready(net_3323),
     .s_4_port_13_mem_read_data({s_4_port_6_memory_9_read_data[63], s_4_port_6_memory_9_read_data[62], s_4_port_6_memory_9_read_data[61], s_4_port_6_memory_9_read_data[60], s_4_port_6_memory_9_read_data[59], s_4_port_6_memory_9_read_data[58], s_4_port_6_memory_9_read_data[57], s_4_port_6_memory_9_read_data[56], s_4_port_6_memory_9_read_data[55], s_4_port_6_memory_9_read_data[54], s_4_port_6_memory_9_read_data[53], s_4_port_6_memory_9_read_data[52], s_4_port_6_memory_9_read_data[51], s_4_port_6_memory_9_read_data[50], s_4_port_6_memory_9_read_data[49], s_4_port_6_memory_9_read_data[48], s_4_port_6_memory_9_read_data[47], s_4_port_6_memory_9_read_data[46], s_4_port_6_memory_9_read_data[45], s_4_port_6_memory_9_read_data[44], s_4_port_6_memory_9_read_data[43], s_4_port_6_memory_9_read_data[42], s_4_port_6_memory_9_read_data[41], s_4_port_6_memory_9_read_data[40], s_4_port_6_memory_9_read_data[39], s_4_port_6_memory_9_read_data[38], s_4_port_6_memory_9_read_data[37], s_4_port_6_memory_9_read_data[36], s_4_port_6_memory_9_read_data[35], s_4_port_6_memory_9_read_data[34], s_4_port_6_memory_9_read_data[33], s_4_port_6_memory_9_read_data[32], s_4_port_6_memory_9_read_data[31], s_4_port_6_memory_9_read_data[30], s_4_port_6_memory_9_read_data[29], s_4_port_6_memory_9_read_data[28], s_4_port_6_memory_9_read_data[27], s_4_port_6_memory_9_read_data[26], s_4_port_6_memory_9_read_data[25], s_4_port_6_memory_9_read_data[24], s_4_port_6_memory_9_read_data[23], s_4_port_6_memory_9_read_data[22], s_4_port_6_memory_9_read_data[21], s_4_port_6_memory_9_read_data[20], s_4_port_6_memory_9_read_data[19], s_4_port_6_memory_9_read_data[18], s_4_port_6_memory_9_read_data[17], s_4_port_6_memory_9_read_data[16], s_4_port_6_memory_9_read_data[15], s_4_port_6_memory_9_read_data[14], s_4_port_6_memory_9_read_data[13], s_4_port_6_memory_9_read_data[12], s_4_port_6_memory_9_read_data[11], s_4_port_6_memory_9_read_data[10], s_4_port_6_memory_9_read_data[9], s_4_port_6_memory_9_read_data[8], s_4_port_6_memory_9_read_data[7], s_4_port_6_memory_9_read_data[6], s_4_port_6_memory_9_read_data[5], s_4_port_6_memory_9_read_data[4], s_4_port_6_memory_9_read_data[3], s_4_port_6_memory_9_read_data[2], s_4_port_6_memory_9_read_data[1], s_4_port_6_memory_9_read_data[0]}),
     .s_4_port_9_mem_error(s_4_port_6_memory_5_error[0]),
     .s_4_port_8_mem_line(s_4_port_6_memory_4_line[0]),
@@ -1308,56 +1314,56 @@ s_3_cpu_7_control_12_StackControl s_8_instance_5_stack (
     .s_4_port_13_mem_line_read({s_4_port_6_memory_14_line_read_data[255], s_4_port_6_memory_14_line_read_data[254], s_4_port_6_memory_14_line_read_data[253], s_4_port_6_memory_14_line_read_data[252], s_4_port_6_memory_14_line_read_data[251], s_4_port_6_memory_14_line_read_data[250], s_4_port_6_memory_14_line_read_data[249], s_4_port_6_memory_14_line_read_data[248], s_4_port_6_memory_14_line_read_data[247], s_4_port_6_memory_14_line_read_data[246], s_4_port_6_memory_14_line_read_data[245], s_4_port_6_memory_14_line_read_data[244], s_4_port_6_memory_14_line_read_data[243], s_4_port_6_memory_14_line_read_data[242], s_4_port_6_memory_14_line_read_data[241], s_4_port_6_memory_14_line_read_data[240], s_4_port_6_memory_14_line_read_data[239], s_4_port_6_memory_14_line_read_data[238], s_4_port_6_memory_14_line_read_data[237], s_4_port_6_memory_14_line_read_data[236], s_4_port_6_memory_14_line_read_data[235], s_4_port_6_memory_14_line_read_data[234], s_4_port_6_memory_14_line_read_data[233], s_4_port_6_memory_14_line_read_data[232], s_4_port_6_memory_14_line_read_data[231], s_4_port_6_memory_14_line_read_data[230], s_4_port_6_memory_14_line_read_data[229], s_4_port_6_memory_14_line_read_data[228], s_4_port_6_memory_14_line_read_data[227], s_4_port_6_memory_14_line_read_data[226], s_4_port_6_memory_14_line_read_data[225], s_4_port_6_memory_14_line_read_data[224], s_4_port_6_memory_14_line_read_data[223], s_4_port_6_memory_14_line_read_data[222], s_4_port_6_memory_14_line_read_data[221], s_4_port_6_memory_14_line_read_data[220], s_4_port_6_memory_14_line_read_data[219], s_4_port_6_memory_14_line_read_data[218], s_4_port_6_memory_14_line_read_data[217], s_4_port_6_memory_14_line_read_data[216], s_4_port_6_memory_14_line_read_data[215], s_4_port_6_memory_14_line_read_data[214], s_4_port_6_memory_14_line_read_data[213], s_4_port_6_memory_14_line_read_data[212], s_4_port_6_memory_14_line_read_data[211], s_4_port_6_memory_14_line_read_data[210], s_4_port_6_memory_14_line_read_data[209], s_4_port_6_memory_14_line_read_data[208], s_4_port_6_memory_14_line_read_data[207], s_4_port_6_memory_14_line_read_data[206], s_4_port_6_memory_14_line_read_data[205], s_4_port_6_memory_14_line_read_data[204], s_4_port_6_memory_14_line_read_data[203], s_4_port_6_memory_14_line_read_data[202], s_4_port_6_memory_14_line_read_data[201], s_4_port_6_memory_14_line_read_data[200], s_4_port_6_memory_14_line_read_data[199], s_4_port_6_memory_14_line_read_data[198], s_4_port_6_memory_14_line_read_data[197], s_4_port_6_memory_14_line_read_data[196], s_4_port_6_memory_14_line_read_data[195], s_4_port_6_memory_14_line_read_data[194], s_4_port_6_memory_14_line_read_data[193], s_4_port_6_memory_14_line_read_data[192], s_4_port_6_memory_14_line_read_data[191], s_4_port_6_memory_14_line_read_data[190], s_4_port_6_memory_14_line_read_data[189], s_4_port_6_memory_14_line_read_data[188], s_4_port_6_memory_14_line_read_data[187], s_4_port_6_memory_14_line_read_data[186], s_4_port_6_memory_14_line_read_data[185], s_4_port_6_memory_14_line_read_data[184], s_4_port_6_memory_14_line_read_data[183], s_4_port_6_memory_14_line_read_data[182], s_4_port_6_memory_14_line_read_data[181], s_4_port_6_memory_14_line_read_data[180], s_4_port_6_memory_14_line_read_data[179], s_4_port_6_memory_14_line_read_data[178], s_4_port_6_memory_14_line_read_data[177], s_4_port_6_memory_14_line_read_data[176], s_4_port_6_memory_14_line_read_data[175], s_4_port_6_memory_14_line_read_data[174], s_4_port_6_memory_14_line_read_data[173], s_4_port_6_memory_14_line_read_data[172], s_4_port_6_memory_14_line_read_data[171], s_4_port_6_memory_14_line_read_data[170], s_4_port_6_memory_14_line_read_data[169], s_4_port_6_memory_14_line_read_data[168], s_4_port_6_memory_14_line_read_data[167], s_4_port_6_memory_14_line_read_data[166], s_4_port_6_memory_14_line_read_data[165], s_4_port_6_memory_14_line_read_data[164], s_4_port_6_memory_14_line_read_data[163], s_4_port_6_memory_14_line_read_data[162], s_4_port_6_memory_14_line_read_data[161], s_4_port_6_memory_14_line_read_data[160], s_4_port_6_memory_14_line_read_data[159], s_4_port_6_memory_14_line_read_data[158], s_4_port_6_memory_14_line_read_data[157], s_4_port_6_memory_14_line_read_data[156], s_4_port_6_memory_14_line_read_data[155], s_4_port_6_memory_14_line_read_data[154], s_4_port_6_memory_14_line_read_data[153], s_4_port_6_memory_14_line_read_data[152], s_4_port_6_memory_14_line_read_data[151], s_4_port_6_memory_14_line_read_data[150], s_4_port_6_memory_14_line_read_data[149], s_4_port_6_memory_14_line_read_data[148], s_4_port_6_memory_14_line_read_data[147], s_4_port_6_memory_14_line_read_data[146], s_4_port_6_memory_14_line_read_data[145], s_4_port_6_memory_14_line_read_data[144], s_4_port_6_memory_14_line_read_data[143], s_4_port_6_memory_14_line_read_data[142], s_4_port_6_memory_14_line_read_data[141], s_4_port_6_memory_14_line_read_data[140], s_4_port_6_memory_14_line_read_data[139], s_4_port_6_memory_14_line_read_data[138], s_4_port_6_memory_14_line_read_data[137], s_4_port_6_memory_14_line_read_data[136], s_4_port_6_memory_14_line_read_data[135], s_4_port_6_memory_14_line_read_data[134], s_4_port_6_memory_14_line_read_data[133], s_4_port_6_memory_14_line_read_data[132], s_4_port_6_memory_14_line_read_data[131], s_4_port_6_memory_14_line_read_data[130], s_4_port_6_memory_14_line_read_data[129], s_4_port_6_memory_14_line_read_data[128], s_4_port_6_memory_14_line_read_data[127], s_4_port_6_memory_14_line_read_data[126], s_4_port_6_memory_14_line_read_data[125], s_4_port_6_memory_14_line_read_data[124], s_4_port_6_memory_14_line_read_data[123], s_4_port_6_memory_14_line_read_data[122], s_4_port_6_memory_14_line_read_data[121], s_4_port_6_memory_14_line_read_data[120], s_4_port_6_memory_14_line_read_data[119], s_4_port_6_memory_14_line_read_data[118], s_4_port_6_memory_14_line_read_data[117], s_4_port_6_memory_14_line_read_data[116], s_4_port_6_memory_14_line_read_data[115], s_4_port_6_memory_14_line_read_data[114], s_4_port_6_memory_14_line_read_data[113], s_4_port_6_memory_14_line_read_data[112], s_4_port_6_memory_14_line_read_data[111], s_4_port_6_memory_14_line_read_data[110], s_4_port_6_memory_14_line_read_data[109], s_4_port_6_memory_14_line_read_data[108], s_4_port_6_memory_14_line_read_data[107], s_4_port_6_memory_14_line_read_data[106], s_4_port_6_memory_14_line_read_data[105], s_4_port_6_memory_14_line_read_data[104], s_4_port_6_memory_14_line_read_data[103], s_4_port_6_memory_14_line_read_data[102], s_4_port_6_memory_14_line_read_data[101], s_4_port_6_memory_14_line_read_data[100], s_4_port_6_memory_14_line_read_data[99], s_4_port_6_memory_14_line_read_data[98], s_4_port_6_memory_14_line_read_data[97], s_4_port_6_memory_14_line_read_data[96], s_4_port_6_memory_14_line_read_data[95], s_4_port_6_memory_14_line_read_data[94], s_4_port_6_memory_14_line_read_data[93], s_4_port_6_memory_14_line_read_data[92], s_4_port_6_memory_14_line_read_data[91], s_4_port_6_memory_14_line_read_data[90], s_4_port_6_memory_14_line_read_data[89], s_4_port_6_memory_14_line_read_data[88], s_4_port_6_memory_14_line_read_data[87], s_4_port_6_memory_14_line_read_data[86], s_4_port_6_memory_14_line_read_data[85], s_4_port_6_memory_14_line_read_data[84], s_4_port_6_memory_14_line_read_data[83], s_4_port_6_memory_14_line_read_data[82], s_4_port_6_memory_14_line_read_data[81], s_4_port_6_memory_14_line_read_data[80], s_4_port_6_memory_14_line_read_data[79], s_4_port_6_memory_14_line_read_data[78], s_4_port_6_memory_14_line_read_data[77], s_4_port_6_memory_14_line_read_data[76], s_4_port_6_memory_14_line_read_data[75], s_4_port_6_memory_14_line_read_data[74], s_4_port_6_memory_14_line_read_data[73], s_4_port_6_memory_14_line_read_data[72], s_4_port_6_memory_14_line_read_data[71], s_4_port_6_memory_14_line_read_data[70], s_4_port_6_memory_14_line_read_data[69], s_4_port_6_memory_14_line_read_data[68], s_4_port_6_memory_14_line_read_data[67], s_4_port_6_memory_14_line_read_data[66], s_4_port_6_memory_14_line_read_data[65], s_4_port_6_memory_14_line_read_data[64], s_4_port_6_memory_14_line_read_data[63], s_4_port_6_memory_14_line_read_data[62], s_4_port_6_memory_14_line_read_data[61], s_4_port_6_memory_14_line_read_data[60], s_4_port_6_memory_14_line_read_data[59], s_4_port_6_memory_14_line_read_data[58], s_4_port_6_memory_14_line_read_data[57], s_4_port_6_memory_14_line_read_data[56], s_4_port_6_memory_14_line_read_data[55], s_4_port_6_memory_14_line_read_data[54], s_4_port_6_memory_14_line_read_data[53], s_4_port_6_memory_14_line_read_data[52], s_4_port_6_memory_14_line_read_data[51], s_4_port_6_memory_14_line_read_data[50], s_4_port_6_memory_14_line_read_data[49], s_4_port_6_memory_14_line_read_data[48], s_4_port_6_memory_14_line_read_data[47], s_4_port_6_memory_14_line_read_data[46], s_4_port_6_memory_14_line_read_data[45], s_4_port_6_memory_14_line_read_data[44], s_4_port_6_memory_14_line_read_data[43], s_4_port_6_memory_14_line_read_data[42], s_4_port_6_memory_14_line_read_data[41], s_4_port_6_memory_14_line_read_data[40], s_4_port_6_memory_14_line_read_data[39], s_4_port_6_memory_14_line_read_data[38], s_4_port_6_memory_14_line_read_data[37], s_4_port_6_memory_14_line_read_data[36], s_4_port_6_memory_14_line_read_data[35], s_4_port_6_memory_14_line_read_data[34], s_4_port_6_memory_14_line_read_data[33], s_4_port_6_memory_14_line_read_data[32], s_4_port_6_memory_14_line_read_data[31], s_4_port_6_memory_14_line_read_data[30], s_4_port_6_memory_14_line_read_data[29], s_4_port_6_memory_14_line_read_data[28], s_4_port_6_memory_14_line_read_data[27], s_4_port_6_memory_14_line_read_data[26], s_4_port_6_memory_14_line_read_data[25], s_4_port_6_memory_14_line_read_data[24], s_4_port_6_memory_14_line_read_data[23], s_4_port_6_memory_14_line_read_data[22], s_4_port_6_memory_14_line_read_data[21], s_4_port_6_memory_14_line_read_data[20], s_4_port_6_memory_14_line_read_data[19], s_4_port_6_memory_14_line_read_data[18], s_4_port_6_memory_14_line_read_data[17], s_4_port_6_memory_14_line_read_data[16], s_4_port_6_memory_14_line_read_data[15], s_4_port_6_memory_14_line_read_data[14], s_4_port_6_memory_14_line_read_data[13], s_4_port_6_memory_14_line_read_data[12], s_4_port_6_memory_14_line_read_data[11], s_4_port_6_memory_14_line_read_data[10], s_4_port_6_memory_14_line_read_data[9], s_4_port_6_memory_14_line_read_data[8], s_4_port_6_memory_14_line_read_data[7], s_4_port_6_memory_14_line_read_data[6], s_4_port_6_memory_14_line_read_data[5], s_4_port_6_memory_14_line_read_data[4], s_4_port_6_memory_14_line_read_data[3], s_4_port_6_memory_14_line_read_data[2], s_4_port_6_memory_14_line_read_data[1], s_4_port_6_memory_14_line_read_data[0]})
 );
 s_8_$builtin_7_Decoder_args_8e5269846968a1275c90faf23643e2107947fbdec9cb377bdf6c7cc93659b3bd s_8_instance_3_sel (
-    .s_4_port_2_in({net_2093, net_2092, net_2091, net_2090}),
-    .s_4_port_3_out({net_3922, net_3921, net_3920, net_3919, net_3918, net_3917, net_3916, net_3915, net_3914, net_3913, net_3912, net_3911, net_3910, net_3909, net_3908, net_3907})
+    .s_4_port_2_in({net_2094, net_2093, net_2092, net_2091}),
+    .s_4_port_3_out({net_3925, net_3924, net_3923, net_3922, net_3921, net_3920, net_3919, net_3918, net_3917, net_3916, net_3915, net_3914, net_3913, net_3912, net_3911, net_3910})
 );
 s_8_$builtin_5_Adder_args_9782456255fe8170249b8dfb10717825e64c71c5e7216f2f28ed301b837e5e27 s_8_instance_6_pc_add (
     .s_4_port_1_a({s_4_port_5_fetch_6_req_pc[63], s_4_port_5_fetch_6_req_pc[62], s_4_port_5_fetch_6_req_pc[61], s_4_port_5_fetch_6_req_pc[60], s_4_port_5_fetch_6_req_pc[59], s_4_port_5_fetch_6_req_pc[58], s_4_port_5_fetch_6_req_pc[57], s_4_port_5_fetch_6_req_pc[56], s_4_port_5_fetch_6_req_pc[55], s_4_port_5_fetch_6_req_pc[54], s_4_port_5_fetch_6_req_pc[53], s_4_port_5_fetch_6_req_pc[52], s_4_port_5_fetch_6_req_pc[51], s_4_port_5_fetch_6_req_pc[50], s_4_port_5_fetch_6_req_pc[49], s_4_port_5_fetch_6_req_pc[48], s_4_port_5_fetch_6_req_pc[47], s_4_port_5_fetch_6_req_pc[46], s_4_port_5_fetch_6_req_pc[45], s_4_port_5_fetch_6_req_pc[44], s_4_port_5_fetch_6_req_pc[43], s_4_port_5_fetch_6_req_pc[42], s_4_port_5_fetch_6_req_pc[41], s_4_port_5_fetch_6_req_pc[40], s_4_port_5_fetch_6_req_pc[39], s_4_port_5_fetch_6_req_pc[38], s_4_port_5_fetch_6_req_pc[37], s_4_port_5_fetch_6_req_pc[36], s_4_port_5_fetch_6_req_pc[35], s_4_port_5_fetch_6_req_pc[34], s_4_port_5_fetch_6_req_pc[33], s_4_port_5_fetch_6_req_pc[32], s_4_port_5_fetch_6_req_pc[31], s_4_port_5_fetch_6_req_pc[30], s_4_port_5_fetch_6_req_pc[29], s_4_port_5_fetch_6_req_pc[28], s_4_port_5_fetch_6_req_pc[27], s_4_port_5_fetch_6_req_pc[26], s_4_port_5_fetch_6_req_pc[25], s_4_port_5_fetch_6_req_pc[24], s_4_port_5_fetch_6_req_pc[23], s_4_port_5_fetch_6_req_pc[22], s_4_port_5_fetch_6_req_pc[21], s_4_port_5_fetch_6_req_pc[20], s_4_port_5_fetch_6_req_pc[19], s_4_port_5_fetch_6_req_pc[18], s_4_port_5_fetch_6_req_pc[17], s_4_port_5_fetch_6_req_pc[16], s_4_port_5_fetch_6_req_pc[15], s_4_port_5_fetch_6_req_pc[14], s_4_port_5_fetch_6_req_pc[13], s_4_port_5_fetch_6_req_pc[12], s_4_port_5_fetch_6_req_pc[11], s_4_port_5_fetch_6_req_pc[10], s_4_port_5_fetch_6_req_pc[9], s_4_port_5_fetch_6_req_pc[8], s_4_port_5_fetch_6_req_pc[7], s_4_port_5_fetch_6_req_pc[6], s_4_port_5_fetch_6_req_pc[5], s_4_port_5_fetch_6_req_pc[4], s_4_port_5_fetch_6_req_pc[3], s_4_port_5_fetch_6_req_pc[2], s_4_port_5_fetch_6_req_pc[1], s_4_port_5_fetch_6_req_pc[0]}),
-    .s_4_port_1_b({net_4050, net_4049, net_4048, net_4047, net_4046, net_4045, net_4044, net_4043, net_4042, net_4041, net_4040, net_4039, net_4038, net_4037, net_4036, net_4035, net_4034, net_4033, net_4032, net_4031, net_4030, net_4029, net_4028, net_4027, net_4026, net_4025, net_4024, net_4023, net_4022, net_4021, net_4020, net_4019, net_4018, net_4017, net_4016, net_4015, net_4014, net_4013, net_4012, net_4011, net_4010, net_4009, net_4008, net_4007, net_4006, net_4005, net_4004, net_4003, net_4002, net_4001, net_4000, net_3999, net_3998, net_3997, net_3996, net_3995, net_3994, net_3993, net_3992, net_3991, net_3990, net_3989, net_3988, net_3987}),
-    .s_4_port_4_c_in(net_4051),
+    .s_4_port_1_b({net_4053, net_4052, net_4051, net_4050, net_4049, net_4048, net_4047, net_4046, net_4045, net_4044, net_4043, net_4042, net_4041, net_4040, net_4039, net_4038, net_4037, net_4036, net_4035, net_4034, net_4033, net_4032, net_4031, net_4030, net_4029, net_4028, net_4027, net_4026, net_4025, net_4024, net_4023, net_4022, net_4021, net_4020, net_4019, net_4018, net_4017, net_4016, net_4015, net_4014, net_4013, net_4012, net_4011, net_4010, net_4009, net_4008, net_4007, net_4006, net_4005, net_4004, net_4003, net_4002, net_4001, net_4000, net_3999, net_3998, net_3997, net_3996, net_3995, net_3994, net_3993, net_3992, net_3991, net_3990}),
+    .s_4_port_4_c_in(net_4054),
     .s_4_port_3_sum({s_4_port_10_stack_regs_5_rJ_in[63], s_4_port_10_stack_regs_5_rJ_in[62], s_4_port_10_stack_regs_5_rJ_in[61], s_4_port_10_stack_regs_5_rJ_in[60], s_4_port_10_stack_regs_5_rJ_in[59], s_4_port_10_stack_regs_5_rJ_in[58], s_4_port_10_stack_regs_5_rJ_in[57], s_4_port_10_stack_regs_5_rJ_in[56], s_4_port_10_stack_regs_5_rJ_in[55], s_4_port_10_stack_regs_5_rJ_in[54], s_4_port_10_stack_regs_5_rJ_in[53], s_4_port_10_stack_regs_5_rJ_in[52], s_4_port_10_stack_regs_5_rJ_in[51], s_4_port_10_stack_regs_5_rJ_in[50], s_4_port_10_stack_regs_5_rJ_in[49], s_4_port_10_stack_regs_5_rJ_in[48], s_4_port_10_stack_regs_5_rJ_in[47], s_4_port_10_stack_regs_5_rJ_in[46], s_4_port_10_stack_regs_5_rJ_in[45], s_4_port_10_stack_regs_5_rJ_in[44], s_4_port_10_stack_regs_5_rJ_in[43], s_4_port_10_stack_regs_5_rJ_in[42], s_4_port_10_stack_regs_5_rJ_in[41], s_4_port_10_stack_regs_5_rJ_in[40], s_4_port_10_stack_regs_5_rJ_in[39], s_4_port_10_stack_regs_5_rJ_in[38], s_4_port_10_stack_regs_5_rJ_in[37], s_4_port_10_stack_regs_5_rJ_in[36], s_4_port_10_stack_regs_5_rJ_in[35], s_4_port_10_stack_regs_5_rJ_in[34], s_4_port_10_stack_regs_5_rJ_in[33], s_4_port_10_stack_regs_5_rJ_in[32], s_4_port_10_stack_regs_5_rJ_in[31], s_4_port_10_stack_regs_5_rJ_in[30], s_4_port_10_stack_regs_5_rJ_in[29], s_4_port_10_stack_regs_5_rJ_in[28], s_4_port_10_stack_regs_5_rJ_in[27], s_4_port_10_stack_regs_5_rJ_in[26], s_4_port_10_stack_regs_5_rJ_in[25], s_4_port_10_stack_regs_5_rJ_in[24], s_4_port_10_stack_regs_5_rJ_in[23], s_4_port_10_stack_regs_5_rJ_in[22], s_4_port_10_stack_regs_5_rJ_in[21], s_4_port_10_stack_regs_5_rJ_in[20], s_4_port_10_stack_regs_5_rJ_in[19], s_4_port_10_stack_regs_5_rJ_in[18], s_4_port_10_stack_regs_5_rJ_in[17], s_4_port_10_stack_regs_5_rJ_in[16], s_4_port_10_stack_regs_5_rJ_in[15], s_4_port_10_stack_regs_5_rJ_in[14], s_4_port_10_stack_regs_5_rJ_in[13], s_4_port_10_stack_regs_5_rJ_in[12], s_4_port_10_stack_regs_5_rJ_in[11], s_4_port_10_stack_regs_5_rJ_in[10], s_4_port_10_stack_regs_5_rJ_in[9], s_4_port_10_stack_regs_5_rJ_in[8], s_4_port_10_stack_regs_5_rJ_in[7], s_4_port_10_stack_regs_5_rJ_in[6], s_4_port_10_stack_regs_5_rJ_in[5], s_4_port_10_stack_regs_5_rJ_in[4], s_4_port_10_stack_regs_5_rJ_in[3], s_4_port_10_stack_regs_5_rJ_in[2], s_4_port_10_stack_regs_5_rJ_in[1], s_4_port_10_stack_regs_5_rJ_in[0]}),
-    .s_4_port_5_c_out(net_4116)
+    .s_4_port_5_c_out(net_4119)
 );
 s_3_cpu_7_control_6_Branch s_8_instance_6_branch (
     .s_4_port_6_enable(s_4_port_14_decoded_branch[0]),
     .s_4_port_13_unconditional(s_4_port_20_branch_unconditional[0]),
     .s_4_port_16_condition_select({s_4_port_16_branch_condition[2], s_4_port_16_branch_condition[1], s_4_port_16_branch_condition[0]}),
     .s_4_port_5_value({s_4_port_12_branch_value[63], s_4_port_12_branch_value[62], s_4_port_12_branch_value[61], s_4_port_12_branch_value[60], s_4_port_12_branch_value[59], s_4_port_12_branch_value[58], s_4_port_12_branch_value[57], s_4_port_12_branch_value[56], s_4_port_12_branch_value[55], s_4_port_12_branch_value[54], s_4_port_12_branch_value[53], s_4_port_12_branch_value[52], s_4_port_12_branch_value[51], s_4_port_12_branch_value[50], s_4_port_12_branch_value[49], s_4_port_12_branch_value[48], s_4_port_12_branch_value[47], s_4_port_12_branch_value[46], s_4_port_12_branch_value[45], s_4_port_12_branch_value[44], s_4_port_12_branch_value[43], s_4_port_12_branch_value[42], s_4_port_12_branch_value[41], s_4_port_12_branch_value[40], s_4_port_12_branch_value[39], s_4_port_12_branch_value[38], s_4_port_12_branch_value[37], s_4_port_12_branch_value[36], s_4_port_12_branch_value[35], s_4_port_12_branch_value[34], s_4_port_12_branch_value[33], s_4_port_12_branch_value[32], s_4_port_12_branch_value[31], s_4_port_12_branch_value[30], s_4_port_12_branch_value[29], s_4_port_12_branch_value[28], s_4_port_12_branch_value[27], s_4_port_12_branch_value[26], s_4_port_12_branch_value[25], s_4_port_12_branch_value[24], s_4_port_12_branch_value[23], s_4_port_12_branch_value[22], s_4_port_12_branch_value[21], s_4_port_12_branch_value[20], s_4_port_12_branch_value[19], s_4_port_12_branch_value[18], s_4_port_12_branch_value[17], s_4_port_12_branch_value[16], s_4_port_12_branch_value[15], s_4_port_12_branch_value[14], s_4_port_12_branch_value[13], s_4_port_12_branch_value[12], s_4_port_12_branch_value[11], s_4_port_12_branch_value[10], s_4_port_12_branch_value[9], s_4_port_12_branch_value[8], s_4_port_12_branch_value[7], s_4_port_12_branch_value[6], s_4_port_12_branch_value[5], s_4_port_12_branch_value[4], s_4_port_12_branch_value[3], s_4_port_12_branch_value[2], s_4_port_12_branch_value[1], s_4_port_12_branch_value[0]}),
-    .s_4_port_2_pc({net_4249, net_4248, net_4247, net_4246, net_4245, net_4244, net_4243, net_4242, net_4241, net_4240, net_4239, net_4238, net_4237, net_4236, net_4235, net_4234, net_4233, net_4232, net_4231, net_4230, net_4229, net_4228, net_4227, net_4226, net_4225, net_4224, net_4223, net_4222, net_4221, net_4220, net_4219, net_4218, net_4217, net_4216, net_4215, net_4214, net_4213, net_4212, net_4211, net_4210, net_4209, net_4208, net_4207, net_4206, net_4205, net_4204, net_4203, net_4202, net_4201, net_4200, net_4199, net_4198, net_4197, net_4196, net_4195, net_4194, net_4193, net_4192, net_4191, net_4190, net_4189, net_4188, net_4187, net_4186}),
+    .s_4_port_2_pc({net_4252, net_4251, net_4250, net_4249, net_4248, net_4247, net_4246, net_4245, net_4244, net_4243, net_4242, net_4241, net_4240, net_4239, net_4238, net_4237, net_4236, net_4235, net_4234, net_4233, net_4232, net_4231, net_4230, net_4229, net_4228, net_4227, net_4226, net_4225, net_4224, net_4223, net_4222, net_4221, net_4220, net_4219, net_4218, net_4217, net_4216, net_4215, net_4214, net_4213, net_4212, net_4211, net_4210, net_4209, net_4208, net_4207, net_4206, net_4205, net_4204, net_4203, net_4202, net_4201, net_4200, net_4199, net_4198, net_4197, net_4196, net_4195, net_4194, net_4193, net_4192, net_4191, net_4190, net_4189}),
     .s_4_port_6_offset({s_4_port_13_branch_offset[63], s_4_port_13_branch_offset[62], s_4_port_13_branch_offset[61], s_4_port_13_branch_offset[60], s_4_port_13_branch_offset[59], s_4_port_13_branch_offset[58], s_4_port_13_branch_offset[57], s_4_port_13_branch_offset[56], s_4_port_13_branch_offset[55], s_4_port_13_branch_offset[54], s_4_port_13_branch_offset[53], s_4_port_13_branch_offset[52], s_4_port_13_branch_offset[51], s_4_port_13_branch_offset[50], s_4_port_13_branch_offset[49], s_4_port_13_branch_offset[48], s_4_port_13_branch_offset[47], s_4_port_13_branch_offset[46], s_4_port_13_branch_offset[45], s_4_port_13_branch_offset[44], s_4_port_13_branch_offset[43], s_4_port_13_branch_offset[42], s_4_port_13_branch_offset[41], s_4_port_13_branch_offset[40], s_4_port_13_branch_offset[39], s_4_port_13_branch_offset[38], s_4_port_13_branch_offset[37], s_4_port_13_branch_offset[36], s_4_port_13_branch_offset[35], s_4_port_13_branch_offset[34], s_4_port_13_branch_offset[33], s_4_port_13_branch_offset[32], s_4_port_13_branch_offset[31], s_4_port_13_branch_offset[30], s_4_port_13_branch_offset[29], s_4_port_13_branch_offset[28], s_4_port_13_branch_offset[27], s_4_port_13_branch_offset[26], s_4_port_13_branch_offset[25], s_4_port_13_branch_offset[24], s_4_port_13_branch_offset[23], s_4_port_13_branch_offset[22], s_4_port_13_branch_offset[21], s_4_port_13_branch_offset[20], s_4_port_13_branch_offset[19], s_4_port_13_branch_offset[18], s_4_port_13_branch_offset[17], s_4_port_13_branch_offset[16], s_4_port_13_branch_offset[15], s_4_port_13_branch_offset[14], s_4_port_13_branch_offset[13], s_4_port_13_branch_offset[12], s_4_port_13_branch_offset[11], s_4_port_13_branch_offset[10], s_4_port_13_branch_offset[9], s_4_port_13_branch_offset[8], s_4_port_13_branch_offset[7], s_4_port_13_branch_offset[6], s_4_port_13_branch_offset[5], s_4_port_13_branch_offset[4], s_4_port_13_branch_offset[3], s_4_port_13_branch_offset[2], s_4_port_13_branch_offset[1], s_4_port_13_branch_offset[0]}),
-    .s_4_port_5_taken(net_4314),
-    .s_4_port_6_target({net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318, net_4317, net_4316, net_4315})
+    .s_4_port_5_taken(net_4317),
+    .s_4_port_6_target({net_4381, net_4380, net_4379, net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318})
 );
 s_8_$builtin_3_Mux_args_904d12b70aa49835407d02a15e1fa514997138d2ba8dfdfff2524cb38a4ff9fa s_8_instance_11_branch_base (
     .s_4_port_6_select(s_4_port_11_decoded_pop[0]),
     .s_4_port_6_option_1_0({s_4_port_5_fetch_6_req_pc[63], s_4_port_5_fetch_6_req_pc[62], s_4_port_5_fetch_6_req_pc[61], s_4_port_5_fetch_6_req_pc[60], s_4_port_5_fetch_6_req_pc[59], s_4_port_5_fetch_6_req_pc[58], s_4_port_5_fetch_6_req_pc[57], s_4_port_5_fetch_6_req_pc[56], s_4_port_5_fetch_6_req_pc[55], s_4_port_5_fetch_6_req_pc[54], s_4_port_5_fetch_6_req_pc[53], s_4_port_5_fetch_6_req_pc[52], s_4_port_5_fetch_6_req_pc[51], s_4_port_5_fetch_6_req_pc[50], s_4_port_5_fetch_6_req_pc[49], s_4_port_5_fetch_6_req_pc[48], s_4_port_5_fetch_6_req_pc[47], s_4_port_5_fetch_6_req_pc[46], s_4_port_5_fetch_6_req_pc[45], s_4_port_5_fetch_6_req_pc[44], s_4_port_5_fetch_6_req_pc[43], s_4_port_5_fetch_6_req_pc[42], s_4_port_5_fetch_6_req_pc[41], s_4_port_5_fetch_6_req_pc[40], s_4_port_5_fetch_6_req_pc[39], s_4_port_5_fetch_6_req_pc[38], s_4_port_5_fetch_6_req_pc[37], s_4_port_5_fetch_6_req_pc[36], s_4_port_5_fetch_6_req_pc[35], s_4_port_5_fetch_6_req_pc[34], s_4_port_5_fetch_6_req_pc[33], s_4_port_5_fetch_6_req_pc[32], s_4_port_5_fetch_6_req_pc[31], s_4_port_5_fetch_6_req_pc[30], s_4_port_5_fetch_6_req_pc[29], s_4_port_5_fetch_6_req_pc[28], s_4_port_5_fetch_6_req_pc[27], s_4_port_5_fetch_6_req_pc[26], s_4_port_5_fetch_6_req_pc[25], s_4_port_5_fetch_6_req_pc[24], s_4_port_5_fetch_6_req_pc[23], s_4_port_5_fetch_6_req_pc[22], s_4_port_5_fetch_6_req_pc[21], s_4_port_5_fetch_6_req_pc[20], s_4_port_5_fetch_6_req_pc[19], s_4_port_5_fetch_6_req_pc[18], s_4_port_5_fetch_6_req_pc[17], s_4_port_5_fetch_6_req_pc[16], s_4_port_5_fetch_6_req_pc[15], s_4_port_5_fetch_6_req_pc[14], s_4_port_5_fetch_6_req_pc[13], s_4_port_5_fetch_6_req_pc[12], s_4_port_5_fetch_6_req_pc[11], s_4_port_5_fetch_6_req_pc[10], s_4_port_5_fetch_6_req_pc[9], s_4_port_5_fetch_6_req_pc[8], s_4_port_5_fetch_6_req_pc[7], s_4_port_5_fetch_6_req_pc[6], s_4_port_5_fetch_6_req_pc[5], s_4_port_5_fetch_6_req_pc[4], s_4_port_5_fetch_6_req_pc[3], s_4_port_5_fetch_6_req_pc[2], s_4_port_5_fetch_6_req_pc[1], s_4_port_5_fetch_6_req_pc[0]}),
     .s_4_port_6_option_1_1({s_4_port_10_stack_regs_6_rJ_out[63], s_4_port_10_stack_regs_6_rJ_out[62], s_4_port_10_stack_regs_6_rJ_out[61], s_4_port_10_stack_regs_6_rJ_out[60], s_4_port_10_stack_regs_6_rJ_out[59], s_4_port_10_stack_regs_6_rJ_out[58], s_4_port_10_stack_regs_6_rJ_out[57], s_4_port_10_stack_regs_6_rJ_out[56], s_4_port_10_stack_regs_6_rJ_out[55], s_4_port_10_stack_regs_6_rJ_out[54], s_4_port_10_stack_regs_6_rJ_out[53], s_4_port_10_stack_regs_6_rJ_out[52], s_4_port_10_stack_regs_6_rJ_out[51], s_4_port_10_stack_regs_6_rJ_out[50], s_4_port_10_stack_regs_6_rJ_out[49], s_4_port_10_stack_regs_6_rJ_out[48], s_4_port_10_stack_regs_6_rJ_out[47], s_4_port_10_stack_regs_6_rJ_out[46], s_4_port_10_stack_regs_6_rJ_out[45], s_4_port_10_stack_regs_6_rJ_out[44], s_4_port_10_stack_regs_6_rJ_out[43], s_4_port_10_stack_regs_6_rJ_out[42], s_4_port_10_stack_regs_6_rJ_out[41], s_4_port_10_stack_regs_6_rJ_out[40], s_4_port_10_stack_regs_6_rJ_out[39], s_4_port_10_stack_regs_6_rJ_out[38], s_4_port_10_stack_regs_6_rJ_out[37], s_4_port_10_stack_regs_6_rJ_out[36], s_4_port_10_stack_regs_6_rJ_out[35], s_4_port_10_stack_regs_6_rJ_out[34], s_4_port_10_stack_regs_6_rJ_out[33], s_4_port_10_stack_regs_6_rJ_out[32], s_4_port_10_stack_regs_6_rJ_out[31], s_4_port_10_stack_regs_6_rJ_out[30], s_4_port_10_stack_regs_6_rJ_out[29], s_4_port_10_stack_regs_6_rJ_out[28], s_4_port_10_stack_regs_6_rJ_out[27], s_4_port_10_stack_regs_6_rJ_out[26], s_4_port_10_stack_regs_6_rJ_out[25], s_4_port_10_stack_regs_6_rJ_out[24], s_4_port_10_stack_regs_6_rJ_out[23], s_4_port_10_stack_regs_6_rJ_out[22], s_4_port_10_stack_regs_6_rJ_out[21], s_4_port_10_stack_regs_6_rJ_out[20], s_4_port_10_stack_regs_6_rJ_out[19], s_4_port_10_stack_regs_6_rJ_out[18], s_4_port_10_stack_regs_6_rJ_out[17], s_4_port_10_stack_regs_6_rJ_out[16], s_4_port_10_stack_regs_6_rJ_out[15], s_4_port_10_stack_regs_6_rJ_out[14], s_4_port_10_stack_regs_6_rJ_out[13], s_4_port_10_stack_regs_6_rJ_out[12], s_4_port_10_stack_regs_6_rJ_out[11], s_4_port_10_stack_regs_6_rJ_out[10], s_4_port_10_stack_regs_6_rJ_out[9], s_4_port_10_stack_regs_6_rJ_out[8], s_4_port_10_stack_regs_6_rJ_out[7], s_4_port_10_stack_regs_6_rJ_out[6], s_4_port_10_stack_regs_6_rJ_out[5], s_4_port_10_stack_regs_6_rJ_out[4], s_4_port_10_stack_regs_6_rJ_out[3], s_4_port_10_stack_regs_6_rJ_out[2], s_4_port_10_stack_regs_6_rJ_out[1], s_4_port_10_stack_regs_6_rJ_out[0]}),
-    .s_4_port_8_selected({net_4249, net_4248, net_4247, net_4246, net_4245, net_4244, net_4243, net_4242, net_4241, net_4240, net_4239, net_4238, net_4237, net_4236, net_4235, net_4234, net_4233, net_4232, net_4231, net_4230, net_4229, net_4228, net_4227, net_4226, net_4225, net_4224, net_4223, net_4222, net_4221, net_4220, net_4219, net_4218, net_4217, net_4216, net_4215, net_4214, net_4213, net_4212, net_4211, net_4210, net_4209, net_4208, net_4207, net_4206, net_4205, net_4204, net_4203, net_4202, net_4201, net_4200, net_4199, net_4198, net_4197, net_4196, net_4195, net_4194, net_4193, net_4192, net_4191, net_4190, net_4189, net_4188, net_4187, net_4186})
+    .s_4_port_8_selected({net_4252, net_4251, net_4250, net_4249, net_4248, net_4247, net_4246, net_4245, net_4244, net_4243, net_4242, net_4241, net_4240, net_4239, net_4238, net_4237, net_4236, net_4235, net_4234, net_4233, net_4232, net_4231, net_4230, net_4229, net_4228, net_4227, net_4226, net_4225, net_4224, net_4223, net_4222, net_4221, net_4220, net_4219, net_4218, net_4217, net_4216, net_4215, net_4214, net_4213, net_4212, net_4211, net_4210, net_4209, net_4208, net_4207, net_4206, net_4205, net_4204, net_4203, net_4202, net_4201, net_4200, net_4199, net_4198, net_4197, net_4196, net_4195, net_4194, net_4193, net_4192, net_4191, net_4190, net_4189})
 );
 s_8_$builtin_3_Mux_args_4561b4eec2e74f9285039e8199a7b33e0c6354800090da930e57275398982d88 s_8_instance_7_next_pc (
-    .s_4_port_6_select({net_4573, net_4572}),
+    .s_4_port_6_select({net_4576, net_4575}),
     .s_4_port_6_option_1_0({s_4_port_10_stack_regs_5_rJ_in[63], s_4_port_10_stack_regs_5_rJ_in[62], s_4_port_10_stack_regs_5_rJ_in[61], s_4_port_10_stack_regs_5_rJ_in[60], s_4_port_10_stack_regs_5_rJ_in[59], s_4_port_10_stack_regs_5_rJ_in[58], s_4_port_10_stack_regs_5_rJ_in[57], s_4_port_10_stack_regs_5_rJ_in[56], s_4_port_10_stack_regs_5_rJ_in[55], s_4_port_10_stack_regs_5_rJ_in[54], s_4_port_10_stack_regs_5_rJ_in[53], s_4_port_10_stack_regs_5_rJ_in[52], s_4_port_10_stack_regs_5_rJ_in[51], s_4_port_10_stack_regs_5_rJ_in[50], s_4_port_10_stack_regs_5_rJ_in[49], s_4_port_10_stack_regs_5_rJ_in[48], s_4_port_10_stack_regs_5_rJ_in[47], s_4_port_10_stack_regs_5_rJ_in[46], s_4_port_10_stack_regs_5_rJ_in[45], s_4_port_10_stack_regs_5_rJ_in[44], s_4_port_10_stack_regs_5_rJ_in[43], s_4_port_10_stack_regs_5_rJ_in[42], s_4_port_10_stack_regs_5_rJ_in[41], s_4_port_10_stack_regs_5_rJ_in[40], s_4_port_10_stack_regs_5_rJ_in[39], s_4_port_10_stack_regs_5_rJ_in[38], s_4_port_10_stack_regs_5_rJ_in[37], s_4_port_10_stack_regs_5_rJ_in[36], s_4_port_10_stack_regs_5_rJ_in[35], s_4_port_10_stack_regs_5_rJ_in[34], s_4_port_10_stack_regs_5_rJ_in[33], s_4_port_10_stack_regs_5_rJ_in[32], s_4_port_10_stack_regs_5_rJ_in[31], s_4_port_10_stack_regs_5_rJ_in[30], s_4_port_10_stack_regs_5_rJ_in[29], s_4_port_10_stack_regs_5_rJ_in[28], s_4_port_10_stack_regs_5_rJ_in[27], s_4_port_10_stack_regs_5_rJ_in[26], s_4_port_10_stack_regs_5_rJ_in[25], s_4_port_10_stack_regs_5_rJ_in[24], s_4_port_10_stack_regs_5_rJ_in[23], s_4_port_10_stack_regs_5_rJ_in[22], s_4_port_10_stack_regs_5_rJ_in[21], s_4_port_10_stack_regs_5_rJ_in[20], s_4_port_10_stack_regs_5_rJ_in[19], s_4_port_10_stack_regs_5_rJ_in[18], s_4_port_10_stack_regs_5_rJ_in[17], s_4_port_10_stack_regs_5_rJ_in[16], s_4_port_10_stack_regs_5_rJ_in[15], s_4_port_10_stack_regs_5_rJ_in[14], s_4_port_10_stack_regs_5_rJ_in[13], s_4_port_10_stack_regs_5_rJ_in[12], s_4_port_10_stack_regs_5_rJ_in[11], s_4_port_10_stack_regs_5_rJ_in[10], s_4_port_10_stack_regs_5_rJ_in[9], s_4_port_10_stack_regs_5_rJ_in[8], s_4_port_10_stack_regs_5_rJ_in[7], s_4_port_10_stack_regs_5_rJ_in[6], s_4_port_10_stack_regs_5_rJ_in[5], s_4_port_10_stack_regs_5_rJ_in[4], s_4_port_10_stack_regs_5_rJ_in[3], s_4_port_10_stack_regs_5_rJ_in[2], s_4_port_10_stack_regs_5_rJ_in[1], s_4_port_10_stack_regs_5_rJ_in[0]}),
-    .s_4_port_6_option_1_1({net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318, net_4317, net_4316, net_4315}),
+    .s_4_port_6_option_1_1({net_4381, net_4380, net_4379, net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318}),
     .s_4_port_6_option_1_2({s_4_port_17_effective_address[63], s_4_port_17_effective_address[62], s_4_port_17_effective_address[61], s_4_port_17_effective_address[60], s_4_port_17_effective_address[59], s_4_port_17_effective_address[58], s_4_port_17_effective_address[57], s_4_port_17_effective_address[56], s_4_port_17_effective_address[55], s_4_port_17_effective_address[54], s_4_port_17_effective_address[53], s_4_port_17_effective_address[52], s_4_port_17_effective_address[51], s_4_port_17_effective_address[50], s_4_port_17_effective_address[49], s_4_port_17_effective_address[48], s_4_port_17_effective_address[47], s_4_port_17_effective_address[46], s_4_port_17_effective_address[45], s_4_port_17_effective_address[44], s_4_port_17_effective_address[43], s_4_port_17_effective_address[42], s_4_port_17_effective_address[41], s_4_port_17_effective_address[40], s_4_port_17_effective_address[39], s_4_port_17_effective_address[38], s_4_port_17_effective_address[37], s_4_port_17_effective_address[36], s_4_port_17_effective_address[35], s_4_port_17_effective_address[34], s_4_port_17_effective_address[33], s_4_port_17_effective_address[32], s_4_port_17_effective_address[31], s_4_port_17_effective_address[30], s_4_port_17_effective_address[29], s_4_port_17_effective_address[28], s_4_port_17_effective_address[27], s_4_port_17_effective_address[26], s_4_port_17_effective_address[25], s_4_port_17_effective_address[24], s_4_port_17_effective_address[23], s_4_port_17_effective_address[22], s_4_port_17_effective_address[21], s_4_port_17_effective_address[20], s_4_port_17_effective_address[19], s_4_port_17_effective_address[18], s_4_port_17_effective_address[17], s_4_port_17_effective_address[16], s_4_port_17_effective_address[15], s_4_port_17_effective_address[14], s_4_port_17_effective_address[13], s_4_port_17_effective_address[12], s_4_port_17_effective_address[11], s_4_port_17_effective_address[10], s_4_port_17_effective_address[9], s_4_port_17_effective_address[8], s_4_port_17_effective_address[7], s_4_port_17_effective_address[6], s_4_port_17_effective_address[5], s_4_port_17_effective_address[4], s_4_port_17_effective_address[3], s_4_port_17_effective_address[2], s_4_port_17_effective_address[1], s_4_port_17_effective_address[0]}),
     .s_4_port_6_option_1_3({s_4_port_10_stack_regs_6_rT_out[63], s_4_port_10_stack_regs_6_rT_out[62], s_4_port_10_stack_regs_6_rT_out[61], s_4_port_10_stack_regs_6_rT_out[60], s_4_port_10_stack_regs_6_rT_out[59], s_4_port_10_stack_regs_6_rT_out[58], s_4_port_10_stack_regs_6_rT_out[57], s_4_port_10_stack_regs_6_rT_out[56], s_4_port_10_stack_regs_6_rT_out[55], s_4_port_10_stack_regs_6_rT_out[54], s_4_port_10_stack_regs_6_rT_out[53], s_4_port_10_stack_regs_6_rT_out[52], s_4_port_10_stack_regs_6_rT_out[51], s_4_port_10_stack_regs_6_rT_out[50], s_4_port_10_stack_regs_6_rT_out[49], s_4_port_10_stack_regs_6_rT_out[48], s_4_port_10_stack_regs_6_rT_out[47], s_4_port_10_stack_regs_6_rT_out[46], s_4_port_10_stack_regs_6_rT_out[45], s_4_port_10_stack_regs_6_rT_out[44], s_4_port_10_stack_regs_6_rT_out[43], s_4_port_10_stack_regs_6_rT_out[42], s_4_port_10_stack_regs_6_rT_out[41], s_4_port_10_stack_regs_6_rT_out[40], s_4_port_10_stack_regs_6_rT_out[39], s_4_port_10_stack_regs_6_rT_out[38], s_4_port_10_stack_regs_6_rT_out[37], s_4_port_10_stack_regs_6_rT_out[36], s_4_port_10_stack_regs_6_rT_out[35], s_4_port_10_stack_regs_6_rT_out[34], s_4_port_10_stack_regs_6_rT_out[33], s_4_port_10_stack_regs_6_rT_out[32], s_4_port_10_stack_regs_6_rT_out[31], s_4_port_10_stack_regs_6_rT_out[30], s_4_port_10_stack_regs_6_rT_out[29], s_4_port_10_stack_regs_6_rT_out[28], s_4_port_10_stack_regs_6_rT_out[27], s_4_port_10_stack_regs_6_rT_out[26], s_4_port_10_stack_regs_6_rT_out[25], s_4_port_10_stack_regs_6_rT_out[24], s_4_port_10_stack_regs_6_rT_out[23], s_4_port_10_stack_regs_6_rT_out[22], s_4_port_10_stack_regs_6_rT_out[21], s_4_port_10_stack_regs_6_rT_out[20], s_4_port_10_stack_regs_6_rT_out[19], s_4_port_10_stack_regs_6_rT_out[18], s_4_port_10_stack_regs_6_rT_out[17], s_4_port_10_stack_regs_6_rT_out[16], s_4_port_10_stack_regs_6_rT_out[15], s_4_port_10_stack_regs_6_rT_out[14], s_4_port_10_stack_regs_6_rT_out[13], s_4_port_10_stack_regs_6_rT_out[12], s_4_port_10_stack_regs_6_rT_out[11], s_4_port_10_stack_regs_6_rT_out[10], s_4_port_10_stack_regs_6_rT_out[9], s_4_port_10_stack_regs_6_rT_out[8], s_4_port_10_stack_regs_6_rT_out[7], s_4_port_10_stack_regs_6_rT_out[6], s_4_port_10_stack_regs_6_rT_out[5], s_4_port_10_stack_regs_6_rT_out[4], s_4_port_10_stack_regs_6_rT_out[3], s_4_port_10_stack_regs_6_rT_out[2], s_4_port_10_stack_regs_6_rT_out[1], s_4_port_10_stack_regs_6_rT_out[0]}),
-    .s_4_port_8_selected({net_2160, net_2159, net_2158, net_2157, net_2156, net_2155, net_2154, net_2153, net_2152, net_2151, net_2150, net_2149, net_2148, net_2147, net_2146, net_2145, net_2144, net_2143, net_2142, net_2141, net_2140, net_2139, net_2138, net_2137, net_2136, net_2135, net_2134, net_2133, net_2132, net_2131, net_2130, net_2129, net_2128, net_2127, net_2126, net_2125, net_2124, net_2123, net_2122, net_2121, net_2120, net_2119, net_2118, net_2117, net_2116, net_2115, net_2114, net_2113, net_2112, net_2111, net_2110, net_2109, net_2108, net_2107, net_2106, net_2105, net_2104, net_2103, net_2102, net_2101, net_2100, net_2099, net_2098, net_2097})
+    .s_4_port_8_selected({net_2161, net_2160, net_2159, net_2158, net_2157, net_2156, net_2155, net_2154, net_2153, net_2152, net_2151, net_2150, net_2149, net_2148, net_2147, net_2146, net_2145, net_2144, net_2143, net_2142, net_2141, net_2140, net_2139, net_2138, net_2137, net_2136, net_2135, net_2134, net_2133, net_2132, net_2131, net_2130, net_2129, net_2128, net_2127, net_2126, net_2125, net_2124, net_2123, net_2122, net_2121, net_2120, net_2119, net_2118, net_2117, net_2116, net_2115, net_2114, net_2113, net_2112, net_2111, net_2110, net_2109, net_2108, net_2107, net_2106, net_2105, net_2104, net_2103, net_2102, net_2101, net_2100, net_2099, net_2098})
 );
 s_8_$builtin_3_Mux_args_904d12b70aa49835407d02a15e1fa514997138d2ba8dfdfff2524cb38a4ff9fa s_8_instance_14_memory_address (
-    .s_4_port_6_select(net_3915),
-    .s_4_port_6_option_1_0({net_2355, net_2354, net_2353, net_2352, net_2351, net_2350, net_2349, net_2348, net_2347, net_2346, net_2345, net_2344, net_2343, net_2342, net_2341, net_2340, net_2339, net_2338, net_2337, net_2336, net_2335, net_2334, net_2333, net_2332, net_2331, net_2330, net_2329, net_2328, net_2327, net_2326, net_2325, net_2324, net_2323, net_2322, net_2321, net_2320, net_2319, net_2318, net_2317, net_2316, net_2315, net_2314, net_2313, net_2312, net_2311, net_2310, net_2309, net_2308, net_2307, net_2306, net_2305, net_2304, net_2303, net_2302, net_2301, net_2300, net_2299, net_2298, net_2297, net_2296, net_2295, net_2294, net_2293, net_2292}),
+    .s_4_port_6_select(net_3918),
+    .s_4_port_6_option_1_0({net_2356, net_2355, net_2354, net_2353, net_2352, net_2351, net_2350, net_2349, net_2348, net_2347, net_2346, net_2345, net_2344, net_2343, net_2342, net_2341, net_2340, net_2339, net_2338, net_2337, net_2336, net_2335, net_2334, net_2333, net_2332, net_2331, net_2330, net_2329, net_2328, net_2327, net_2326, net_2325, net_2324, net_2323, net_2322, net_2321, net_2320, net_2319, net_2318, net_2317, net_2316, net_2315, net_2314, net_2313, net_2312, net_2311, net_2310, net_2309, net_2308, net_2307, net_2306, net_2305, net_2304, net_2303, net_2302, net_2301, net_2300, net_2299, net_2298, net_2297, net_2296, net_2295, net_2294, net_2293}),
     .s_4_port_6_option_1_1({s_4_port_10_stack_regs_6_rS_out[63], s_4_port_10_stack_regs_6_rS_out[62], s_4_port_10_stack_regs_6_rS_out[61], s_4_port_10_stack_regs_6_rS_out[60], s_4_port_10_stack_regs_6_rS_out[59], s_4_port_10_stack_regs_6_rS_out[58], s_4_port_10_stack_regs_6_rS_out[57], s_4_port_10_stack_regs_6_rS_out[56], s_4_port_10_stack_regs_6_rS_out[55], s_4_port_10_stack_regs_6_rS_out[54], s_4_port_10_stack_regs_6_rS_out[53], s_4_port_10_stack_regs_6_rS_out[52], s_4_port_10_stack_regs_6_rS_out[51], s_4_port_10_stack_regs_6_rS_out[50], s_4_port_10_stack_regs_6_rS_out[49], s_4_port_10_stack_regs_6_rS_out[48], s_4_port_10_stack_regs_6_rS_out[47], s_4_port_10_stack_regs_6_rS_out[46], s_4_port_10_stack_regs_6_rS_out[45], s_4_port_10_stack_regs_6_rS_out[44], s_4_port_10_stack_regs_6_rS_out[43], s_4_port_10_stack_regs_6_rS_out[42], s_4_port_10_stack_regs_6_rS_out[41], s_4_port_10_stack_regs_6_rS_out[40], s_4_port_10_stack_regs_6_rS_out[39], s_4_port_10_stack_regs_6_rS_out[38], s_4_port_10_stack_regs_6_rS_out[37], s_4_port_10_stack_regs_6_rS_out[36], s_4_port_10_stack_regs_6_rS_out[35], s_4_port_10_stack_regs_6_rS_out[34], s_4_port_10_stack_regs_6_rS_out[33], s_4_port_10_stack_regs_6_rS_out[32], s_4_port_10_stack_regs_6_rS_out[31], s_4_port_10_stack_regs_6_rS_out[30], s_4_port_10_stack_regs_6_rS_out[29], s_4_port_10_stack_regs_6_rS_out[28], s_4_port_10_stack_regs_6_rS_out[27], s_4_port_10_stack_regs_6_rS_out[26], s_4_port_10_stack_regs_6_rS_out[25], s_4_port_10_stack_regs_6_rS_out[24], s_4_port_10_stack_regs_6_rS_out[23], s_4_port_10_stack_regs_6_rS_out[22], s_4_port_10_stack_regs_6_rS_out[21], s_4_port_10_stack_regs_6_rS_out[20], s_4_port_10_stack_regs_6_rS_out[19], s_4_port_10_stack_regs_6_rS_out[18], s_4_port_10_stack_regs_6_rS_out[17], s_4_port_10_stack_regs_6_rS_out[16], s_4_port_10_stack_regs_6_rS_out[15], s_4_port_10_stack_regs_6_rS_out[14], s_4_port_10_stack_regs_6_rS_out[13], s_4_port_10_stack_regs_6_rS_out[12], s_4_port_10_stack_regs_6_rS_out[11], s_4_port_10_stack_regs_6_rS_out[10], s_4_port_10_stack_regs_6_rS_out[9], s_4_port_10_stack_regs_6_rS_out[8], s_4_port_10_stack_regs_6_rS_out[7], s_4_port_10_stack_regs_6_rS_out[6], s_4_port_10_stack_regs_6_rS_out[5], s_4_port_10_stack_regs_6_rS_out[4], s_4_port_10_stack_regs_6_rS_out[3], s_4_port_10_stack_regs_6_rS_out[2], s_4_port_10_stack_regs_6_rS_out[1], s_4_port_10_stack_regs_6_rS_out[0]}),
     .s_4_port_8_selected({s_4_port_6_memory_7_address[63], s_4_port_6_memory_7_address[62], s_4_port_6_memory_7_address[61], s_4_port_6_memory_7_address[60], s_4_port_6_memory_7_address[59], s_4_port_6_memory_7_address[58], s_4_port_6_memory_7_address[57], s_4_port_6_memory_7_address[56], s_4_port_6_memory_7_address[55], s_4_port_6_memory_7_address[54], s_4_port_6_memory_7_address[53], s_4_port_6_memory_7_address[52], s_4_port_6_memory_7_address[51], s_4_port_6_memory_7_address[50], s_4_port_6_memory_7_address[49], s_4_port_6_memory_7_address[48], s_4_port_6_memory_7_address[47], s_4_port_6_memory_7_address[46], s_4_port_6_memory_7_address[45], s_4_port_6_memory_7_address[44], s_4_port_6_memory_7_address[43], s_4_port_6_memory_7_address[42], s_4_port_6_memory_7_address[41], s_4_port_6_memory_7_address[40], s_4_port_6_memory_7_address[39], s_4_port_6_memory_7_address[38], s_4_port_6_memory_7_address[37], s_4_port_6_memory_7_address[36], s_4_port_6_memory_7_address[35], s_4_port_6_memory_7_address[34], s_4_port_6_memory_7_address[33], s_4_port_6_memory_7_address[32], s_4_port_6_memory_7_address[31], s_4_port_6_memory_7_address[30], s_4_port_6_memory_7_address[29], s_4_port_6_memory_7_address[28], s_4_port_6_memory_7_address[27], s_4_port_6_memory_7_address[26], s_4_port_6_memory_7_address[25], s_4_port_6_memory_7_address[24], s_4_port_6_memory_7_address[23], s_4_port_6_memory_7_address[22], s_4_port_6_memory_7_address[21], s_4_port_6_memory_7_address[20], s_4_port_6_memory_7_address[19], s_4_port_6_memory_7_address[18], s_4_port_6_memory_7_address[17], s_4_port_6_memory_7_address[16], s_4_port_6_memory_7_address[15], s_4_port_6_memory_7_address[14], s_4_port_6_memory_7_address[13], s_4_port_6_memory_7_address[12], s_4_port_6_memory_7_address[11], s_4_port_6_memory_7_address[10], s_4_port_6_memory_7_address[9], s_4_port_6_memory_7_address[8], s_4_port_6_memory_7_address[7], s_4_port_6_memory_7_address[6], s_4_port_6_memory_7_address[5], s_4_port_6_memory_7_address[4], s_4_port_6_memory_7_address[3], s_4_port_6_memory_7_address[2], s_4_port_6_memory_7_address[1], s_4_port_6_memory_7_address[0]})
 );
 s_8_$builtin_3_Mux_args_904d12b70aa49835407d02a15e1fa514997138d2ba8dfdfff2524cb38a4ff9fa s_8_instance_11_memory_data (
-    .s_4_port_6_select(net_3915),
+    .s_4_port_6_select(net_3918),
     .s_4_port_6_option_1_0({s_4_port_10_store_data[63], s_4_port_10_store_data[62], s_4_port_10_store_data[61], s_4_port_10_store_data[60], s_4_port_10_store_data[59], s_4_port_10_store_data[58], s_4_port_10_store_data[57], s_4_port_10_store_data[56], s_4_port_10_store_data[55], s_4_port_10_store_data[54], s_4_port_10_store_data[53], s_4_port_10_store_data[52], s_4_port_10_store_data[51], s_4_port_10_store_data[50], s_4_port_10_store_data[49], s_4_port_10_store_data[48], s_4_port_10_store_data[47], s_4_port_10_store_data[46], s_4_port_10_store_data[45], s_4_port_10_store_data[44], s_4_port_10_store_data[43], s_4_port_10_store_data[42], s_4_port_10_store_data[41], s_4_port_10_store_data[40], s_4_port_10_store_data[39], s_4_port_10_store_data[38], s_4_port_10_store_data[37], s_4_port_10_store_data[36], s_4_port_10_store_data[35], s_4_port_10_store_data[34], s_4_port_10_store_data[33], s_4_port_10_store_data[32], s_4_port_10_store_data[31], s_4_port_10_store_data[30], s_4_port_10_store_data[29], s_4_port_10_store_data[28], s_4_port_10_store_data[27], s_4_port_10_store_data[26], s_4_port_10_store_data[25], s_4_port_10_store_data[24], s_4_port_10_store_data[23], s_4_port_10_store_data[22], s_4_port_10_store_data[21], s_4_port_10_store_data[20], s_4_port_10_store_data[19], s_4_port_10_store_data[18], s_4_port_10_store_data[17], s_4_port_10_store_data[16], s_4_port_10_store_data[15], s_4_port_10_store_data[14], s_4_port_10_store_data[13], s_4_port_10_store_data[12], s_4_port_10_store_data[11], s_4_port_10_store_data[10], s_4_port_10_store_data[9], s_4_port_10_store_data[8], s_4_port_10_store_data[7], s_4_port_10_store_data[6], s_4_port_10_store_data[5], s_4_port_10_store_data[4], s_4_port_10_store_data[3], s_4_port_10_store_data[2], s_4_port_10_store_data[1], s_4_port_10_store_data[0]}),
-    .s_4_port_6_option_1_1({net_3317, net_3316, net_3315, net_3314, net_3313, net_3312, net_3311, net_3310, net_3309, net_3308, net_3307, net_3306, net_3305, net_3304, net_3303, net_3302, net_3301, net_3300, net_3299, net_3298, net_3297, net_3296, net_3295, net_3294, net_3293, net_3292, net_3291, net_3290, net_3289, net_3288, net_3287, net_3286, net_3285, net_3284, net_3283, net_3282, net_3281, net_3280, net_3279, net_3278, net_3277, net_3276, net_3275, net_3274, net_3273, net_3272, net_3271, net_3270, net_3269, net_3268, net_3267, net_3266, net_3265, net_3264, net_3263, net_3262, net_3261, net_3260, net_3259, net_3258, net_3257, net_3256, net_3255, net_3254}),
+    .s_4_port_6_option_1_1({net_3320, net_3319, net_3318, net_3317, net_3316, net_3315, net_3314, net_3313, net_3312, net_3311, net_3310, net_3309, net_3308, net_3307, net_3306, net_3305, net_3304, net_3303, net_3302, net_3301, net_3300, net_3299, net_3298, net_3297, net_3296, net_3295, net_3294, net_3293, net_3292, net_3291, net_3290, net_3289, net_3288, net_3287, net_3286, net_3285, net_3284, net_3283, net_3282, net_3281, net_3280, net_3279, net_3278, net_3277, net_3276, net_3275, net_3274, net_3273, net_3272, net_3271, net_3270, net_3269, net_3268, net_3267, net_3266, net_3265, net_3264, net_3263, net_3262, net_3261, net_3260, net_3259, net_3258, net_3257}),
     .s_4_port_8_selected({s_4_port_6_memory_10_write_data[63], s_4_port_6_memory_10_write_data[62], s_4_port_6_memory_10_write_data[61], s_4_port_6_memory_10_write_data[60], s_4_port_6_memory_10_write_data[59], s_4_port_6_memory_10_write_data[58], s_4_port_6_memory_10_write_data[57], s_4_port_6_memory_10_write_data[56], s_4_port_6_memory_10_write_data[55], s_4_port_6_memory_10_write_data[54], s_4_port_6_memory_10_write_data[53], s_4_port_6_memory_10_write_data[52], s_4_port_6_memory_10_write_data[51], s_4_port_6_memory_10_write_data[50], s_4_port_6_memory_10_write_data[49], s_4_port_6_memory_10_write_data[48], s_4_port_6_memory_10_write_data[47], s_4_port_6_memory_10_write_data[46], s_4_port_6_memory_10_write_data[45], s_4_port_6_memory_10_write_data[44], s_4_port_6_memory_10_write_data[43], s_4_port_6_memory_10_write_data[42], s_4_port_6_memory_10_write_data[41], s_4_port_6_memory_10_write_data[40], s_4_port_6_memory_10_write_data[39], s_4_port_6_memory_10_write_data[38], s_4_port_6_memory_10_write_data[37], s_4_port_6_memory_10_write_data[36], s_4_port_6_memory_10_write_data[35], s_4_port_6_memory_10_write_data[34], s_4_port_6_memory_10_write_data[33], s_4_port_6_memory_10_write_data[32], s_4_port_6_memory_10_write_data[31], s_4_port_6_memory_10_write_data[30], s_4_port_6_memory_10_write_data[29], s_4_port_6_memory_10_write_data[28], s_4_port_6_memory_10_write_data[27], s_4_port_6_memory_10_write_data[26], s_4_port_6_memory_10_write_data[25], s_4_port_6_memory_10_write_data[24], s_4_port_6_memory_10_write_data[23], s_4_port_6_memory_10_write_data[22], s_4_port_6_memory_10_write_data[21], s_4_port_6_memory_10_write_data[20], s_4_port_6_memory_10_write_data[19], s_4_port_6_memory_10_write_data[18], s_4_port_6_memory_10_write_data[17], s_4_port_6_memory_10_write_data[16], s_4_port_6_memory_10_write_data[15], s_4_port_6_memory_10_write_data[14], s_4_port_6_memory_10_write_data[13], s_4_port_6_memory_10_write_data[12], s_4_port_6_memory_10_write_data[11], s_4_port_6_memory_10_write_data[10], s_4_port_6_memory_10_write_data[9], s_4_port_6_memory_10_write_data[8], s_4_port_6_memory_10_write_data[7], s_4_port_6_memory_10_write_data[6], s_4_port_6_memory_10_write_data[5], s_4_port_6_memory_10_write_data[4], s_4_port_6_memory_10_write_data[3], s_4_port_6_memory_10_write_data[2], s_4_port_6_memory_10_write_data[1], s_4_port_6_memory_10_write_data[0]})
 );
 s_8_$builtin_3_Mux_args_2b541f5c6f922aaf58b910c71727a49b979faa42cd1e788b110b337822b976a4 s_8_instance_14_address_source (
-    .s_4_port_6_select({s_4_port_10_decoded_go[0], net_2968}),
-    .s_4_port_6_option_1_0({net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318, net_4317, net_4316, net_4315}),
-    .s_4_port_6_option_1_1({net_3032, net_3031, net_3030, net_3029, net_3028, net_3027, net_3026, net_3025, net_3024, net_3023, net_3022, net_3021, net_3020, net_3019, net_3018, net_3017, net_3016, net_3015, net_3014, net_3013, net_3012, net_3011, net_3010, net_3009, net_3008, net_3007, net_3006, net_3005, net_3004, net_3003, net_3002, net_3001, net_3000, net_2999, net_2998, net_2997, net_2996, net_2995, net_2994, net_2993, net_2992, net_2991, net_2990, net_2989, net_2988, net_2987, net_2986, net_2985, net_2984, net_2983, net_2982, net_2981, net_2980, net_2979, net_2978, net_2977, net_2976, net_2975, net_2974, net_2973, net_2972, net_2971, net_2970, net_2969}),
+    .s_4_port_6_select({s_4_port_10_decoded_go[0], net_2971}),
+    .s_4_port_6_option_1_0({net_4381, net_4380, net_4379, net_4378, net_4377, net_4376, net_4375, net_4374, net_4373, net_4372, net_4371, net_4370, net_4369, net_4368, net_4367, net_4366, net_4365, net_4364, net_4363, net_4362, net_4361, net_4360, net_4359, net_4358, net_4357, net_4356, net_4355, net_4354, net_4353, net_4352, net_4351, net_4350, net_4349, net_4348, net_4347, net_4346, net_4345, net_4344, net_4343, net_4342, net_4341, net_4340, net_4339, net_4338, net_4337, net_4336, net_4335, net_4334, net_4333, net_4332, net_4331, net_4330, net_4329, net_4328, net_4327, net_4326, net_4325, net_4324, net_4323, net_4322, net_4321, net_4320, net_4319, net_4318}),
+    .s_4_port_6_option_1_1({net_3035, net_3034, net_3033, net_3032, net_3031, net_3030, net_3029, net_3028, net_3027, net_3026, net_3025, net_3024, net_3023, net_3022, net_3021, net_3020, net_3019, net_3018, net_3017, net_3016, net_3015, net_3014, net_3013, net_3012, net_3011, net_3010, net_3009, net_3008, net_3007, net_3006, net_3005, net_3004, net_3003, net_3002, net_3001, net_3000, net_2999, net_2998, net_2997, net_2996, net_2995, net_2994, net_2993, net_2992, net_2991, net_2990, net_2989, net_2988, net_2987, net_2986, net_2985, net_2984, net_2983, net_2982, net_2981, net_2980, net_2979, net_2978, net_2977, net_2976, net_2975, net_2974, net_2973, net_2972}),
     .s_4_port_6_option_1_2({s_4_port_10_stack_regs_5_rJ_in[63], s_4_port_10_stack_regs_5_rJ_in[62], s_4_port_10_stack_regs_5_rJ_in[61], s_4_port_10_stack_regs_5_rJ_in[60], s_4_port_10_stack_regs_5_rJ_in[59], s_4_port_10_stack_regs_5_rJ_in[58], s_4_port_10_stack_regs_5_rJ_in[57], s_4_port_10_stack_regs_5_rJ_in[56], s_4_port_10_stack_regs_5_rJ_in[55], s_4_port_10_stack_regs_5_rJ_in[54], s_4_port_10_stack_regs_5_rJ_in[53], s_4_port_10_stack_regs_5_rJ_in[52], s_4_port_10_stack_regs_5_rJ_in[51], s_4_port_10_stack_regs_5_rJ_in[50], s_4_port_10_stack_regs_5_rJ_in[49], s_4_port_10_stack_regs_5_rJ_in[48], s_4_port_10_stack_regs_5_rJ_in[47], s_4_port_10_stack_regs_5_rJ_in[46], s_4_port_10_stack_regs_5_rJ_in[45], s_4_port_10_stack_regs_5_rJ_in[44], s_4_port_10_stack_regs_5_rJ_in[43], s_4_port_10_stack_regs_5_rJ_in[42], s_4_port_10_stack_regs_5_rJ_in[41], s_4_port_10_stack_regs_5_rJ_in[40], s_4_port_10_stack_regs_5_rJ_in[39], s_4_port_10_stack_regs_5_rJ_in[38], s_4_port_10_stack_regs_5_rJ_in[37], s_4_port_10_stack_regs_5_rJ_in[36], s_4_port_10_stack_regs_5_rJ_in[35], s_4_port_10_stack_regs_5_rJ_in[34], s_4_port_10_stack_regs_5_rJ_in[33], s_4_port_10_stack_regs_5_rJ_in[32], s_4_port_10_stack_regs_5_rJ_in[31], s_4_port_10_stack_regs_5_rJ_in[30], s_4_port_10_stack_regs_5_rJ_in[29], s_4_port_10_stack_regs_5_rJ_in[28], s_4_port_10_stack_regs_5_rJ_in[27], s_4_port_10_stack_regs_5_rJ_in[26], s_4_port_10_stack_regs_5_rJ_in[25], s_4_port_10_stack_regs_5_rJ_in[24], s_4_port_10_stack_regs_5_rJ_in[23], s_4_port_10_stack_regs_5_rJ_in[22], s_4_port_10_stack_regs_5_rJ_in[21], s_4_port_10_stack_regs_5_rJ_in[20], s_4_port_10_stack_regs_5_rJ_in[19], s_4_port_10_stack_regs_5_rJ_in[18], s_4_port_10_stack_regs_5_rJ_in[17], s_4_port_10_stack_regs_5_rJ_in[16], s_4_port_10_stack_regs_5_rJ_in[15], s_4_port_10_stack_regs_5_rJ_in[14], s_4_port_10_stack_regs_5_rJ_in[13], s_4_port_10_stack_regs_5_rJ_in[12], s_4_port_10_stack_regs_5_rJ_in[11], s_4_port_10_stack_regs_5_rJ_in[10], s_4_port_10_stack_regs_5_rJ_in[9], s_4_port_10_stack_regs_5_rJ_in[8], s_4_port_10_stack_regs_5_rJ_in[7], s_4_port_10_stack_regs_5_rJ_in[6], s_4_port_10_stack_regs_5_rJ_in[5], s_4_port_10_stack_regs_5_rJ_in[4], s_4_port_10_stack_regs_5_rJ_in[3], s_4_port_10_stack_regs_5_rJ_in[2], s_4_port_10_stack_regs_5_rJ_in[1], s_4_port_10_stack_regs_5_rJ_in[0]}),
     .s_4_port_8_selected({s_4_port_14_address_result[63], s_4_port_14_address_result[62], s_4_port_14_address_result[61], s_4_port_14_address_result[60], s_4_port_14_address_result[59], s_4_port_14_address_result[58], s_4_port_14_address_result[57], s_4_port_14_address_result[56], s_4_port_14_address_result[55], s_4_port_14_address_result[54], s_4_port_14_address_result[53], s_4_port_14_address_result[52], s_4_port_14_address_result[51], s_4_port_14_address_result[50], s_4_port_14_address_result[49], s_4_port_14_address_result[48], s_4_port_14_address_result[47], s_4_port_14_address_result[46], s_4_port_14_address_result[45], s_4_port_14_address_result[44], s_4_port_14_address_result[43], s_4_port_14_address_result[42], s_4_port_14_address_result[41], s_4_port_14_address_result[40], s_4_port_14_address_result[39], s_4_port_14_address_result[38], s_4_port_14_address_result[37], s_4_port_14_address_result[36], s_4_port_14_address_result[35], s_4_port_14_address_result[34], s_4_port_14_address_result[33], s_4_port_14_address_result[32], s_4_port_14_address_result[31], s_4_port_14_address_result[30], s_4_port_14_address_result[29], s_4_port_14_address_result[28], s_4_port_14_address_result[27], s_4_port_14_address_result[26], s_4_port_14_address_result[25], s_4_port_14_address_result[24], s_4_port_14_address_result[23], s_4_port_14_address_result[22], s_4_port_14_address_result[21], s_4_port_14_address_result[20], s_4_port_14_address_result[19], s_4_port_14_address_result[18], s_4_port_14_address_result[17], s_4_port_14_address_result[16], s_4_port_14_address_result[15], s_4_port_14_address_result[14], s_4_port_14_address_result[13], s_4_port_14_address_result[12], s_4_port_14_address_result[11], s_4_port_14_address_result[10], s_4_port_14_address_result[9], s_4_port_14_address_result[8], s_4_port_14_address_result[7], s_4_port_14_address_result[6], s_4_port_14_address_result[5], s_4_port_14_address_result[4], s_4_port_14_address_result[3], s_4_port_14_address_result[2], s_4_port_14_address_result[1], s_4_port_14_address_result[0]})
 );

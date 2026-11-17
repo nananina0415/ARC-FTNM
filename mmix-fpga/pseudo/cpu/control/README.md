@@ -8,13 +8,14 @@ HALT와 FAULT에서는 reset까지 해당 PC를 유지한다.
 |---|---|
 | REQUEST | 현재 PC 요청을 Fetch가 수락할 때까지 유지 |
 | WAIT | 페치 결과 또는 오류 대기 |
+| READ | 레지스터 블록 RAM 동기 읽기 1클록. 해석한 번호를 주고 다음 클록(EXECUTE)에 값을 쓴다 |
 | EXECUTE | ALU/분기 완료, 메모리 주소 캡처, 또는 HALT/fault 진입 |
 | MEMORY_REQUEST | 데이터 요청 수락 대기 |
 | MEMORY_WAIT | load 데이터 또는 store B 응답 대기 |
 | MEMORY_COMMIT | load 결과 저장 또는 store 완료 후 PC+4 |
 | HALTED | done=1, 추가 요청과 레지스터 쓰기 없음 |
 | FAULT | fault=1, 추가 요청과 레지스터 쓰기 없음 |
-| STACK | StackControl이 레지스터 스택 동작을 수행. 끝나면 EXECUTE 재실행, 명령 완료, 또는 FAULT |
+| STACK | StackControl이 레지스터 스택 동작을 수행. 끝나면 READ부터 재실행, 명령 완료, 또는 FAULT |
 
 ## 분기 구조
 
@@ -56,6 +57,11 @@ PUSHJ/PUSHGO/POP, #9E~#9F의 GO/GOI이다. GO는 EXECUTE에서 $X에 PC+4를 쓰
 
 슬롯 구조는 [reg/README.md](../reg/README.md)를 따른다. EXECUTE에서 `stack.required`이면
 STACK으로 넘어가고 ALU 쓰기, PC 진행, 메모리 시작을 하지 않는다. 명령 버퍼는 완료까지 유지한다.
+
+레지스터는 블록 RAM 동기 읽기라 StackControl이 슬롯을 직접 지정해 읽는 단계(spill 모으기,
+POP_READ, POP_HOLE, UNSAVE_HOLE, 글로벌·특수 레지스터 SAVE, TRAP의 $Y·$255)는 Registers의
+`r1_valid`/`special.valid`가 1인 클록에만 진행한다. 번호가 바뀐 첫 클록과, 직전 클록에 같은
+슬롯을 쓴 경우에는 한 클록 기다린다.
 
 | StackControl 단계 | 동작 |
 |---|---|

@@ -1,70 +1,5 @@
 alias AluDirectIO = alu::AluDirectIO
 
-seq WordReg {
-    pub clock: In<bit,1>
-    pub reset: In<bit,1>
-    pub w_en: In<bit,1>
-    pub in: WordIn
-    pub out: WordOut  // 항상 현재 값
-
-    buf: [D_FlipFlop; WORD_SIZE]
-    w_mux: Mux<2,WORD_SIZE> // <경우의수 n, 각 경우의 너비 m>
-    rst_mux: Mux<2,WORD_SIZE>
-}
-
-wire WordReg {
-    clock => { buf[..].clock }
-
-    w_mux.select    <- w_en
-    w_mux.option[0] <- [ buf[..].out ]
-    w_mux.option[1] <- in
-
-    // 동기 리셋. 쓰기보다 우선
-    rst_mux.select    <- reset
-    rst_mux.option[0] <- w_mux.selected
-    rst_mux.option[1] <- 0
-    rst_mux.selected  -> [ buf[..].in ]
-
-    out <- [ buf[..].out ]
-}
-
-bundle WordRegBus {  // WordRegPort 입장
-    r1_en: In<bit,1>
-    r1:    WordOut
-    r2_en: In<bit,1>
-    r2:    WordOut
-    w_en:  In<bit,1>
-    w:     WordIn
-}
-
-// 읽기 버스 2개, 쓰기 버스 1개에 붙는 레지스터
-
-seq WordRegPort {
-    pub clock: In<bit,1>
-    pub reset: In<bit,1>
-    pub bus: WordRegBus
-
-    mut reg: WordReg
-    r1_tri: TriState
-    r2_tri: TriState
-}
-
-wire WordRegPort {
-    clock -> reg.clock
-    reset -> reg.reset
-
-    bus.w_en -> reg.w_en
-    bus.w    -> reg.in
-
-    r1_tri.enable <- bus.r1_en
-    r1_tri.in     <- reg.out
-    r1_tri.out    -> bus.r1
-
-    r2_tri.enable <- bus.r2_en
-    r2_tri.in     <- reg.out
-    r2_tri.out    -> bus.r2
-}
-
 // 버스(GET/PUT)와 직접 와이어 양쪽으로 접근하는 레지스터
 
 seq DirectReg<N> {
@@ -151,12 +86,15 @@ wire DirectSetReg<N> {  // r=1,w=0
 bundle GeneralRegIO {
     r1_sel:  In<bit,8>
     r1_physical: In<bit,1>  // 1이면 r1_sel이 논리 번호가 아니라 슬롯 번호
-    r1_data: WordOut  // 읽기 버스 1
+    r1_data: WordOut  // 읽기 포트 1: 직전 클록에 준 번호의 값
+    r1_valid: Out<bit,1>  // r1_data가 지금 번호의 최신 값이면 1
     r2_sel:  In<bit,8>
-    r2_data: WordOut  // 읽기 버스 2
+    r2_data: WordOut  // 읽기 포트 2
+    x_sel:   In<bit,8>
+    x_data:  WordOut  // 읽기 포트 3 (store 데이터 $X)
 
     w_sel:   In<bit,8>
-    w_data:  WordIn   // 쓰기 버스
+    w_data:  WordIn   // 쓰기 포트
     w_en:    In<bit,1>
 
     // 레지스터 스택 내부 쓰기. 슬롯을 직접 지정하며 명령의 $X 쓰기와 구분한다.
@@ -170,11 +108,13 @@ bundle SpecialRegIO {
     sel: In<bit,5>
     rw: In<bit,1>
     data: WordInOut
+    valid: Out<bit,1>  // 블록 RAM 칸을 읽을 때 data가 지금 번호의 최신 값이면 1
 }
 
-// 순차회로. 내부에 순차회로를 썼으면 순차회로여야함.
-// 내부에 순차회로 삽입시 mut 붙이기
-
+// 범용 레지스터 256개는 블록 RAM 3벌에 같은 내용을 둔다. 쓰기는 세 벌에 함께 하고
+// 읽기 포트를 하나씩 쓴다(동기 읽기: 번호를 준 다음 클록에 값이 나온다).
+// 특수 레지스터 중 GET/PUT으로만 쓰는 칸은 블록 RAM 하나에 둔다.
+// ALU·레지스터 스택·TRAP이 직접 배선으로 읽는 rA rD rH rM rR rJ rO rS rG rL rT는 플립플롭이다.
 seq Registers {
     pub clock: In<bit,1>
     pub reset: In<bit,1>
@@ -184,8 +124,18 @@ seq Registers {
     pub alu_direct: *AluDirectIO
     pub stack: StackDirectIO
 
-    mut generals: [WordRegPort; 256]
-    mut specials: [DirectReg<WORD_SIZE>; 32]  // rA,rD,rH,rM,rR,rJ,rO,rS,rG,rL 자리는 미사용
+    mut ram_r1: SyncRam<256,WORD_SIZE,1>  // $Y, 분기·상수 명령의 $X, 레지스터 스택 슬롯
+    mut ram_r2: SyncRam<256,WORD_SIZE,1>  // $Z
+    mut ram_x: SyncRam<256,WORD_SIZE,1>   // store 데이터 $X
+    mut special_ram: SyncRam<32,WORD_SIZE,1>
+
+    mut r1_zero_q: ValueReg<1>  // 직전 클록 번호가 marginal이었으면 1 (0으로 읽힌다)
+    mut r2_zero_q: ValueReg<1>
+    mut x_zero_q: ValueReg<1>
+    mut r1_slot_q: ValueReg<8>  // 직전 클록 r1 슬롯
+    mut w_q: ValueReg<9>  // 직전 클록 쓰기: [0] enable, [1..9] 슬롯
+    mut special_sel_q: ValueReg<5>
+    mut special_w_q: ValueReg<6>  // 직전 클록 특수 RAM 쓰기: [0] enable, [1..6] 번호
 
     mut direct_rA: DirectReg<4>  // 비트 배치는 alu::RaBits
     mut direct_rD: DirectReg<WORD_SIZE>
@@ -197,25 +147,23 @@ seq Registers {
     mut direct_rS: DirectReg<WORD_SIZE>
     mut direct_rG: DirectSetReg<8>  // 리셋 값 255
     mut direct_rL: DirectReg<8>
+    mut direct_rT: DirectReg<WORD_SIZE>  // TRAP 목표 주소
 
     geometry: RingGeometry
     window_r1: RegisterWindow
     window_r2: RegisterWindow
+    window_x: RegisterWindow
     window_w: RegisterWindow
     r1_slot: Mux<2,8>
     w_slot: Mux<2,8>
     w_data_mux: Mux<2,WORD_SIZE>
-    r1_en_mux: Mux<2,256>  // marginal 읽기는 슬롯을 선택하지 않는다
-    r2_en_mux: Mux<2,256>
-    r1_zero: TriState  // marginal은 0으로 읽힌다
-    r2_zero: TriState
+    r1_out: Mux<2,WORD_SIZE>  // marginal은 0으로 읽힌다
+    r2_out: Mux<2,WORD_SIZE>
+    x_out: Mux<2,WORD_SIZE>
 
-    sel_r1: Decoder<8,256>
-    sel_r2: Decoder<8,256>
-    sel_w:  Decoder<8,256>
-    w_en_mux: Mux<2,256>  // w_en=0이면 모든 쓰기 enable을 0으로
     sel_special_reg: Decoder<5,32>
     special_enable: Mux<2,32>
+    special_ram_tri: TriState
 
     rA_pad: TriState<WORD_SIZE-4>  // rA의 나머지 비트는 GET 시 0
     rG_pad: TriState<WORD_SIZE-8>
@@ -224,8 +172,9 @@ seq Registers {
 
 wire Registers {
     clock => {
-        generals[..].clock,
-        specials[..].clock,
+        ram_r1.clock, ram_r2.clock, ram_x.clock, special_ram.clock,
+        r1_zero_q.clock, r2_zero_q.clock, x_zero_q.clock, r1_slot_q.clock, w_q.clock,
+        special_sel_q.clock, special_w_q.clock,
         direct_rA.clock,
         direct_rD.clock,
         direct_rH.clock,
@@ -236,10 +185,12 @@ wire Registers {
         direct_rS.clock,
         direct_rG.clock,
         direct_rL.clock,
+        direct_rT.clock,
     }
+    // 블록 RAM 내용은 reset으로 지워지지 않는다(구성 시 0).
     reset => {
-        generals[..].reset,
-        specials[..].reset,
+        r1_zero_q.reset, r2_zero_q.reset, x_zero_q.reset, r1_slot_q.reset, w_q.reset,
+        special_sel_q.reset, special_w_q.reset,
         direct_rA.reset,
         direct_rD.reset,
         direct_rH.reset,
@@ -250,6 +201,7 @@ wire Registers {
         direct_rS.reset,
         direct_rG.reset,
         direct_rL.reset,
+        direct_rT.reset,
     }
 
     // 논리 번호 -> 슬롯 변환
@@ -257,48 +209,72 @@ wire Registers {
     direct_rO.direct_out -> geometry.rO
     direct_rS.direct_out -> geometry.rS
     geometry.gamma -> OPENED
-    direct_rG.direct_out => { window_r1.g, window_r2.g, window_w.g }
-    direct_rL.direct_out => { window_r1.l, window_r2.l, window_w.l }
-    geometry.alpha => { window_r1.alpha, window_r2.alpha, window_w.alpha }
-    geometry.mask => { window_r1.mask, window_r2.mask, window_w.mask }
+    direct_rG.direct_out => { window_r1.g, window_r2.g, window_x.g, window_w.g }
+    direct_rL.direct_out => { window_r1.l, window_r2.l, window_x.l, window_w.l }
+    geometry.alpha => { window_r1.alpha, window_r2.alpha, window_x.alpha, window_w.alpha }
+    geometry.mask => { window_r1.mask, window_r2.mask, window_x.mask, window_w.mask }
 
-    // 범용 레지스터 버스 (읽기 2, 쓰기 1)
+    // 읽기 포트 1. 레지스터 스택은 r1_physical로 슬롯을 직접 지정한다.
     general.r1_sel -> window_r1.sel
     r1_slot.select <- general.r1_physical
     r1_slot.option[0] <- window_r1.slot
     r1_slot.option[1] <- general.r1_sel
-    r1_slot.selected -> sel_r1.in
-    r1_en_mux.select <- or(general.r1_physical, not(window_r1.marginal))
-    r1_en_mux.option[0] <- 0
-    r1_en_mux.option[1] <- sel_r1.out
-    r1_en_mux.selected -> [ generals[0..256].bus.r1_en ]
-    r1_zero.enable <- and(window_r1.marginal, not(general.r1_physical))
-    r1_zero.in <- 0
-    general.r1_data <= { generals[0..256].bus.r1, r1_zero.out }
+    alias r1_marginal = and(window_r1.marginal, not(general.r1_physical))
+    r1_slot.selected -> ram_r1.r_addr
+    ram_r1.r_en <- 1
+    r1_zero_q.w_en <- 1
+    r1_zero_q.in <- r1_marginal
+    r1_slot_q.w_en <- 1
+    r1_slot.selected -> r1_slot_q.in
+    r1_out.select <- r1_zero_q.out
+    r1_out.option[0] <- ram_r1.r_data
+    r1_out.option[1] <- 0
+    r1_out.selected -> general.r1_data
+    // 직전 클록 번호가 지금 번호와 같고 그 클록에 같은 슬롯을 쓰지 않았으면 최신 값이다.
+    // 같은 클록의 읽기·쓰기는 쓰기 전 값을 읽는다(SyncRam read-first).
+    alias r1_same = not(or(xor(r1_slot_q.out[0], r1_slot.selected[0]), xor(r1_slot_q.out[1], r1_slot.selected[1]), xor(r1_slot_q.out[2], r1_slot.selected[2]), xor(r1_slot_q.out[3], r1_slot.selected[3]), xor(r1_slot_q.out[4], r1_slot.selected[4]), xor(r1_slot_q.out[5], r1_slot.selected[5]), xor(r1_slot_q.out[6], r1_slot.selected[6]), xor(r1_slot_q.out[7], r1_slot.selected[7])))
+    alias r1_written = and(w_q.out[0], not(or(xor(w_q.out[1], r1_slot_q.out[0]), xor(w_q.out[2], r1_slot_q.out[1]), xor(w_q.out[3], r1_slot_q.out[2]), xor(w_q.out[4], r1_slot_q.out[3]), xor(w_q.out[5], r1_slot_q.out[4]), xor(w_q.out[6], r1_slot_q.out[5]), xor(w_q.out[7], r1_slot_q.out[6]), xor(w_q.out[8], r1_slot_q.out[7]))))
+    general.r1_valid <- or(
+        and(r1_marginal, r1_zero_q.out),
+        and(not(r1_marginal), not(r1_zero_q.out), r1_same, not(r1_written)),
+    )
 
+    // 읽기 포트 2, 3
     general.r2_sel -> window_r2.sel
-    window_r2.slot -> sel_r2.in
-    r2_en_mux.select <- not(window_r2.marginal)
-    r2_en_mux.option[0] <- 0
-    r2_en_mux.option[1] <- sel_r2.out
-    r2_en_mux.selected -> [ generals[0..256].bus.r2_en ]
-    r2_zero.enable <- window_r2.marginal
-    r2_zero.in <- 0
-    general.r2_data <= { generals[0..256].bus.r2, r2_zero.out }
+    window_r2.slot -> ram_r2.r_addr
+    ram_r2.r_en <- 1
+    r2_zero_q.w_en <- 1
+    window_r2.marginal -> r2_zero_q.in
+    r2_out.select <- r2_zero_q.out
+    r2_out.option[0] <- ram_r2.r_data
+    r2_out.option[1] <- 0
+    r2_out.selected -> general.r2_data
 
+    general.x_sel -> window_x.sel
+    window_x.slot -> ram_x.r_addr
+    ram_x.r_en <- 1
+    x_zero_q.w_en <- 1
+    window_x.marginal -> x_zero_q.in
+    x_out.select <- x_zero_q.out
+    x_out.option[0] <- ram_x.r_data
+    x_out.option[1] <- 0
+    x_out.selected -> general.x_data
+
+    // 쓰기 포트: 세 벌에 같이 쓴다. marginal 번호에는 쓰지 않는다.
     general.w_sel        -> window_w.sel
     w_slot.select        <- general.stack_w_en
     w_slot.option[0]     <- window_w.slot
     w_slot.option[1]     <- general.stack_w_sel
-    w_slot.selected      -> sel_w.in
-    w_en_mux.select      <- or(and(general.w_en, not(window_w.marginal)), general.stack_w_en)
-    w_en_mux.option[0]   <- 0
-    w_en_mux.option[1]   <- sel_w.out
-    w_en_mux.selected    -> [ generals[0..256].bus.w_en ]
+    alias w_active = or(and(general.w_en, not(window_w.marginal)), general.stack_w_en)
+    w_slot.selected => { ram_r1.w_addr, ram_r2.w_addr, ram_x.w_addr }
+    { ram_r1.w_en, ram_r2.w_en, ram_x.w_en } <= w_active
     w_data_mux.select    <- general.stack_w_en
     w_data_mux.option[0] <- general.w_data
     w_data_mux.option[1] <- general.stack_w_data
-    w_data_mux.selected  => { generals[0..256].bus.w }
+    w_data_mux.selected  => { ram_r1.w_data, ram_r2.w_data, ram_x.w_data }
+    w_q.w_en <- 1
+    w_q.in[0] <- w_active
+    w_q.in[1..9] <- w_slot.selected
 
     // 특수 레지스터 버스 (GET/PUT)
     special.sel -> sel_special_reg.in
@@ -306,26 +282,34 @@ wire Registers {
     special_enable.option[0] <- 0
     special_enable.option[1] <- sel_special_reg.out
 
-    // 일반 특수 레지스터는 버스만 사용. 전용 칸은 접근하지 않음.
-    { specials[0..32].direct_w_en } <= 0
-    { specials[0..32].direct_in } <= 0
-    specials[0..13,14..32].direct_out -> OPENED
-    specials[rT].direct_out -> stack.rT_out
-    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].enable } <= 0
-    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].rw } <= 0
-    { specials[rD,rH,rM,rR,rA,rJ,rO,rS,rG,rL].data } <= OPENED
+    // 블록 RAM 칸: rB rE rBB rC rN rI rTT rK rQ rU rV rF rP rW rX rY rZ rWW rXX rYY rZZ
+    alias special_in_ram = or(special_enable.selected[0,2,7,8,9,12,14..19,22..32])
+    alias special_ram_write = and(special_in_ram, not(special.rw))
+    special.sel -> special_ram.r_addr
+    special.sel -> special_ram.w_addr
+    special_ram.r_en <- 1
+    special_ram.w_en <- special_ram_write
+    special.data -> special_ram.w_data
+    special_ram_tri.enable <- and(special_in_ram, special.rw)
+    special_ram_tri.in <- special_ram.r_data
+    special_ram_tri.out -> special.data
+    special_sel_q.w_en <- 1
+    special.sel -> special_sel_q.in
+    special_w_q.w_en <- 1
+    special_w_q.in[0] <- special_ram_write
+    special_w_q.in[1..6] <- special.sel
+    alias special_same = not(or(xor(special_sel_q.out[0], special.sel[0]), xor(special_sel_q.out[1], special.sel[1]), xor(special_sel_q.out[2], special.sel[2]), xor(special_sel_q.out[3], special.sel[3]), xor(special_sel_q.out[4], special.sel[4])))
+    alias special_written = and(special_w_q.out[0], not(or(xor(special_w_q.out[1], special_sel_q.out[0]), xor(special_w_q.out[2], special_sel_q.out[1]), xor(special_w_q.out[3], special_sel_q.out[2]), xor(special_w_q.out[4], special_sel_q.out[3]), xor(special_w_q.out[5], special_sel_q.out[4]))))
+    special.valid <- or(not(special_in_ram), and(special_same, not(special_written)))
 
-    special_enable.selected[0,2,7..10,12..19,22..32] -> [ specials[0,2,7..10,12..19,22..32].enable ]
-    special.rw   => { specials[0,2,7..10,12..19,22..32].rw }
-    special.data <=> { specials[0,2,7..10,12..19,22..32].data }
-
-    special_enable.selected[rA, rD, rH, rM, rR, rJ] -> [
+    special_enable.selected[rA, rD, rH, rM, rR, rJ, rT] -> [
         direct_rA.enable,
         direct_rD.enable,
         direct_rH.enable,
         direct_rM.enable,
         direct_rR.enable,
         direct_rJ.enable,
+        direct_rT.enable,
     ]
     // rO, rS, rG, rL은 버스로 읽기만 한다. 쓰기는 StackControl의 직접 경로로만 한다.
     direct_rO.enable <- and(special_enable.selected[rO], special.rw)
@@ -343,6 +327,7 @@ wire Registers {
         direct_rS.rw,
         direct_rG.rw,
         direct_rL.rw,
+        direct_rT.rw,
     }
     special.data[6,7,14,15] <=> { direct_rA.data }
     special.data[0..8] <=> { direct_rG.data, direct_rL.data }
@@ -354,6 +339,7 @@ wire Registers {
         direct_rJ.data,
         direct_rO.data,
         direct_rS.data,
+        direct_rT.data,
     }
 
     rA_pad.enable <- and(special_enable.selected[rA], special.rw)
@@ -365,6 +351,11 @@ wire Registers {
     rL_pad.enable <- and(special_enable.selected[rL], special.rw)
     rL_pad.in     <- 0
     rL_pad.out    -> special.data[8..WORD_SIZE]
+
+    // TRAP 목표 주소 직접 와이어. rT 쓰기는 버스(PUT)로만 한다.
+    direct_rT.direct_out -> stack.rT_out
+    direct_rT.direct_in <- 0
+    direct_rT.direct_w_en <- 0
 
     // 레지스터 스택 직접 와이어
     direct_rJ.direct_out -> stack.rJ_out

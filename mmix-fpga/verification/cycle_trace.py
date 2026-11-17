@@ -8,7 +8,7 @@ from verify_generated import enc
 SPECIAL_NAMES = ["rB", "rD", "rE", "rH", "rJ", "rM", "rR", "rBB", "rC", "rN", "rO", "rS",
                  "rI", "rT", "rTT", "rK", "rQ", "rU", "rV", "rG", "rL", "rA", "rF", "rP",
                  "rW", "rX", "rY", "rZ", "rWW", "rXX", "rYY", "rZZ"]
-STATES = ["REQUEST", "WAIT", "EXECUTE", "HALTED", "FAULT", "MEMORY_REQUEST", "MEMORY_WAIT", "MEMORY_COMMIT", "STACK"]
+STATES = ["REQUEST", "WAIT", "EXECUTE", "HALTED", "FAULT", "MEMORY_REQUEST", "MEMORY_WAIT", "MEMORY_COMMIT", "STACK", "READ"]
 
 
 def instrumentation(path):
@@ -49,11 +49,11 @@ def instrumentation(path):
         write((',' if index else '') + f'"{name}":"%h"', signal(side, name))
     write('},"registers":[')
     for index in range(256):
-        value = f"{regs}{enc('instance','generals',str(index))}.{enc('instance','reg')}.{p('out')}"
+        value = f"{regs}{enc('instance','ram_r1')}.mem[{index}]"
         write((',' if index else '') + '"%016h"', value)
     write('],"special":[')
     for index, name in enumerate(SPECIAL_NAMES):
-        if name in ("rA", "rD", "rH", "rM", "rR", "rJ", "rO", "rS", "rG", "rL"):
+        if name in ("rA", "rD", "rH", "rM", "rR", "rJ", "rO", "rS", "rG", "rL", "rT"):
             value = f"{regs}{enc('instance','direct_'+name)}.{p('direct_out')}"
             if name == "rA":
                 # Physical compact storage -> architectural rA bits 6,7,14,15.
@@ -61,7 +61,7 @@ def instrumentation(path):
             elif name in ("rG", "rL"):
                 value = "{56'b0," + value + "}"
         else:
-            value = f"{regs}{enc('instance','specials',str(index))}.{p('direct_out')}"
+            value = f"{regs}{enc('instance','special_ram')}.mem[{index}]"
         write((',' if index else '') + '"%016h"', value)
     write('],"memory":[')
     lines += ['for(trace_index=0;trace_index<256;trace_index=trace_index+1) begin',

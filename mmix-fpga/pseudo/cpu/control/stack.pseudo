@@ -19,6 +19,8 @@ seq StackControl {
     pub x: In<bit,8>
     pub value: WordIn  // PUT 값, UNSAVE의 $Z
     pub r1_data: WordIn
+    pub r1_valid: In<bit,1>  // r1_data가 지금 슬롯의 최신 값이면 1 (레지스터는 블록 RAM 동기 읽기)
+    pub special_valid: In<bit,1>  // special_data가 지금 번호의 최신 값이면 1
 
     pub rG: In<bit,8>
     pub rL: In<bit,8>
@@ -378,7 +380,7 @@ wire StackControl {
         xor(gather_step.sum[1], fill_count.out[1]),
         xor(gather_step.sum[2], fill_count.out[2]),
     ))
-    gather_next.select <- or(and(spill_gather, not(spill_last)), and(fill_wait, res_ok, not(fill_last)))
+    gather_next.select <- or(and(spill_gather, r1_valid, not(spill_last)), and(fill_wait, res_ok, not(fill_last)))
     gather_next.option[0] <- 0
     gather_next.option[1] <- gather_step.sum
     gather.w_en <- 1
@@ -395,10 +397,10 @@ wire StackControl {
     lane.c_in <- 0
     lane.c_out -> OPENED
     lane.sum -> lane_select.in
-    words[0].w_en <- and(spill_gather, lane_select.out[0])
-    words[1].w_en <- and(spill_gather, lane_select.out[1])
-    words[2].w_en <- and(spill_gather, lane_select.out[2])
-    words[3].w_en <- and(spill_gather, lane_select.out[3])
+    words[0].w_en <- and(spill_gather, r1_valid, lane_select.out[0])
+    words[1].w_en <- and(spill_gather, r1_valid, lane_select.out[1])
+    words[2].w_en <- and(spill_gather, r1_valid, lane_select.out[2])
+    words[3].w_en <- and(spill_gather, r1_valid, lane_select.out[3])
     r1_data => { words[0..4].in }
     mem_line_data[0..64] <- words[0].out
     mem_line_data[64..128] <- words[1].out
@@ -427,15 +429,15 @@ wire StackControl {
         and(check, ring_full),
         and(g_flush, not(pending_zero)),
         and(save_flush, not(pending_zero)),
-        and(spill_gather, not(spill_last)),
+        and(spill_gather, or(not(r1_valid), not(spill_last))),
     )
-    alias next_spill_request = or(and(spill_gather, spill_last), and(spill_request, not(mem_ready)))
+    alias next_spill_request = or(and(spill_gather, r1_valid, spill_last), and(spill_request, not(mem_ready)))
     alias next_spill_wait = or(and(spill_request, mem_ready), and(spill_wait, not(mem_res_valid)))
-    alias next_pop_read = and(enter, not(need_grow), pop)
-    alias next_pop_base = pop_read
+    alias next_pop_read = or(and(enter, not(need_grow), pop), and(pop_read, not(r1_valid)))
+    alias next_pop_base = and(pop_read, r1_valid)
     alias next_fill_address = or(
         and(pop_base, pending_zero),
-        and(pop_hole, not(hole_bad), hole_needs_fill),
+        and(pop_hole, r1_valid, not(hole_bad), hole_needs_fill),
         and(unsave_done, phase_global, index_at_g),
         and(unsave_locals, not(index_zero)),
     )
@@ -443,8 +445,8 @@ wire StackControl {
     // FILL_WAIT는 응답 라인을 붙잡은 채 한 클록에 한 칸씩 ring에 쓴다.
     alias fill_done = and(fill_wait, res_ok, fill_last)
     alias next_fill_wait = or(and(fill_request, mem_ready), and(fill_wait, not(mem_res_valid)), and(fill_wait, res_ok, not(fill_last)))
-    alias next_pop_hole = or(and(pop_base, not(pending_zero)), and(fill_done, not(unsave)))
-    alias next_pop_commit = and(pop_hole, not(hole_bad), not(hole_needs_fill))
+    alias next_pop_hole = or(and(pop_base, not(pending_zero)), and(fill_done, not(unsave)), and(pop_hole, not(r1_valid)))
+    alias next_pop_commit = and(pop_hole, r1_valid, not(hole_bad), not(hole_needs_fill))
     alias next_push_commit = or(
         and(enter, not(need_grow), push, not(push_global)),
         and(check, not(ring_full), push_global),
@@ -455,19 +457,21 @@ wire StackControl {
     alias next_g_commit = and(g_clear, not(g_above))
     alias next_save_hole = or(and(check, not(ring_full), save), and(spill_wait, res_ok, save, l_nonzero))
     alias next_save_flush = or(save_hole, and(spill_wait, res_ok, save, not(l_nonzero)))
+    // 저장할 값(글로벌은 읽기 포트 1, 특수 레지스터는 버스)이 최신일 때만 요청한다.
+    alias save_ready = or(and(phase_global, r1_valid), and(phase_special, special_valid), phase_pack)
     alias next_save_request = or(
         and(save_flush, pending_zero),
-        and(save_request, not(mem_ready)),
+        and(save_request, or(not(save_ready), not(mem_ready))),
         and(save_done, not(phase_pack)),
     )
-    alias next_save_wait = or(and(save_request, mem_ready), and(save_wait, not(mem_res_valid)))
+    alias next_save_wait = or(and(save_request, save_ready, mem_ready), and(save_wait, not(mem_res_valid)))
     alias next_save_commit = and(save_done, phase_pack)
     alias next_unsave_base = and(enter, unsave)
     alias next_unsave_address = or(unsave_base, and(unsave_done, not(and(phase_global, index_at_g))))
     alias next_unsave_request = or(unsave_address, and(unsave_request, not(mem_ready)))
     alias next_unsave_wait = or(and(unsave_request, mem_ready), and(unsave_wait, not(mem_res_valid)))
-    alias next_unsave_hole = and(fill_done, unsave, phase_global)
-    alias next_unsave_locals = or(and(unsave_hole, not(hole_bad)), and(fill_done, unsave, not(phase_global)))
+    alias next_unsave_hole = or(and(fill_done, unsave, phase_global), and(unsave_hole, not(r1_valid)))
+    alias next_unsave_locals = or(and(unsave_hole, r1_valid, not(hole_bad)), and(fill_done, unsave, not(phase_global)))
     alias next_unsave_commit = and(unsave_locals, index_zero)
     alias trap_enter = and(enter, trap)
     alias next_trap_step = or(trap_enter, and(trap_step, not(step6)))
@@ -484,7 +488,7 @@ wire StackControl {
     retire <- or(push_commit, pop_ok, g_commit, save_commit, unsave_commit, step6)
     push_commit -> push_retire
     save_commit -> save_write
-    range_fault <- or(grow_bad, and(pop_hole, hole_bad), and(pop_commit, pop_bad), and(unsave_hole, hole_bad))
+    range_fault <- or(grow_bad, and(pop_hole, r1_valid, hole_bad), and(pop_commit, pop_bad), and(unsave_hole, r1_valid, hole_bad))
     access_fault <- and(or(spill_wait, fill_wait, save_wait, unsave_wait), mem_res_valid, mem_error)
 
     // 슬롯 계산. minus_one은 hole 위치(-1), X-1, L-1, G-1을 만든다.
@@ -548,9 +552,9 @@ wire StackControl {
     y_source.select <- and(or(x[0..8]), x_at_most_l)
     y_source.option[0] <- 0
     y_source.option[1] <- r1_data
-    y.w_en <- pop_read
+    y.w_en <- and(pop_read, r1_valid)
     y_source.selected -> y.in
-    k.w_en <- or(pop_hole, unsave_hole)
+    k.w_en <- and(or(pop_hole, unsave_hole), r1_valid)
     k.in <- [ r1_data[0..8] ]
 
     // PUSH: 칸 수 = X+1 또는 L. SAVE: L. POP: k+1.
@@ -614,7 +618,7 @@ wire StackControl {
     index_source.option[4] <- 27
     index_source.option[5] <- [ r1_data[0..8] ]
     index_source.selected -> index.in
-    index.w_en <- or(index_to_g, save_done, unsave_done, unsave_hole, and(unsave_locals, not(index_zero)), trap_enter, trap_step)
+    index.w_en <- or(index_to_g, save_done, unsave_done, and(unsave_hole, r1_valid), and(unsave_locals, not(index_zero)), trap_enter, and(trap_step, trap_ready))
 
     phase.w_en <- or(
         index_to_g,
@@ -623,7 +627,7 @@ wire StackControl {
         unsave_base,
         index_to_27,
         and(unsave_done, phase_special, index_zero),
-        unsave_hole,
+        and(unsave_hole, r1_valid),
     )
     phase.in[0] <- or(and(save_done, phase_global), index_to_27, unsave_hole)
     phase.in[1] <- or(and(save_done, phase_special), unsave_base)
@@ -652,7 +656,9 @@ wire StackControl {
     trap_register.option[4] <- 7   // rBB
     trap_register.option[5] <- 7   // 이 단계는 버스를 쓰지 않는다
     trap_register.option[6] <- 15  // rK
-    alias trap_special = and(trap_step, not(step5))
+    // step2($Y)와 step4($255)는 읽기 포트 1의 값이 최신일 때만 진행한다.
+    alias trap_ready = or(not(or(step2, step4)), r1_valid)
+    alias trap_special = and(trap_step, not(step5), trap_ready)
     special_write <- or(and(unsave_done, not(phase_global)), trap_special)
     special_en <- or(and(save_request, not(phase_global)), and(unsave_done, not(phase_global)), trap_special)
 
@@ -732,7 +738,7 @@ wire StackControl {
     s_add.sum -> save_address
     rS_w_en <- or(and(spill_wait, res_ok), fill_address, save_done, unsave_base, unsave_address)
 
-    mem_valid <- or(spill_request, fill_request, save_request, unsave_request)
+    mem_valid <- or(spill_request, fill_request, and(save_request, save_ready), unsave_request)
     mem_store <- or(spill_request, save_request)
     mem_line <- or(spill_request, fill_request)
     // fill은 마지막 칸을 쓸 때까지 응답 라인을 붙잡아 둔다.

@@ -3,7 +3,10 @@ import json
 
 from .catalog import SPECIAL, RAM_BYTES
 
-DIRECT = ('rA','rD','rH','rM','rR','rJ','rO','rS','rG','rL')
+# Flip-flop special registers; the others live in the special block RAM.
+DIRECT = ('rA','rD','rH','rM','rR','rJ','rO','rS','rG','rL','rT')
+# General registers are three identical block RAM copies (read ports r1/r2/x).
+GENERAL_RAMS = ('ram_r1','ram_r2','ram_x')
 
 
 def enc(*parts):
@@ -23,11 +26,13 @@ def bench(rtl):
     lines.append(top['module'] + ' dut (' + ','.join(f".{v['name']}({v['name']})" for v in top['ports']) + ');')
     lines += ['wire [63:0] g[0:255];wire [63:0] s[0:31];', 'task fixture;begin']
     for i in range(256):
-        path = reg + inst('generals', i) + '.' + inst('reg')
-        qs = ','.join(path + '.' + inst('buf', b) + '.q' for b in reversed(range(64)))
-        lines.append(f'{{{qs}}}=initial_g[{i}];')
+        for ram in GENERAL_RAMS:
+            lines.append(f'{reg}{inst(ram)}.mem[{i}]=initial_g[{i}];')
     for i, name in enumerate(SPECIAL):
-        path = reg + (inst('direct_'+name) if name in DIRECT else inst('specials', i))
+        if name not in DIRECT:
+            lines.append(f'{reg}{inst("special_ram")}.mem[{i}]=initial_s[{i}];')
+            continue
+        path = reg + inst('direct_'+name)
         width = 4 if name == 'rA' else 8 if name in ('rG','rL') else 64
         qs = ','.join(path + '.' + inst('buf', b) + '.q' for b in reversed(range(width)))
         if name == 'rA': rhs = '{initial_s[21][15:14],initial_s[21][7:6]}'
@@ -36,9 +41,12 @@ def bench(rtl):
         lines.append(f'{{{qs}}}={rhs};')
     lines += ['end endtask']
     for i in range(256):
-        lines.append(f'assign g[{i}]={reg}{inst("generals",i)}.{inst("reg")}.{p("out")};')
+        lines.append(f'assign g[{i}]={reg}{inst("ram_r1")}.mem[{i}];')
     for i, name in enumerate(SPECIAL):
-        path = reg + (inst('direct_'+name) if name in DIRECT else inst('specials', i)) + '.' + p('direct_out')
+        if name not in DIRECT:
+            lines.append(f'assign s[{i}]={reg}{inst("special_ram")}.mem[{i}];')
+            continue
+        path = reg + inst('direct_'+name) + '.' + p('direct_out')
         if name == 'rA': path = "{48'b0," + path + "[3:2],6'b0," + path + "[1:0],6'b0}"
         elif name in ('rG','rL'): path = "{56'b0," + path + "}"
         lines.append(f'assign s[{i}]={path};')
