@@ -1,11 +1,12 @@
-// L1 I-cache(LineCache, 16KB)를 통한 명령어 인출. 요청은 한 번에 하나.
+// L1 I-cache(LineCache, 16KB)를 통한 명령어 인출. 진행 중인 요청은 한 번에 하나다.
 // valid && ready인 클록 상승 에지에서 요청/응답 전달.
 // 요청을 받은 클록에 캐시를 읽고 다음 클록에 hit면 응답한다. miss면 AXI로 라인을 읽어
 // 캐시에 채운 뒤 다시 읽어 응답한다. 응답 명령어는 캐시 읽기 결과에서 고른다.
+// 응답을 받는 클록에 다음 요청도 받으므로 hit가 이어지면 매 클록 명령 하나를 낸다.
 // PC 하위 2비트는 명령어 위치 선택에 쓰지 않는다(MMIX: GO 목표의 하위 2비트는 무시되고 PC에만 남는다).
 // 응답은 제어유닛이 받을 때까지 유지. error=1이면 instruction 실행 금지.
 // PC 갱신(+4/분기)과 예외 처리는 제어유닛 담당.
-// 분기로 불필요해진 응답도 받아 버린 뒤 다음 주소를 요청.
+// flush는 지금 응답과 진행 중 요청의 결과를 버린다. 이미 낸 AXI 읽기는 끝까지 받아 캐시만 채운다.
 
 bundle FetchIO {  // Fetch 입장
     req_valid: In<bit,1>
@@ -17,6 +18,9 @@ bundle FetchIO {  // Fetch 입장
     res_pc:    WordOut
     instruction: Out<bit,32>
     error:     Out<bit,1>  // 30비트 주소 범위 오류 또는 AXI 읽기 오류
+
+    flush: In<bit,1>  // 응답·진행 중 요청을 버린다. 같은 클록에 새 요청을 받을 수 있다
+    busy:  Out<bit,1>  // AXI 읽기 진행 중
 }
 
 seq Fetch {
@@ -36,6 +40,7 @@ seq Fetch {
     mut output_full: FetchReg<1>
     mut bus_error:   FetchReg<1>
     mut error:       FetchReg<1>
+    mut drop:        FetchReg<1>  // 진행 중 miss의 결과를 버린다(flush 뒤)
 
     mut cache: cache::LineCache
     read_address: Mux<2,30>
@@ -48,23 +53,27 @@ wire Fetch {
     alias invalid_pc = or(control.req_pc[30..WORD_SIZE])
     alias bad_pc = and(accept, invalid_pc)
     alias start = and(accept, not(invalid_pc))
+    alias flush = control.flush
     alias hit = and(lookup.out, cache.hit)
     alias miss = and(lookup.out, not(cache.hit))
     alias ar_fire = and(axi.arvalid, axi.arready)
     alias r_fire = and(axi.rvalid, axi.rready)
     alias last_fire = and(r_fire, axi.rlast)
     alias consume = and(control.res_valid, control.res_ready)
+    alias response_done = or(consume, flush)  // 지금 응답이 이번 클록에 끝난다
     alias response_error = or(axi.rresp[0,1], axi.rid[0..4], not(axi.rlast))
     alias failed = and(last_fire, or(bus_error.out, response_error))
     alias filled = and(active, last_fire, not(bus_error.out), not(response_error))
+    alias dropping = or(drop.out, flush)
+    alias missing = or(addr_wait.out, data_wait.out)
 
     clock => {
         pc.clock, lookup.clock, refill.clock, addr_wait.clock, data_wait.clock,
-        output_full.clock, bus_error.clock, error.clock,
+        output_full.clock, bus_error.clock, error.clock, drop.clock,
     }
     reset => {
         pc.reset, lookup.reset, refill.reset, addr_wait.reset, data_wait.reset,
-        output_full.reset, bus_error.reset, error.reset,
+        output_full.reset, bus_error.reset, error.reset, drop.reset,
     }
 
     // 요청을 받은 클록에는 요청 PC로, 채운 다음 클록에는 저장한 PC로 캐시를 읽는다
@@ -83,23 +92,31 @@ wire Fetch {
     cache.invalidate <- and(active, invalidate)
     invalidate_address -> cache.invalidate_address
 
-    control.req_ready <- and(active, ram_ready, cache.ready, not(or(lookup.out, refill.out, addr_wait.out, data_wait.out, output_full.out)))
+    // 지금 조회·응답이 이번 클록에 끝나면 새 요청을 받는다. miss를 확인한 조회는 flush가 아니면 끝나지 않는다.
+    // 비교 주소와 명령어 위치는 pc.out이라 같은 클록에 pc를 새 요청으로 바꿔도 지금 응답은 그대로다.
+    alias lookup_done = or(not(lookup.out), and(hit, response_done), flush)
+    alias output_done = or(not(output_full.out), response_done)
+    control.req_ready <- and(active, ram_ready, cache.ready, lookup_done, output_done, not(or(refill.out, missing)))
     pc.w_en <- accept
     pc.in <- control.req_pc
     lookup.w_en <- 1
-    lookup.in <- or(start, refill.out)
+    lookup.in <- or(start, and(refill.out, not(flush)))
     refill.w_en <- 1
-    refill.in <- filled
+    refill.in <- and(filled, not(dropping))
 
-    // miss를 확인한 뒤 ARREADY가 올 때까지 주소와 ARVALID 유지
+    // miss를 확인한 뒤 ARREADY가 올 때까지 주소와 ARVALID 유지. 확인한 클록에 flush면 요청하지 않는다.
     addr_wait.w_en <- 1
-    addr_wait.in <- or(miss, and(addr_wait.out, not(ar_fire)))
+    addr_wait.in <- or(and(miss, not(flush)), and(addr_wait.out, not(ar_fire)))
     data_wait.w_en <- 1
     data_wait.in <- or(ar_fire, and(data_wait.out, not(last_fire)))
+    // 이미 ARVALID를 올린 miss는 취소할 수 없으므로 끝까지 받되 응답하지 않는다.
+    drop.w_en <- 1
+    drop.in <- and(dropping, missing, not(last_fire))
     // hit 응답은 조회 클록에 바로 내고, 받지 않으면 output_full로 유지한다.
     // 캐시는 다음 조회까지 읽기 결과를 유지하므로 명령어를 따로 저장하지 않는다.
     output_full.w_en <- 1
-    output_full.in <- or(bad_pc, failed, and(or(output_full.out, hit), not(consume)))
+    output_full.in <- or(bad_pc, and(failed, not(dropping)), and(or(output_full.out, hit), not(response_done)))
+    control.busy <- missing
 
     // 32바이트 정렬 주소에서 256비트 한 beat 읽음. 상위 주소는 요청 수락 시 검사.
     axi.arid <- 0

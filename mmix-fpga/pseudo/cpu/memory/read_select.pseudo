@@ -1,9 +1,14 @@
-// 제어유닛이 한 트랜잭션 완료까지 select를 유지하는 직렬 CPU용 읽기 중재.
-comb ReadSelect {
-    pub select: In<bit,1>
+// 명령어 페치와 데이터 읽기의 AXI 읽기 중재. 데이터 쪽이 우선이다.
+// ARVALID를 버스에 낸 클록부터 RLAST 응답까지 같은 쪽을 유지한다(ARVALID는 ARREADY 전에 내릴 수 없다).
+seq ReadSelect {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
     pub instruction: *AxiRead
     pub data: *AxiRead
     pub bus: AxiRead
+    mut locked: reg::ValueReg<1>
+    mut owner: reg::ValueReg<1>  // 0: 명령어, 1: 데이터
+    choice: Mux<2,1>
     arid_mux: Mux<2,4>
     araddr_mux: Mux<2,30>
     arlen_mux: Mux<2,8>
@@ -17,6 +22,18 @@ comb ReadSelect {
     rready_mux: Mux<2,1>
 }
 wire ReadSelect {
+    clock => { locked.clock, owner.clock }
+    reset => { locked.reset, owner.reset }
+    alias select = choice.selected
+    alias last_fire = and(bus.rvalid, bus.rready, bus.rlast)
+    choice.select <- locked.out
+    choice.option[0] <- data.arvalid
+    choice.option[1] <- owner.out
+    owner.w_en <- not(locked.out)
+    select -> owner.in
+    locked.w_en <- 1
+    locked.in <- and(or(locked.out, bus.arvalid), not(last_fire))
+
     arid_mux.select <- select
     arid_mux.option[0] <- instruction.arid
     arid_mux.option[1] <- data.arid

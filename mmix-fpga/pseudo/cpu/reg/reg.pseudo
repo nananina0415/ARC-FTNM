@@ -133,8 +133,11 @@ seq Registers {
     mut r1_zero_q: ValueReg<1>  // 직전 클록 번호가 marginal이었으면 1 (0으로 읽힌다)
     mut r2_zero_q: ValueReg<1>
     mut x_zero_q: ValueReg<1>
-    mut r1_slot_q: ValueReg<9>  // 직전 클록 r1 슬롯
+    mut r1_slot_q: ValueReg<9>  // 직전 클록 읽기 슬롯
+    mut r2_slot_q: ValueReg<9>
+    mut x_slot_q: ValueReg<9>
     mut w_q: ValueReg<10>  // 직전 클록 쓰기: [0] enable, [1..10] 슬롯
+    mut w_data_q: ValueReg<WORD_SIZE>  // 직전 클록 쓰기 값
     mut special_sel_q: ValueReg<5>
     mut special_w_q: ValueReg<6>  // 직전 클록 특수 RAM 쓰기: [0] enable, [1..6] 번호
 
@@ -157,9 +160,14 @@ seq Registers {
     r1_slot: Mux<2,9>
     w_slot: Mux<2,9>
     w_data_mux: Mux<2,WORD_SIZE>
-    r1_out: Mux<2,WORD_SIZE>  // marginal은 0으로 읽힌다
-    r2_out: Mux<2,WORD_SIZE>
-    x_out: Mux<2,WORD_SIZE>
+    // 0: RAM, 1: marginal은 0, 2: 직전 클록에 같은 슬롯을 썼으면 그 값
+    r1_out: Mux<3,WORD_SIZE>
+    r2_out: Mux<3,WORD_SIZE>
+    x_out: Mux<3,WORD_SIZE>
+    r1_same: SlotMatch
+    r1_written: SlotMatch
+    r2_written: SlotMatch
+    x_written: SlotMatch
 
     sel_special_reg: Decoder<5,32>
     special_enable: Mux<2,32>
@@ -173,8 +181,8 @@ seq Registers {
 wire Registers {
     clock => {
         ram_r1.clock, ram_r2.clock, ram_x.clock, special_ram.clock,
-        r1_zero_q.clock, r2_zero_q.clock, x_zero_q.clock, r1_slot_q.clock, w_q.clock,
-        special_sel_q.clock, special_w_q.clock,
+        r1_zero_q.clock, r2_zero_q.clock, x_zero_q.clock, r1_slot_q.clock, r2_slot_q.clock, x_slot_q.clock,
+        w_q.clock, w_data_q.clock, special_sel_q.clock, special_w_q.clock,
         direct_rA.clock,
         direct_rD.clock,
         direct_rH.clock,
@@ -189,8 +197,8 @@ wire Registers {
     }
     // 블록 RAM 내용은 reset으로 지워지지 않는다(구성 시 0).
     reset => {
-        r1_zero_q.reset, r2_zero_q.reset, x_zero_q.reset, r1_slot_q.reset, w_q.reset,
-        special_sel_q.reset, special_w_q.reset,
+        r1_zero_q.reset, r2_zero_q.reset, x_zero_q.reset, r1_slot_q.reset, r2_slot_q.reset, x_slot_q.reset,
+        w_q.reset, w_data_q.reset, special_sel_q.reset, special_w_q.reset,
         direct_rA.reset,
         direct_rD.reset,
         direct_rH.reset,
@@ -221,17 +229,23 @@ wire Registers {
     r1_zero_q.in <- r1_marginal
     r1_slot_q.w_en <- 1
     r1_slot.selected -> r1_slot_q.in
-    r1_out.select <- r1_zero_q.out
+    // 같은 클록의 읽기·쓰기는 쓰기 전 값을 읽으므로(SyncRam read-first),
+    // 직전 클록에 읽은 슬롯을 그 클록에 썼으면 저장해 둔 쓰기 값을 낸다.
+    r1_slot_q.out -> r1_written.a
+    w_q.out[1..10] -> r1_written.b
+    alias r1_bypass = and(w_q.out[0], r1_written.same, not(r1_zero_q.out))
+    r1_out.select[0] <- r1_zero_q.out
+    r1_out.select[1] <- r1_bypass
     r1_out.option[0] <- ram_r1.r_data
     r1_out.option[1] <- 0
+    r1_out.option[2] <- w_data_q.out
     r1_out.selected -> general.r1_data
-    // 직전 클록 번호가 지금 번호와 같고 그 클록에 같은 슬롯을 쓰지 않았으면 최신 값이다.
-    // 같은 클록의 읽기·쓰기는 쓰기 전 값을 읽는다(SyncRam read-first).
-    alias r1_same = not(or(xor(r1_slot_q.out[0], r1_slot.selected[0]), xor(r1_slot_q.out[1], r1_slot.selected[1]), xor(r1_slot_q.out[2], r1_slot.selected[2]), xor(r1_slot_q.out[3], r1_slot.selected[3]), xor(r1_slot_q.out[4], r1_slot.selected[4]), xor(r1_slot_q.out[5], r1_slot.selected[5]), xor(r1_slot_q.out[6], r1_slot.selected[6]), xor(r1_slot_q.out[7], r1_slot.selected[7]), xor(r1_slot_q.out[8], r1_slot.selected[8])))
-    alias r1_written = and(w_q.out[0], not(or(xor(w_q.out[1], r1_slot_q.out[0]), xor(w_q.out[2], r1_slot_q.out[1]), xor(w_q.out[3], r1_slot_q.out[2]), xor(w_q.out[4], r1_slot_q.out[3]), xor(w_q.out[5], r1_slot_q.out[4]), xor(w_q.out[6], r1_slot_q.out[5]), xor(w_q.out[7], r1_slot_q.out[6]), xor(w_q.out[8], r1_slot_q.out[7]), xor(w_q.out[9], r1_slot_q.out[8]))))
+    // 직전 클록 번호가 지금 번호와 같으면 최신 값이다.
+    r1_slot_q.out -> r1_same.a
+    r1_slot.selected -> r1_same.b
     general.r1_valid <- or(
         and(r1_marginal, r1_zero_q.out),
-        and(not(r1_marginal), not(r1_zero_q.out), r1_same, not(r1_written)),
+        and(not(r1_marginal), not(r1_zero_q.out), r1_same.same),
     )
 
     // 읽기 포트 2, 3
@@ -240,9 +254,15 @@ wire Registers {
     ram_r2.r_en <- 1
     r2_zero_q.w_en <- 1
     window_r2.marginal -> r2_zero_q.in
-    r2_out.select <- r2_zero_q.out
+    r2_slot_q.w_en <- 1
+    window_r2.slot -> r2_slot_q.in
+    r2_slot_q.out -> r2_written.a
+    w_q.out[1..10] -> r2_written.b
+    r2_out.select[0] <- r2_zero_q.out
+    r2_out.select[1] <- and(w_q.out[0], r2_written.same, not(r2_zero_q.out))
     r2_out.option[0] <- ram_r2.r_data
     r2_out.option[1] <- 0
+    r2_out.option[2] <- w_data_q.out
     r2_out.selected -> general.r2_data
 
     general.x_sel -> window_x.sel
@@ -250,9 +270,15 @@ wire Registers {
     ram_x.r_en <- 1
     x_zero_q.w_en <- 1
     window_x.marginal -> x_zero_q.in
-    x_out.select <- x_zero_q.out
+    x_slot_q.w_en <- 1
+    window_x.slot -> x_slot_q.in
+    x_slot_q.out -> x_written.a
+    w_q.out[1..10] -> x_written.b
+    x_out.select[0] <- x_zero_q.out
+    x_out.select[1] <- and(w_q.out[0], x_written.same, not(x_zero_q.out))
     x_out.option[0] <- ram_x.r_data
     x_out.option[1] <- 0
+    x_out.option[2] <- w_data_q.out
     x_out.selected -> general.x_data
 
     // 쓰기 포트: 세 벌에 같이 쓴다. marginal 번호에는 쓰지 않는다.
@@ -270,6 +296,8 @@ wire Registers {
     w_q.w_en <- 1
     w_q.in[0] <- w_active
     w_q.in[1..10] <- w_slot.selected
+    w_data_q.w_en <- 1
+    w_data_mux.selected -> w_data_q.in
 
     // 특수 레지스터 버스 (GET/PUT)
     special.sel -> sel_special_reg.in
@@ -386,6 +414,20 @@ wire Registers {
     alu_direct.rR_out  -> direct_rR.direct_in
     alu_direct.rR_w_en -> direct_rR.direct_w_en
     [ direct_rH.direct_out, direct_rR.direct_out ] -> OPENED
+}
+
+// 9비트 슬롯 번호가 같으면 1
+comb SlotMatch {
+    pub a: In<bit,9>
+    pub b: In<bit,9>
+    pub same: Out<bit,1>
+}
+
+wire SlotMatch {
+    same <- not(or(
+        xor(a[0], b[0]), xor(a[1], b[1]), xor(a[2], b[2]), xor(a[3], b[3]), xor(a[4], b[4]),
+        xor(a[5], b[5]), xor(a[6], b[6]), xor(a[7], b[7]), xor(a[8], b[8]),
+    ))
 }
 
 alias {

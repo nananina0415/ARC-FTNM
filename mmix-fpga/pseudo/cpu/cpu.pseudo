@@ -25,7 +25,7 @@ seq Cpu {
     mut fetch: Fetch
     mut control: Control
     mut memory: MemoryAccess
-    read_select: ReadSelect
+    mut read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
     read1_slot: Mux<2,9>  // 레지스터 스택 내부 읽기는 9비트 슬롯을 직접 지정
     writeback_mux: Mux<4,WORD_SIZE>
@@ -41,8 +41,8 @@ seq Cpu {
 }
 
 wire Cpu {
-    clock => { reg.clock, fetch.clock, control.clock, memory.clock }
-    reset => { reg.reset, fetch.reset, control.reset, memory.reset }
+    clock => { reg.clock, fetch.clock, control.clock, memory.clock, read_select.clock }
+    reset => { reg.reset, fetch.reset, control.reset, memory.reset, read_select.reset }
     init_calib_complete => { fetch.ram_ready, memory.ram_ready }
     memory.instruction_invalidate -> fetch.invalidate
     memory.instruction_invalidate_address -> fetch.invalidate_address
@@ -236,6 +236,8 @@ wire Cpu {
     fetch.control.res_pc -> control.fetch.res_pc
     fetch.control.instruction -> control.fetch.instruction
     fetch.control.error -> control.fetch.error
+    control.fetch.flush -> fetch.control.flush
+    fetch.control.busy -> control.fetch.busy
 
     // 데이터 메모리 접근. store 데이터 $X는 레지스터 읽기 포트 3에서 온다.
     control.memory.req_valid -> memory.control.req_valid
@@ -253,7 +255,7 @@ wire Cpu {
     memory.control.res_valid -> control.memory.res_valid
     memory.control.read_data -> control.memory.read_data
     memory.control.error -> control.memory.error
-    control.memory_active -> read_select.select
+    control.memory_active -> OPENED
     fetch.axi.arid -> read_select.instruction.arid
     memory.axi.read.arid -> read_select.data.arid
     read_select.bus.arid -> axi.read.arid

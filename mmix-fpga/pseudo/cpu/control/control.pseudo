@@ -204,6 +204,8 @@ wire Control {
     fetch.req_pc <- pc.out
     fetch.res_ready <- and(active, or(and(executing, not(start_mem), not(stack_enter)), mem_commit, wait_fault, mem_fault, stack.retire, stack_fault))
     fetch.res_pc -> OPENED
+    fetch.flush <- 0
+    fetch.busy -> OPENED
 
     // spill/fill도 같은 메모리 경로를 쓴다. 주소는 rS, 크기는 octa다.
     memory.req_valid <- and(active, or(mem_request, stack.mem_valid))

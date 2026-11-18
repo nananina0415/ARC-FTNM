@@ -25,9 +25,14 @@ Control은 PC의 주소를 요청하며 일반 명령 후 PC를 4 증가시킨�
 - `res_valid && res_ready`인 클록 상승 에지에서 응답이 소비된다.
 - `error=1`인 응답의 명령어는 실행하지 않고 제어유닛에서 예외 처리한다.
 
-한 번에 한 요청만 처리한다. 요청 주소와 응답은 각각 수락될 때까지 유지한다.
-PC 증가와 분기 대상 선택은 제어유닛 담당이다. 진행 중인 AXI 요청은 취소하지
-않으므로 분기로 불필요해진 응답도 소비해서 버린 뒤 새 주소를 요청한다.
+진행 중인 요청은 한 번에 하나다. 응답이 소비되는 클록에 다음 요청을 받으므로
+hit가 이어지면 매 클록 명령어 하나를 낸다. 요청 주소와 응답은 각각 수락될 때까지 유지한다.
+PC 증가와 분기 대상 선택은 제어유닛 담당이다.
+
+- `flush`: 지금 응답과 진행 중인 조회를 버린다. 같은 클록에 새 요청을 받을 수 있다.
+  miss를 확인한 클록이면 AXI 요청을 내지 않는다. 이미 ARVALID를 올린 miss는 취소할 수
+  없으므로 끝까지 받아 캐시만 채우고 응답하지 않으며, 그동안 새 요청을 받지 않는다.
+- `busy`: AXI 읽기가 진행 중이면 1. 제어유닛은 정지를 알릴 때 이 값이 0이 되기를 기다린다.
 
 ## 메모리 읽기
 
@@ -62,7 +67,7 @@ RAM에는 프로그램의 원래 바이트 순서로 적재해야 한다.
 - MIG의 DDR3 핀, `sys_clk_p/n`, `sys_rst`, 유지보수 입력 `app_*_req`와
   상태 출력들은 FPGA 래퍼에서 연결한다. CPU의 AXI 인터페이스에 포함하지 않는다.
 - ARPROT는 unprivileged/secure/instruction으로 고정했다. FPGA 주소 맵과 접근 권한을 이에 맞춘다.
-- CPU 내부 ReadSelect가 명령어 fetch와 데이터 읽기를 선택한다.
-  제어유닛이 트랜잭션 종료까지 선택을 유지하는 직렬 구조이며 여러 outstanding은 지원하지 않는다.
+- CPU 내부 ReadSelect가 명령어 fetch와 데이터 읽기를 중재한다. 데이터 쪽이 우선이고,
+  ARVALID를 버스에 낸 클록부터 RLAST 응답까지 같은 쪽을 유지한다. 여러 outstanding은 지원하지 않는다.
 
 프로토콜 참고: [Arm AMBA AXI specification](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/IHI0022H_amba_axi_protocol_spec.pdf).
