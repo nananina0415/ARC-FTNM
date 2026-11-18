@@ -53,7 +53,10 @@ def bench(rtl):
         lines.append(f'assign s[{i}]={path};')
     aliases = {'clk':p('clock'), 'rst':p('reset'), 'calib':p('init_calib_complete'),
                'done':p('done'), 'fault':p('fault'), 'reason':p('fault_reason'),
-               'pc':ctl+inst('pc')+'.'+p('out'), 'state':ctl+inst('state')+'.'+p('out'),
+               # pc: PC of the instruction that stopped (HALT or fault). executed/expc: an EX
+               # instruction ran this clock (not flushed) and its PC.
+               'pc':ctl+inst('pc')+'.'+p('out'), 'executed':ctl+p('executed'),
+               'expc':ctl+inst('ex_pc')+'.'+p('out'),
                'wen':reg+p('general','w_en'),
                # Both caches clear their valid bits for 512 clocks after reset.
                'cache_ready':'(dut.'+inst('fetch')+'.'+inst('cache')+'.'+p('ready')+' && dut.'
@@ -93,7 +96,7 @@ always @(posedge @clk@) begin
  if(wst && (!@wvalid@ || @wdata@!==oldw || @wstrb@!==oldstrb)) $fatal(1,"unstable W");
  arst=@arvalid@ && !@arready@;oldar=@araddr@;awst=@awvalid@ && !@awready@;oldaw=@awaddr@;
  wst=@wvalid@ && !@wready@;oldw=@wdata@;oldstrb=@wstrb@;
- if(@state@==2 && @pc@==settings[2]) attempts=attempts+1;
+ if(@executed@===1'b1 && @expc@==settings[2]) attempts=attempts+1;
  if(@wen@) writes=writes+1;
  if(quiet && (@wen@ || @arvalid@ || @awvalid@ || @wvalid@)) $fatal(1,"activity after stop");
  if(@arvalid@ && @arready@) begin

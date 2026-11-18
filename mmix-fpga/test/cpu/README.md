@@ -44,8 +44,8 @@ rO=0이므로 `$0~$126`은 `l[0]~l[126]`, `$128~$255`는 `g[128]~g[255]`다. `$1
 프로그램에서 쓰지 않는다. `explicit_stack`이 참이면 케이스가 rG/rL/rO/rS를 직접 지정한다.
 
 explicit_stack 케이스의 레지스터는 논리 번호가 아니라 물리 슬롯(`l[i]`, `g[k]`)으로 적고 최종 값을 비교한다. `stack_cases.py`의 프로그램과
-`stack_model.py`의 독립 모델로 기대값을 만든다. 대상 PC의 `executions`는 EXECUTE에 머문 횟수이므로
-marginal `$X`로 L을 늘릴 때마다 1씩 늘어난다. 내부 0 쓰기, hole, fill은 `register_writes`에 세지
+`stack_model.py`의 독립 모델로 기대값을 만든다. 대상 PC의 `executions`는 그 명령이 실행된 횟수이므로
+marginal `$X`로 L을 늘릴 때마다(retry 뒤 다시 실행) 1씩 늘어난다. 내부 0 쓰기, hole, fill은 `register_writes`에 세지
 않고 spill은 `memory_writes`에 센다. spill은 32바이트 라인 안 최대 4칸을 쓰기 1회로 내보내므로
 AXI 쓰기 트랜잭션 하나가 1로 세어진다([spill/fill 단위](../../pseudo/cpu/reg/README.md)).
 
@@ -98,10 +98,14 @@ MMIXAL의 종료 코드 외에 진단 메시지도 검사한다. 경고도 실�
   초기 상태와 명세의 차이만 반영한 기대 상태와 전부 비교한다.
 - RAM은 `0..4095`와 마지막 32바이트 `0x3fffffe0..0x3fffffff`를 sparse mapping한다.
   초기화하지 않은 바이트는 A5다. rA는 구현된 비트 6/7/14/15만 주입할 수 있다.
-- 대상 PC가 실제 EXECUTE에 도달한 횟수, GPR 쓰기 횟수, store와 B 응답 횟수,
+- 대상 PC의 실행 횟수, GPR 쓰기 횟수, store와 B 응답 횟수,
   HALT/fault 및 원인, 정지 후 추가 활동도 검사한다. 기본 케이스는 대상 명령과
   HALT로 구성되며 연속 상수 구성과 분기/반복문 프로그램도 포함한다. 부작용 횟수는 프로그램
   전체를 대상으로 비교한다.
+- 실행 횟수는 Control의 `executed`가 1이고 EX 명령 PC가 대상 PC인 클록 수다. 비워진(분기 예측 실패
+  등으로 버려진) 명령은 EX에서 실행되지 않으므로 세지 않는다. 단독 실행 명령은 시도마다 1,
+  enable된 산술 trip은 1로 센다. 페치 오류와 무효 명령은 실행으로 세지 않는다.
+- 최종 PC는 정지한 명령(HALT 또는 fault)의 PC다.
 - `no_stall`은 READY를 즉시 제공하고 짧은 응답을 보낸다. `backpressure`는
   AR/AW/W에 서로 다른 주기(4/5/7)의 READY와 R/B 지연을 준다. VALID 정지 중
   주소·쓰기 데이터·strobe 유지, 단일 32바이트 AXI 전송 형식도 검사한다.
@@ -511,7 +515,7 @@ fault나 process 비정상 종료는 별도 실패다. clock timeout과 wall tim
 GETA는 앞/뒤 오프셋 경계와 레지스터 보존을 다룬다. GET/PUT/PUTI는 지원 19개 레지스터,
 미지원 13개 시스템/스택 레지스터, 형식 오류, rA 비트 제한을 다룬다. PUT rD→DIVU→GET rR,
 PUT rM→MUX→GET rD 연속 프로그램으로 기존 ALU 저장 상태와의 연결을 명세화했다.
-WAIT에서 거부되는 무효 명령은 `target.executions=0`을 사용한다. 이는 expected fault인
+무효 명령은 실행되지 않고 fault가 되므로 `target.executions=0`을 사용한다. 이는 expected fault인
 케이스에만 허용하며, 최종 상태와 쓰기 횟수도 그대로 비교한다.
 
 케이스 파일과 참조 모델·디코더 검사 기대값을 갱신했으나 이번 변경 뒤 테스트와

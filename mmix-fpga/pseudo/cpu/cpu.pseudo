@@ -50,6 +50,7 @@ wire Cpu {
     control.done -> done
     control.fault -> fault
     control.fault_reason -> fault_reason
+    control.executed -> OPENED  // 검증 하네스가 관찰한다
     control.decoded_valid <- and(ex_decode.control.valid, special_access.allowed)
     ex_decode.control.halt -> control.decoded_halt
     ex_decode.control.memory -> control.decoded_memory

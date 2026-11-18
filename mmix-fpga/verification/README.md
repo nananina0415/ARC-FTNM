@@ -49,7 +49,7 @@ python verification/simulate_memory_program.py --trace
 
 - build/memory-program/cycles.jsonl: 클록별 원시 덤프.
 - build/memory-program/cycles.html: 모든 데이터를 내장한 독립 HTML 뷰어.
-- 범용 레지스터 슬롯 512개(로컬 ring l[0..255], 글로벌 g[0..255]), 특수 레지스터 32개, RAM 모델 전체 256바이트, PC/상태/AXI 신호.
+- 범용 레지스터 슬롯 512개(로컬 ring l[0..255], 글로벌 g[0..255]), 특수 레지스터 32개, RAM 모델 전체 256바이트, 단계별(ID/RF/EX/WB) 유효 비트와 PC, EX 실행·WB 명령, AXI 신호.
 - 슬라이더·재생·변화 지점 이동, 이전 클록 대비 강조, 16진수/정수 표시, 바이트/워드 덤프.
 - 정수 표시는 JavaScript BigInt를 사용하고 X/Z는 문자열로 유지한다.
 - 실제 보드 RAM 전체를 덤프하는 것이 아니라 시뮬레이션 RAM 모델의 256바이트를 기록한다.

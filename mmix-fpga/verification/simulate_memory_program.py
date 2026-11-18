@@ -31,7 +31,8 @@ def main():
         values = ",".join(f"memory[{word * 8 + byte}]" for byte in range(8))
         lines.append(f"wire [63:0] memory_word_{word} = {{{values}}};")
     control = "dut." + enc("instance", "control") + "."
-    lines += [f"wire [63:0] program_counter = {control}{enc('instance','pc')}.{p('out')};",
+    # PC of the instruction in the EX stage
+    lines += [f"wire [63:0] program_counter = {control}{enc('instance','ex_pc')}.{p('out')};",
               f'initial begin $dumpfile("{(output / "memory_program.vcd").as_posix()}");',
               f"$dumpvars(0,program_counter,memory_word_10,memory_word_11,memory_word_12,{clk},{reset},{calib},{p('done')},{p('fault')},{ar('arvalid')},{ar('arready')},{ar('araddr')},{ar('rvalid')},{ar('rready')},{aw('awvalid')},{aw('awready')},{aw('awaddr')},{aw('wvalid')},{aw('wready')},{aw('wdata')},{aw('wstrb')},{aw('bvalid')},{aw('bready')});end"]
     lines += [f"initial {clk}=0;always #5 {clk}=~{clk};",

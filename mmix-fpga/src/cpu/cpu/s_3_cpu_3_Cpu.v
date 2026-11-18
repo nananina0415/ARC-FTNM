@@ -3443,7 +3443,7 @@ wire net_5881;
 wire net_5882;
 wire net_5883;
 wire net_5884;
-wire net_6684;
+wire net_5963;
 wire net_6685;
 wire net_6686;
 wire net_6687;
@@ -3769,10 +3769,10 @@ wire net_7006;
 wire net_7007;
 wire net_7008;
 wire net_7009;
-wire net_8509;
-wire net_8574;
-wire net_8584;
-wire net_9392;
+wire net_7010;
+wire net_8510;
+wire net_8575;
+wire net_8585;
 wire net_9393;
 wire net_9394;
 wire net_9395;
@@ -3836,9 +3836,9 @@ wire net_9452;
 wire net_9453;
 wire net_9454;
 wire net_9455;
-wire net_9552;
+wire net_9456;
 wire net_9553;
-wire net_9714;
+wire net_9554;
 wire net_9715;
 wire net_9716;
 wire net_9717;
@@ -3857,10 +3857,10 @@ wire net_9729;
 wire net_9730;
 wire net_9731;
 wire net_9732;
-wire net_9735;
+wire net_9733;
 wire net_9736;
 wire net_9737;
-wire net_9802;
+wire net_9738;
 wire net_9803;
 wire net_9804;
 wire net_9805;
@@ -3878,7 +3878,7 @@ wire net_9816;
 wire net_9817;
 wire net_9818;
 wire net_9819;
-wire net_9844;
+wire net_9820;
 wire net_9845;
 wire net_9846;
 wire net_9847;
@@ -4138,10 +4138,10 @@ wire net_10100;
 wire net_10101;
 wire net_10102;
 wire net_10103;
-wire net_10136;
+wire net_10104;
 wire net_10137;
 wire net_10138;
-wire net_10656;
+wire net_10139;
 wire net_10657;
 wire net_10658;
 wire net_10659;
@@ -4205,33 +4205,34 @@ wire net_10716;
 wire net_10717;
 wire net_10718;
 wire net_10719;
-wire net_11044;
+wire net_10720;
 wire net_11045;
-wire net_11048;
+wire net_11046;
 wire net_11049;
-wire net_11051;
-wire net_11054;
+wire net_11050;
+wire net_11052;
 wire net_11055;
-assign net_8584 = 1'd0;
-assign {net_10719, net_10718, net_10717, net_10716, net_10715, net_10714, net_10713, net_10712, net_10711, net_10710, net_10709, net_10708, net_10707, net_10706, net_10705, net_10704, net_10703, net_10702, net_10701, net_10700, net_10699, net_10698, net_10697, net_10696, net_10695, net_10694, net_10693, net_10692, net_10691, net_10690, net_10689, net_10688, net_10687, net_10686, net_10685, net_10684, net_10683, net_10682, net_10681, net_10680, net_10679, net_10678, net_10677, net_10676, net_10675, net_10674, net_10673, net_10672, net_10671, net_10670, net_10669, net_10668, net_10667, net_10666, net_10665, net_10664, net_10663, net_10662, net_10661, net_10660, net_10659, net_10658, net_10657, net_10656} = 64'd0;
-assign net_8509 = 1'd0;
-assign net_4690 = (net_10137 & net_9552);
+wire net_11056;
+assign net_8585 = 1'd0;
+assign {net_10720, net_10719, net_10718, net_10717, net_10716, net_10715, net_10714, net_10713, net_10712, net_10711, net_10710, net_10709, net_10708, net_10707, net_10706, net_10705, net_10704, net_10703, net_10702, net_10701, net_10700, net_10699, net_10698, net_10697, net_10696, net_10695, net_10694, net_10693, net_10692, net_10691, net_10690, net_10689, net_10688, net_10687, net_10686, net_10685, net_10684, net_10683, net_10682, net_10681, net_10680, net_10679, net_10678, net_10677, net_10676, net_10675, net_10674, net_10673, net_10672, net_10671, net_10670, net_10669, net_10668, net_10667, net_10666, net_10665, net_10664, net_10663, net_10662, net_10661, net_10660, net_10659, net_10658, net_10657} = 64'd0;
+assign net_8510 = 1'd0;
+assign net_4690 = (net_10138 & net_9553);
 assign net_1921 = (net_5754 | net_5755 | net_5488);
-assign net_11044 = ~(s_4_port_7_decoded_11_special_put[0]);
-assign net_11045 = ~(net_5489);
-assign net_1927 = (net_11044 & net_11045);
-assign net_9553 = (net_5755 | net_5489);
-assign net_11048 = ~(net_2943);
-assign net_11049 = ~(s_4_port_5_reset[0]);
-assign net_9714 = (net_2845 & net_11048 & net_11049);
-assign net_11051 = ~(s_4_port_5_reset[0]);
-assign net_10136 = (net_4497 & net_11051);
-assign s_4_port_7_decoded_5_valid[0] = (net_10137 & net_9552);
-assign net_11054 = ~(net_9552);
-assign net_11055 = (net_10137 & net_11054);
-assign s_4_port_7_decoded_11_unsupported[0] = (net_10138 | net_11055);
-assign net_1091 = (net_5752 & net_10137);
-assign s_4_port_8_trip_req[0] = (net_10137 & net_1552);
+assign net_11045 = ~(s_4_port_7_decoded_11_special_put[0]);
+assign net_11046 = ~(net_5489);
+assign net_1927 = (net_11045 & net_11046);
+assign net_9554 = (net_5755 | net_5489);
+assign net_11049 = ~(net_2943);
+assign net_11050 = ~(s_4_port_5_reset[0]);
+assign net_9715 = (net_2845 & net_11049 & net_11050);
+assign net_11052 = ~(s_4_port_5_reset[0]);
+assign net_10137 = (net_4497 & net_11052);
+assign s_4_port_7_decoded_5_valid[0] = (net_10138 & net_9553);
+assign net_11055 = ~(net_9553);
+assign net_11056 = (net_10138 & net_11055);
+assign s_4_port_7_decoded_11_unsupported[0] = (net_10139 | net_11056);
+assign net_1091 = (net_5752 & net_10138);
+assign s_4_port_8_trip_req[0] = (net_10138 & net_1552);
 assign net_5884 = (net_1284 | net_5753 | net_5754);
 s_3_cpu_3_alu_3_Alu s_8_instance_3_alu (
     .s_4_port_7_alu_sel({s_4_port_7_decoded_7_alu_sel[2], s_4_port_7_decoded_7_alu_sel[1], s_4_port_7_decoded_7_alu_sel[0]}),
@@ -4450,7 +4451,8 @@ s_3_cpu_7_control_7_Control s_8_instance_7_control (
     .s_4_port_7_wb_data({net_1845, net_1844, net_1843, net_1842, net_1841, net_1840, net_1839, net_1838, net_1837, net_1836, net_1835, net_1834, net_1833, net_1832, net_1831, net_1830, net_1829, net_1828, net_1827, net_1826, net_1825, net_1824, net_1823, net_1822, net_1821, net_1820, net_1819, net_1818, net_1817, net_1816, net_1815, net_1814, net_1813, net_1812, net_1811, net_1810, net_1809, net_1808, net_1807, net_1806, net_1805, net_1804, net_1803, net_1802, net_1801, net_1800, net_1799, net_1798, net_1797, net_1796, net_1795, net_1794, net_1793, net_1792, net_1791, net_1790, net_1789, net_1788, net_1787, net_1786, net_1785, net_1784, net_1783, net_1782}),
     .s_4_port_4_done(s_4_port_4_done[0]),
     .s_4_port_5_fault(s_4_port_5_fault[0]),
-    .s_4_port_12_fault_reason({s_4_port_12_fault_reason[2], s_4_port_12_fault_reason[1], s_4_port_12_fault_reason[0]})
+    .s_4_port_12_fault_reason({s_4_port_12_fault_reason[2], s_4_port_12_fault_reason[1], s_4_port_12_fault_reason[0]}),
+    .s_4_port_8_executed(net_5963)
 );
 s_3_cpu_6_memory_12_MemoryAccess s_8_instance_6_memory (
     .s_4_port_5_clock(s_4_port_5_clock[0]),
@@ -4471,23 +4473,23 @@ s_3_cpu_6_memory_12_MemoryAccess s_8_instance_6_memory (
     .s_4_port_7_control_9_read_data({net_3901, net_3900, net_3899, net_3898, net_3897, net_3896, net_3895, net_3894, net_3893, net_3892, net_3891, net_3890, net_3889, net_3888, net_3887, net_3886, net_3885, net_3884, net_3883, net_3882, net_3881, net_3880, net_3879, net_3878, net_3877, net_3876, net_3875, net_3874, net_3873, net_3872, net_3871, net_3870, net_3869, net_3868, net_3867, net_3866, net_3865, net_3864, net_3863, net_3862, net_3861, net_3860, net_3859, net_3858, net_3857, net_3856, net_3855, net_3854, net_3853, net_3852, net_3851, net_3850, net_3849, net_3848, net_3847, net_3846, net_3845, net_3844, net_3843, net_3842, net_3841, net_3840, net_3839, net_3838}),
     .s_4_port_7_control_14_line_read_data({net_4157, net_4156, net_4155, net_4154, net_4153, net_4152, net_4151, net_4150, net_4149, net_4148, net_4147, net_4146, net_4145, net_4144, net_4143, net_4142, net_4141, net_4140, net_4139, net_4138, net_4137, net_4136, net_4135, net_4134, net_4133, net_4132, net_4131, net_4130, net_4129, net_4128, net_4127, net_4126, net_4125, net_4124, net_4123, net_4122, net_4121, net_4120, net_4119, net_4118, net_4117, net_4116, net_4115, net_4114, net_4113, net_4112, net_4111, net_4110, net_4109, net_4108, net_4107, net_4106, net_4105, net_4104, net_4103, net_4102, net_4101, net_4100, net_4099, net_4098, net_4097, net_4096, net_4095, net_4094, net_4093, net_4092, net_4091, net_4090, net_4089, net_4088, net_4087, net_4086, net_4085, net_4084, net_4083, net_4082, net_4081, net_4080, net_4079, net_4078, net_4077, net_4076, net_4075, net_4074, net_4073, net_4072, net_4071, net_4070, net_4069, net_4068, net_4067, net_4066, net_4065, net_4064, net_4063, net_4062, net_4061, net_4060, net_4059, net_4058, net_4057, net_4056, net_4055, net_4054, net_4053, net_4052, net_4051, net_4050, net_4049, net_4048, net_4047, net_4046, net_4045, net_4044, net_4043, net_4042, net_4041, net_4040, net_4039, net_4038, net_4037, net_4036, net_4035, net_4034, net_4033, net_4032, net_4031, net_4030, net_4029, net_4028, net_4027, net_4026, net_4025, net_4024, net_4023, net_4022, net_4021, net_4020, net_4019, net_4018, net_4017, net_4016, net_4015, net_4014, net_4013, net_4012, net_4011, net_4010, net_4009, net_4008, net_4007, net_4006, net_4005, net_4004, net_4003, net_4002, net_4001, net_4000, net_3999, net_3998, net_3997, net_3996, net_3995, net_3994, net_3993, net_3992, net_3991, net_3990, net_3989, net_3988, net_3987, net_3986, net_3985, net_3984, net_3983, net_3982, net_3981, net_3980, net_3979, net_3978, net_3977, net_3976, net_3975, net_3974, net_3973, net_3972, net_3971, net_3970, net_3969, net_3968, net_3967, net_3966, net_3965, net_3964, net_3963, net_3962, net_3961, net_3960, net_3959, net_3958, net_3957, net_3956, net_3955, net_3954, net_3953, net_3952, net_3951, net_3950, net_3949, net_3948, net_3947, net_3946, net_3945, net_3944, net_3943, net_3942, net_3941, net_3940, net_3939, net_3938, net_3937, net_3936, net_3935, net_3934, net_3933, net_3932, net_3931, net_3930, net_3929, net_3928, net_3927, net_3926, net_3925, net_3924, net_3923, net_3922, net_3921, net_3920, net_3919, net_3918, net_3917, net_3916, net_3915, net_3914, net_3913, net_3912, net_3911, net_3910, net_3909, net_3908, net_3907, net_3906, net_3905, net_3904, net_3903, net_3902}),
     .s_4_port_7_control_5_error(net_4158),
-    .s_4_port_3_axi_4_read_4_arid({net_6687, net_6686, net_6685, net_6684}),
-    .s_4_port_3_axi_4_read_6_araddr({net_6717, net_6716, net_6715, net_6714, net_6713, net_6712, net_6711, net_6710, net_6709, net_6708, net_6707, net_6706, net_6705, net_6704, net_6703, net_6702, net_6701, net_6700, net_6699, net_6698, net_6697, net_6696, net_6695, net_6694, net_6693, net_6692, net_6691, net_6690, net_6689, net_6688}),
-    .s_4_port_3_axi_4_read_5_arlen({net_6725, net_6724, net_6723, net_6722, net_6721, net_6720, net_6719, net_6718}),
-    .s_4_port_3_axi_4_read_6_arsize({net_6728, net_6727, net_6726}),
-    .s_4_port_3_axi_4_read_7_arburst({net_6730, net_6729}),
-    .s_4_port_3_axi_4_read_6_arlock(net_6731),
-    .s_4_port_3_axi_4_read_7_arcache({net_6735, net_6734, net_6733, net_6732}),
-    .s_4_port_3_axi_4_read_6_arprot({net_6738, net_6737, net_6736}),
-    .s_4_port_3_axi_4_read_5_arqos({net_6742, net_6741, net_6740, net_6739}),
-    .s_4_port_3_axi_4_read_7_arvalid(net_6743),
-    .s_4_port_3_axi_4_read_7_arready(net_6744),
-    .s_4_port_3_axi_4_read_3_rid({net_6748, net_6747, net_6746, net_6745}),
-    .s_4_port_3_axi_4_read_5_rdata({net_7004, net_7003, net_7002, net_7001, net_7000, net_6999, net_6998, net_6997, net_6996, net_6995, net_6994, net_6993, net_6992, net_6991, net_6990, net_6989, net_6988, net_6987, net_6986, net_6985, net_6984, net_6983, net_6982, net_6981, net_6980, net_6979, net_6978, net_6977, net_6976, net_6975, net_6974, net_6973, net_6972, net_6971, net_6970, net_6969, net_6968, net_6967, net_6966, net_6965, net_6964, net_6963, net_6962, net_6961, net_6960, net_6959, net_6958, net_6957, net_6956, net_6955, net_6954, net_6953, net_6952, net_6951, net_6950, net_6949, net_6948, net_6947, net_6946, net_6945, net_6944, net_6943, net_6942, net_6941, net_6940, net_6939, net_6938, net_6937, net_6936, net_6935, net_6934, net_6933, net_6932, net_6931, net_6930, net_6929, net_6928, net_6927, net_6926, net_6925, net_6924, net_6923, net_6922, net_6921, net_6920, net_6919, net_6918, net_6917, net_6916, net_6915, net_6914, net_6913, net_6912, net_6911, net_6910, net_6909, net_6908, net_6907, net_6906, net_6905, net_6904, net_6903, net_6902, net_6901, net_6900, net_6899, net_6898, net_6897, net_6896, net_6895, net_6894, net_6893, net_6892, net_6891, net_6890, net_6889, net_6888, net_6887, net_6886, net_6885, net_6884, net_6883, net_6882, net_6881, net_6880, net_6879, net_6878, net_6877, net_6876, net_6875, net_6874, net_6873, net_6872, net_6871, net_6870, net_6869, net_6868, net_6867, net_6866, net_6865, net_6864, net_6863, net_6862, net_6861, net_6860, net_6859, net_6858, net_6857, net_6856, net_6855, net_6854, net_6853, net_6852, net_6851, net_6850, net_6849, net_6848, net_6847, net_6846, net_6845, net_6844, net_6843, net_6842, net_6841, net_6840, net_6839, net_6838, net_6837, net_6836, net_6835, net_6834, net_6833, net_6832, net_6831, net_6830, net_6829, net_6828, net_6827, net_6826, net_6825, net_6824, net_6823, net_6822, net_6821, net_6820, net_6819, net_6818, net_6817, net_6816, net_6815, net_6814, net_6813, net_6812, net_6811, net_6810, net_6809, net_6808, net_6807, net_6806, net_6805, net_6804, net_6803, net_6802, net_6801, net_6800, net_6799, net_6798, net_6797, net_6796, net_6795, net_6794, net_6793, net_6792, net_6791, net_6790, net_6789, net_6788, net_6787, net_6786, net_6785, net_6784, net_6783, net_6782, net_6781, net_6780, net_6779, net_6778, net_6777, net_6776, net_6775, net_6774, net_6773, net_6772, net_6771, net_6770, net_6769, net_6768, net_6767, net_6766, net_6765, net_6764, net_6763, net_6762, net_6761, net_6760, net_6759, net_6758, net_6757, net_6756, net_6755, net_6754, net_6753, net_6752, net_6751, net_6750, net_6749}),
-    .s_4_port_3_axi_4_read_5_rresp({net_7006, net_7005}),
-    .s_4_port_3_axi_4_read_5_rlast(net_7007),
-    .s_4_port_3_axi_4_read_6_rvalid(net_7008),
-    .s_4_port_3_axi_4_read_6_rready(net_7009),
+    .s_4_port_3_axi_4_read_4_arid({net_6688, net_6687, net_6686, net_6685}),
+    .s_4_port_3_axi_4_read_6_araddr({net_6718, net_6717, net_6716, net_6715, net_6714, net_6713, net_6712, net_6711, net_6710, net_6709, net_6708, net_6707, net_6706, net_6705, net_6704, net_6703, net_6702, net_6701, net_6700, net_6699, net_6698, net_6697, net_6696, net_6695, net_6694, net_6693, net_6692, net_6691, net_6690, net_6689}),
+    .s_4_port_3_axi_4_read_5_arlen({net_6726, net_6725, net_6724, net_6723, net_6722, net_6721, net_6720, net_6719}),
+    .s_4_port_3_axi_4_read_6_arsize({net_6729, net_6728, net_6727}),
+    .s_4_port_3_axi_4_read_7_arburst({net_6731, net_6730}),
+    .s_4_port_3_axi_4_read_6_arlock(net_6732),
+    .s_4_port_3_axi_4_read_7_arcache({net_6736, net_6735, net_6734, net_6733}),
+    .s_4_port_3_axi_4_read_6_arprot({net_6739, net_6738, net_6737}),
+    .s_4_port_3_axi_4_read_5_arqos({net_6743, net_6742, net_6741, net_6740}),
+    .s_4_port_3_axi_4_read_7_arvalid(net_6744),
+    .s_4_port_3_axi_4_read_7_arready(net_6745),
+    .s_4_port_3_axi_4_read_3_rid({net_6749, net_6748, net_6747, net_6746}),
+    .s_4_port_3_axi_4_read_5_rdata({net_7005, net_7004, net_7003, net_7002, net_7001, net_7000, net_6999, net_6998, net_6997, net_6996, net_6995, net_6994, net_6993, net_6992, net_6991, net_6990, net_6989, net_6988, net_6987, net_6986, net_6985, net_6984, net_6983, net_6982, net_6981, net_6980, net_6979, net_6978, net_6977, net_6976, net_6975, net_6974, net_6973, net_6972, net_6971, net_6970, net_6969, net_6968, net_6967, net_6966, net_6965, net_6964, net_6963, net_6962, net_6961, net_6960, net_6959, net_6958, net_6957, net_6956, net_6955, net_6954, net_6953, net_6952, net_6951, net_6950, net_6949, net_6948, net_6947, net_6946, net_6945, net_6944, net_6943, net_6942, net_6941, net_6940, net_6939, net_6938, net_6937, net_6936, net_6935, net_6934, net_6933, net_6932, net_6931, net_6930, net_6929, net_6928, net_6927, net_6926, net_6925, net_6924, net_6923, net_6922, net_6921, net_6920, net_6919, net_6918, net_6917, net_6916, net_6915, net_6914, net_6913, net_6912, net_6911, net_6910, net_6909, net_6908, net_6907, net_6906, net_6905, net_6904, net_6903, net_6902, net_6901, net_6900, net_6899, net_6898, net_6897, net_6896, net_6895, net_6894, net_6893, net_6892, net_6891, net_6890, net_6889, net_6888, net_6887, net_6886, net_6885, net_6884, net_6883, net_6882, net_6881, net_6880, net_6879, net_6878, net_6877, net_6876, net_6875, net_6874, net_6873, net_6872, net_6871, net_6870, net_6869, net_6868, net_6867, net_6866, net_6865, net_6864, net_6863, net_6862, net_6861, net_6860, net_6859, net_6858, net_6857, net_6856, net_6855, net_6854, net_6853, net_6852, net_6851, net_6850, net_6849, net_6848, net_6847, net_6846, net_6845, net_6844, net_6843, net_6842, net_6841, net_6840, net_6839, net_6838, net_6837, net_6836, net_6835, net_6834, net_6833, net_6832, net_6831, net_6830, net_6829, net_6828, net_6827, net_6826, net_6825, net_6824, net_6823, net_6822, net_6821, net_6820, net_6819, net_6818, net_6817, net_6816, net_6815, net_6814, net_6813, net_6812, net_6811, net_6810, net_6809, net_6808, net_6807, net_6806, net_6805, net_6804, net_6803, net_6802, net_6801, net_6800, net_6799, net_6798, net_6797, net_6796, net_6795, net_6794, net_6793, net_6792, net_6791, net_6790, net_6789, net_6788, net_6787, net_6786, net_6785, net_6784, net_6783, net_6782, net_6781, net_6780, net_6779, net_6778, net_6777, net_6776, net_6775, net_6774, net_6773, net_6772, net_6771, net_6770, net_6769, net_6768, net_6767, net_6766, net_6765, net_6764, net_6763, net_6762, net_6761, net_6760, net_6759, net_6758, net_6757, net_6756, net_6755, net_6754, net_6753, net_6752, net_6751, net_6750}),
+    .s_4_port_3_axi_4_read_5_rresp({net_7007, net_7006}),
+    .s_4_port_3_axi_4_read_5_rlast(net_7008),
+    .s_4_port_3_axi_4_read_6_rvalid(net_7009),
+    .s_4_port_3_axi_4_read_6_rready(net_7010),
     .s_4_port_3_axi_5_write_4_awid({s_4_port_3_axi_5_write_4_awid[3], s_4_port_3_axi_5_write_4_awid[2], s_4_port_3_axi_5_write_4_awid[1], s_4_port_3_axi_5_write_4_awid[0]}),
     .s_4_port_3_axi_5_write_6_awaddr({s_4_port_3_axi_5_write_6_awaddr[29], s_4_port_3_axi_5_write_6_awaddr[28], s_4_port_3_axi_5_write_6_awaddr[27], s_4_port_3_axi_5_write_6_awaddr[26], s_4_port_3_axi_5_write_6_awaddr[25], s_4_port_3_axi_5_write_6_awaddr[24], s_4_port_3_axi_5_write_6_awaddr[23], s_4_port_3_axi_5_write_6_awaddr[22], s_4_port_3_axi_5_write_6_awaddr[21], s_4_port_3_axi_5_write_6_awaddr[20], s_4_port_3_axi_5_write_6_awaddr[19], s_4_port_3_axi_5_write_6_awaddr[18], s_4_port_3_axi_5_write_6_awaddr[17], s_4_port_3_axi_5_write_6_awaddr[16], s_4_port_3_axi_5_write_6_awaddr[15], s_4_port_3_axi_5_write_6_awaddr[14], s_4_port_3_axi_5_write_6_awaddr[13], s_4_port_3_axi_5_write_6_awaddr[12], s_4_port_3_axi_5_write_6_awaddr[11], s_4_port_3_axi_5_write_6_awaddr[10], s_4_port_3_axi_5_write_6_awaddr[9], s_4_port_3_axi_5_write_6_awaddr[8], s_4_port_3_axi_5_write_6_awaddr[7], s_4_port_3_axi_5_write_6_awaddr[6], s_4_port_3_axi_5_write_6_awaddr[5], s_4_port_3_axi_5_write_6_awaddr[4], s_4_port_3_axi_5_write_6_awaddr[3], s_4_port_3_axi_5_write_6_awaddr[2], s_4_port_3_axi_5_write_6_awaddr[1], s_4_port_3_axi_5_write_6_awaddr[0]}),
     .s_4_port_3_axi_5_write_5_awlen({s_4_port_3_axi_5_write_5_awlen[7], s_4_port_3_axi_5_write_5_awlen[6], s_4_port_3_axi_5_write_5_awlen[5], s_4_port_3_axi_5_write_5_awlen[4], s_4_port_3_axi_5_write_5_awlen[3], s_4_port_3_axi_5_write_5_awlen[2], s_4_port_3_axi_5_write_5_awlen[1], s_4_port_3_axi_5_write_5_awlen[0]}),
@@ -4531,23 +4533,23 @@ s_3_cpu_6_memory_10_ReadSelect s_8_instance_11_read_select (
     .s_4_port_11_instruction_5_rlast(net_3269),
     .s_4_port_11_instruction_6_rvalid(net_3270),
     .s_4_port_11_instruction_6_rready(net_3271),
-    .s_4_port_4_data_4_arid({net_6687, net_6686, net_6685, net_6684}),
-    .s_4_port_4_data_6_araddr({net_6717, net_6716, net_6715, net_6714, net_6713, net_6712, net_6711, net_6710, net_6709, net_6708, net_6707, net_6706, net_6705, net_6704, net_6703, net_6702, net_6701, net_6700, net_6699, net_6698, net_6697, net_6696, net_6695, net_6694, net_6693, net_6692, net_6691, net_6690, net_6689, net_6688}),
-    .s_4_port_4_data_5_arlen({net_6725, net_6724, net_6723, net_6722, net_6721, net_6720, net_6719, net_6718}),
-    .s_4_port_4_data_6_arsize({net_6728, net_6727, net_6726}),
-    .s_4_port_4_data_7_arburst({net_6730, net_6729}),
-    .s_4_port_4_data_6_arlock(net_6731),
-    .s_4_port_4_data_7_arcache({net_6735, net_6734, net_6733, net_6732}),
-    .s_4_port_4_data_6_arprot({net_6738, net_6737, net_6736}),
-    .s_4_port_4_data_5_arqos({net_6742, net_6741, net_6740, net_6739}),
-    .s_4_port_4_data_7_arvalid(net_6743),
-    .s_4_port_4_data_7_arready(net_6744),
-    .s_4_port_4_data_3_rid({net_6748, net_6747, net_6746, net_6745}),
-    .s_4_port_4_data_5_rdata({net_7004, net_7003, net_7002, net_7001, net_7000, net_6999, net_6998, net_6997, net_6996, net_6995, net_6994, net_6993, net_6992, net_6991, net_6990, net_6989, net_6988, net_6987, net_6986, net_6985, net_6984, net_6983, net_6982, net_6981, net_6980, net_6979, net_6978, net_6977, net_6976, net_6975, net_6974, net_6973, net_6972, net_6971, net_6970, net_6969, net_6968, net_6967, net_6966, net_6965, net_6964, net_6963, net_6962, net_6961, net_6960, net_6959, net_6958, net_6957, net_6956, net_6955, net_6954, net_6953, net_6952, net_6951, net_6950, net_6949, net_6948, net_6947, net_6946, net_6945, net_6944, net_6943, net_6942, net_6941, net_6940, net_6939, net_6938, net_6937, net_6936, net_6935, net_6934, net_6933, net_6932, net_6931, net_6930, net_6929, net_6928, net_6927, net_6926, net_6925, net_6924, net_6923, net_6922, net_6921, net_6920, net_6919, net_6918, net_6917, net_6916, net_6915, net_6914, net_6913, net_6912, net_6911, net_6910, net_6909, net_6908, net_6907, net_6906, net_6905, net_6904, net_6903, net_6902, net_6901, net_6900, net_6899, net_6898, net_6897, net_6896, net_6895, net_6894, net_6893, net_6892, net_6891, net_6890, net_6889, net_6888, net_6887, net_6886, net_6885, net_6884, net_6883, net_6882, net_6881, net_6880, net_6879, net_6878, net_6877, net_6876, net_6875, net_6874, net_6873, net_6872, net_6871, net_6870, net_6869, net_6868, net_6867, net_6866, net_6865, net_6864, net_6863, net_6862, net_6861, net_6860, net_6859, net_6858, net_6857, net_6856, net_6855, net_6854, net_6853, net_6852, net_6851, net_6850, net_6849, net_6848, net_6847, net_6846, net_6845, net_6844, net_6843, net_6842, net_6841, net_6840, net_6839, net_6838, net_6837, net_6836, net_6835, net_6834, net_6833, net_6832, net_6831, net_6830, net_6829, net_6828, net_6827, net_6826, net_6825, net_6824, net_6823, net_6822, net_6821, net_6820, net_6819, net_6818, net_6817, net_6816, net_6815, net_6814, net_6813, net_6812, net_6811, net_6810, net_6809, net_6808, net_6807, net_6806, net_6805, net_6804, net_6803, net_6802, net_6801, net_6800, net_6799, net_6798, net_6797, net_6796, net_6795, net_6794, net_6793, net_6792, net_6791, net_6790, net_6789, net_6788, net_6787, net_6786, net_6785, net_6784, net_6783, net_6782, net_6781, net_6780, net_6779, net_6778, net_6777, net_6776, net_6775, net_6774, net_6773, net_6772, net_6771, net_6770, net_6769, net_6768, net_6767, net_6766, net_6765, net_6764, net_6763, net_6762, net_6761, net_6760, net_6759, net_6758, net_6757, net_6756, net_6755, net_6754, net_6753, net_6752, net_6751, net_6750, net_6749}),
-    .s_4_port_4_data_5_rresp({net_7006, net_7005}),
-    .s_4_port_4_data_5_rlast(net_7007),
-    .s_4_port_4_data_6_rvalid(net_7008),
-    .s_4_port_4_data_6_rready(net_7009),
+    .s_4_port_4_data_4_arid({net_6688, net_6687, net_6686, net_6685}),
+    .s_4_port_4_data_6_araddr({net_6718, net_6717, net_6716, net_6715, net_6714, net_6713, net_6712, net_6711, net_6710, net_6709, net_6708, net_6707, net_6706, net_6705, net_6704, net_6703, net_6702, net_6701, net_6700, net_6699, net_6698, net_6697, net_6696, net_6695, net_6694, net_6693, net_6692, net_6691, net_6690, net_6689}),
+    .s_4_port_4_data_5_arlen({net_6726, net_6725, net_6724, net_6723, net_6722, net_6721, net_6720, net_6719}),
+    .s_4_port_4_data_6_arsize({net_6729, net_6728, net_6727}),
+    .s_4_port_4_data_7_arburst({net_6731, net_6730}),
+    .s_4_port_4_data_6_arlock(net_6732),
+    .s_4_port_4_data_7_arcache({net_6736, net_6735, net_6734, net_6733}),
+    .s_4_port_4_data_6_arprot({net_6739, net_6738, net_6737}),
+    .s_4_port_4_data_5_arqos({net_6743, net_6742, net_6741, net_6740}),
+    .s_4_port_4_data_7_arvalid(net_6744),
+    .s_4_port_4_data_7_arready(net_6745),
+    .s_4_port_4_data_3_rid({net_6749, net_6748, net_6747, net_6746}),
+    .s_4_port_4_data_5_rdata({net_7005, net_7004, net_7003, net_7002, net_7001, net_7000, net_6999, net_6998, net_6997, net_6996, net_6995, net_6994, net_6993, net_6992, net_6991, net_6990, net_6989, net_6988, net_6987, net_6986, net_6985, net_6984, net_6983, net_6982, net_6981, net_6980, net_6979, net_6978, net_6977, net_6976, net_6975, net_6974, net_6973, net_6972, net_6971, net_6970, net_6969, net_6968, net_6967, net_6966, net_6965, net_6964, net_6963, net_6962, net_6961, net_6960, net_6959, net_6958, net_6957, net_6956, net_6955, net_6954, net_6953, net_6952, net_6951, net_6950, net_6949, net_6948, net_6947, net_6946, net_6945, net_6944, net_6943, net_6942, net_6941, net_6940, net_6939, net_6938, net_6937, net_6936, net_6935, net_6934, net_6933, net_6932, net_6931, net_6930, net_6929, net_6928, net_6927, net_6926, net_6925, net_6924, net_6923, net_6922, net_6921, net_6920, net_6919, net_6918, net_6917, net_6916, net_6915, net_6914, net_6913, net_6912, net_6911, net_6910, net_6909, net_6908, net_6907, net_6906, net_6905, net_6904, net_6903, net_6902, net_6901, net_6900, net_6899, net_6898, net_6897, net_6896, net_6895, net_6894, net_6893, net_6892, net_6891, net_6890, net_6889, net_6888, net_6887, net_6886, net_6885, net_6884, net_6883, net_6882, net_6881, net_6880, net_6879, net_6878, net_6877, net_6876, net_6875, net_6874, net_6873, net_6872, net_6871, net_6870, net_6869, net_6868, net_6867, net_6866, net_6865, net_6864, net_6863, net_6862, net_6861, net_6860, net_6859, net_6858, net_6857, net_6856, net_6855, net_6854, net_6853, net_6852, net_6851, net_6850, net_6849, net_6848, net_6847, net_6846, net_6845, net_6844, net_6843, net_6842, net_6841, net_6840, net_6839, net_6838, net_6837, net_6836, net_6835, net_6834, net_6833, net_6832, net_6831, net_6830, net_6829, net_6828, net_6827, net_6826, net_6825, net_6824, net_6823, net_6822, net_6821, net_6820, net_6819, net_6818, net_6817, net_6816, net_6815, net_6814, net_6813, net_6812, net_6811, net_6810, net_6809, net_6808, net_6807, net_6806, net_6805, net_6804, net_6803, net_6802, net_6801, net_6800, net_6799, net_6798, net_6797, net_6796, net_6795, net_6794, net_6793, net_6792, net_6791, net_6790, net_6789, net_6788, net_6787, net_6786, net_6785, net_6784, net_6783, net_6782, net_6781, net_6780, net_6779, net_6778, net_6777, net_6776, net_6775, net_6774, net_6773, net_6772, net_6771, net_6770, net_6769, net_6768, net_6767, net_6766, net_6765, net_6764, net_6763, net_6762, net_6761, net_6760, net_6759, net_6758, net_6757, net_6756, net_6755, net_6754, net_6753, net_6752, net_6751, net_6750}),
+    .s_4_port_4_data_5_rresp({net_7007, net_7006}),
+    .s_4_port_4_data_5_rlast(net_7008),
+    .s_4_port_4_data_6_rvalid(net_7009),
+    .s_4_port_4_data_6_rready(net_7010),
     .s_4_port_3_bus_4_arid({s_4_port_3_axi_4_read_4_arid[3], s_4_port_3_axi_4_read_4_arid[2], s_4_port_3_axi_4_read_4_arid[1], s_4_port_3_axi_4_read_4_arid[0]}),
     .s_4_port_3_bus_6_araddr({s_4_port_3_axi_4_read_6_araddr[29], s_4_port_3_axi_4_read_6_araddr[28], s_4_port_3_axi_4_read_6_araddr[27], s_4_port_3_axi_4_read_6_araddr[26], s_4_port_3_axi_4_read_6_araddr[25], s_4_port_3_axi_4_read_6_araddr[24], s_4_port_3_axi_4_read_6_araddr[23], s_4_port_3_axi_4_read_6_araddr[22], s_4_port_3_axi_4_read_6_araddr[21], s_4_port_3_axi_4_read_6_araddr[20], s_4_port_3_axi_4_read_6_araddr[19], s_4_port_3_axi_4_read_6_araddr[18], s_4_port_3_axi_4_read_6_araddr[17], s_4_port_3_axi_4_read_6_araddr[16], s_4_port_3_axi_4_read_6_araddr[15], s_4_port_3_axi_4_read_6_araddr[14], s_4_port_3_axi_4_read_6_araddr[13], s_4_port_3_axi_4_read_6_araddr[12], s_4_port_3_axi_4_read_6_araddr[11], s_4_port_3_axi_4_read_6_araddr[10], s_4_port_3_axi_4_read_6_araddr[9], s_4_port_3_axi_4_read_6_araddr[8], s_4_port_3_axi_4_read_6_araddr[7], s_4_port_3_axi_4_read_6_araddr[6], s_4_port_3_axi_4_read_6_araddr[5], s_4_port_3_axi_4_read_6_araddr[4], s_4_port_3_axi_4_read_6_araddr[3], s_4_port_3_axi_4_read_6_araddr[2], s_4_port_3_axi_4_read_6_araddr[1], s_4_port_3_axi_4_read_6_araddr[0]}),
     .s_4_port_3_bus_5_arlen({s_4_port_3_axi_4_read_5_arlen[7], s_4_port_3_axi_4_read_5_arlen[6], s_4_port_3_axi_4_read_5_arlen[5], s_4_port_3_axi_4_read_5_arlen[4], s_4_port_3_axi_4_read_5_arlen[3], s_4_port_3_axi_4_read_5_arlen[2], s_4_port_3_axi_4_read_5_arlen[1], s_4_port_3_axi_4_read_5_arlen[0]}),
@@ -4569,13 +4571,13 @@ s_3_cpu_6_memory_10_ReadSelect s_8_instance_11_read_select (
 s_8_$builtin_5_Adder_args_9782456255fe8170249b8dfb10717825e64c71c5e7216f2f28ed301b837e5e27 s_8_instance_11_address_add (
     .s_4_port_1_a({net_1155, net_1154, net_1153, net_1152, net_1151, net_1150, net_1149, net_1148, net_1147, net_1146, net_1145, net_1144, net_1143, net_1142, net_1141, net_1140, net_1139, net_1138, net_1137, net_1136, net_1135, net_1134, net_1133, net_1132, net_1131, net_1130, net_1129, net_1128, net_1127, net_1126, net_1125, net_1124, net_1123, net_1122, net_1121, net_1120, net_1119, net_1118, net_1117, net_1116, net_1115, net_1114, net_1113, net_1112, net_1111, net_1110, net_1109, net_1108, net_1107, net_1106, net_1105, net_1104, net_1103, net_1102, net_1101, net_1100, net_1099, net_1098, net_1097, net_1096, net_1095, net_1094, net_1093, net_1092}),
     .s_4_port_1_b({net_1219, net_1218, net_1217, net_1216, net_1215, net_1214, net_1213, net_1212, net_1211, net_1210, net_1209, net_1208, net_1207, net_1206, net_1205, net_1204, net_1203, net_1202, net_1201, net_1200, net_1199, net_1198, net_1197, net_1196, net_1195, net_1194, net_1193, net_1192, net_1191, net_1190, net_1189, net_1188, net_1187, net_1186, net_1185, net_1184, net_1183, net_1182, net_1181, net_1180, net_1179, net_1178, net_1177, net_1176, net_1175, net_1174, net_1173, net_1172, net_1171, net_1170, net_1169, net_1168, net_1167, net_1166, net_1165, net_1164, net_1163, net_1162, net_1161, net_1160, net_1159, net_1158, net_1157, net_1156}),
-    .s_4_port_4_c_in(net_8509),
+    .s_4_port_4_c_in(net_8510),
     .s_4_port_3_sum({net_5686, net_5685, net_5684, net_5683, net_5682, net_5681, net_5680, net_5679, net_5678, net_5677, net_5676, net_5675, net_5674, net_5673, net_5672, net_5671, net_5670, net_5669, net_5668, net_5667, net_5666, net_5665, net_5664, net_5663, net_5662, net_5661, net_5660, net_5659, net_5658, net_5657, net_5656, net_5655, net_5654, net_5653, net_5652, net_5651, net_5650, net_5649, net_5648, net_5647, net_5646, net_5645, net_5644, net_5643, net_5642, net_5641, net_5640, net_5639, net_5638, net_5637, net_5636, net_5635, net_5634, net_5633, net_5632, net_5631, net_5630, net_5629, net_5628, net_5627, net_5626, net_5625, net_5624, net_5623}),
-    .s_4_port_5_c_out(net_8574)
+    .s_4_port_5_c_out(net_8575)
 );
 s_8_$builtin_3_Mux_args_dbeacfc992e23a85f4d2c325ea1df480773e6640dea9e2b9373ca8fb2df0afae s_8_instance_10_read1_slot (
     .s_4_port_6_select(net_1564),
-    .s_4_port_6_option_1_0({net_8584, net_4256, net_4255, net_4254, net_4253, net_4252, net_4251, net_4250, net_4249}),
+    .s_4_port_6_option_1_0({net_8585, net_4256, net_4255, net_4254, net_4253, net_4252, net_4251, net_4250, net_4249}),
     .s_4_port_6_option_1_1({net_5347, net_5346, net_5345, net_5344, net_5343, net_5342, net_5341, net_5340, net_5339}),
     .s_4_port_8_selected({net_1563, net_1562, net_1561, net_1560, net_1559, net_1558, net_1557, net_1556, net_1555})
 );
@@ -4608,7 +4610,7 @@ s_8_$builtin_3_Mux_args_904d12b70aa49835407d02a15e1fa514997138d2ba8dfdfff2524cb3
     .s_4_port_6_select(net_5489),
     .s_4_port_6_option_1_0({net_4852, net_4851, net_4850, net_4849, net_4848, net_4847, net_4846, net_4845, net_4844, net_4843, net_4842, net_4841, net_4840, net_4839, net_4838, net_4837, net_4836, net_4835, net_4834, net_4833, net_4832, net_4831, net_4830, net_4829, net_4828, net_4827, net_4826, net_4825, net_4824, net_4823, net_4822, net_4821, net_4820, net_4819, net_4818, net_4817, net_4816, net_4815, net_4814, net_4813, net_4812, net_4811, net_4810, net_4809, net_4808, net_4807, net_4806, net_4805, net_4804, net_4803, net_4802, net_4801, net_4800, net_4799, net_4798, net_4797, net_4796, net_4795, net_4794, net_4793, net_4792, net_4791, net_4790, net_4789}),
     .s_4_port_6_option_1_1({net_5622, net_5621, net_5620, net_5619, net_5618, net_5617, net_5616, net_5615, net_5614, net_5613, net_5612, net_5611, net_5610, net_5609, net_5608, net_5607, net_5606, net_5605, net_5604, net_5603, net_5602, net_5601, net_5600, net_5599, net_5598, net_5597, net_5596, net_5595, net_5594, net_5593, net_5592, net_5591, net_5590, net_5589, net_5588, net_5587, net_5586, net_5585, net_5584, net_5583, net_5582, net_5581, net_5580, net_5579, net_5578, net_5577, net_5576, net_5575, net_5574, net_5573, net_5572, net_5571, net_5570, net_5569, net_5568, net_5567, net_5566, net_5565, net_5564, net_5563, net_5562, net_5561, net_5560, net_5559}),
-    .s_4_port_8_selected({net_9455, net_9454, net_9453, net_9452, net_9451, net_9450, net_9449, net_9448, net_9447, net_9446, net_9445, net_9444, net_9443, net_9442, net_9441, net_9440, net_9439, net_9438, net_9437, net_9436, net_9435, net_9434, net_9433, net_9432, net_9431, net_9430, net_9429, net_9428, net_9427, net_9426, net_9425, net_9424, net_9423, net_9422, net_9421, net_9420, net_9419, net_9418, net_9417, net_9416, net_9415, net_9414, net_9413, net_9412, net_9411, net_9410, net_9409, net_9408, net_9407, net_9406, net_9405, net_9404, net_9403, net_9402, net_9401, net_9400, net_9399, net_9398, net_9397, net_9396, net_9395, net_9394, net_9393, net_9392})
+    .s_4_port_8_selected({net_9456, net_9455, net_9454, net_9453, net_9452, net_9451, net_9450, net_9449, net_9448, net_9447, net_9446, net_9445, net_9444, net_9443, net_9442, net_9441, net_9440, net_9439, net_9438, net_9437, net_9436, net_9435, net_9434, net_9433, net_9432, net_9431, net_9430, net_9429, net_9428, net_9427, net_9426, net_9425, net_9424, net_9423, net_9422, net_9421, net_9420, net_9419, net_9418, net_9417, net_9416, net_9415, net_9414, net_9413, net_9412, net_9411, net_9410, net_9409, net_9408, net_9407, net_9406, net_9405, net_9404, net_9403, net_9402, net_9401, net_9400, net_9399, net_9398, net_9397, net_9396, net_9395, net_9394, net_9393})
 );
 s_3_cpu_3_reg_13_SpecialAccess s_8_instance_14_special_access (
     .s_4_port_3_get(s_4_port_7_decoded_11_special_get[0]),
@@ -4619,63 +4621,63 @@ s_3_cpu_3_reg_13_SpecialAccess s_8_instance_14_special_access (
     .s_4_port_5_value({net_4852, net_4851, net_4850, net_4849, net_4848, net_4847, net_4846, net_4845, net_4844, net_4843, net_4842, net_4841, net_4840, net_4839, net_4838, net_4837, net_4836, net_4835, net_4834, net_4833, net_4832, net_4831, net_4830, net_4829, net_4828, net_4827, net_4826, net_4825, net_4824, net_4823, net_4822, net_4821, net_4820, net_4819, net_4818, net_4817, net_4816, net_4815, net_4814, net_4813, net_4812, net_4811, net_4810, net_4809, net_4808, net_4807, net_4806, net_4805, net_4804, net_4803, net_4802, net_4801, net_4800, net_4799, net_4798, net_4797, net_4796, net_4795, net_4794, net_4793, net_4792, net_4791, net_4790, net_4789}),
     .s_4_port_1_g({net_2654, net_2653, net_2652, net_2651, net_2650, net_2649, net_2648, net_2647}),
     .s_4_port_1_l({net_2671, net_2670, net_2669, net_2668, net_2667, net_2666, net_2665, net_2664}),
-    .s_4_port_7_allowed(net_9552)
+    .s_4_port_7_allowed(net_9553)
 );
 s_8_$builtin_8_TriState_args_9782456255fe8170249b8dfb10717825e64c71c5e7216f2f28ed301b837e5e27 s_8_instance_14_special_driver (
-    .s_4_port_6_enable(net_9553),
-    .s_4_port_2_in({net_9455, net_9454, net_9453, net_9452, net_9451, net_9450, net_9449, net_9448, net_9447, net_9446, net_9445, net_9444, net_9443, net_9442, net_9441, net_9440, net_9439, net_9438, net_9437, net_9436, net_9435, net_9434, net_9433, net_9432, net_9431, net_9430, net_9429, net_9428, net_9427, net_9426, net_9425, net_9424, net_9423, net_9422, net_9421, net_9420, net_9419, net_9418, net_9417, net_9416, net_9415, net_9414, net_9413, net_9412, net_9411, net_9410, net_9409, net_9408, net_9407, net_9406, net_9405, net_9404, net_9403, net_9402, net_9401, net_9400, net_9399, net_9398, net_9397, net_9396, net_9395, net_9394, net_9393, net_9392}),
+    .s_4_port_6_enable(net_9554),
+    .s_4_port_2_in({net_9456, net_9455, net_9454, net_9453, net_9452, net_9451, net_9450, net_9449, net_9448, net_9447, net_9446, net_9445, net_9444, net_9443, net_9442, net_9441, net_9440, net_9439, net_9438, net_9437, net_9436, net_9435, net_9434, net_9433, net_9432, net_9431, net_9430, net_9429, net_9428, net_9427, net_9426, net_9425, net_9424, net_9423, net_9422, net_9421, net_9420, net_9419, net_9418, net_9417, net_9416, net_9415, net_9414, net_9413, net_9412, net_9411, net_9410, net_9409, net_9408, net_9407, net_9406, net_9405, net_9404, net_9403, net_9402, net_9401, net_9400, net_9399, net_9398, net_9397, net_9396, net_9395, net_9394, net_9393}),
     .s_4_port_3_out({net_1991, net_1990, net_1989, net_1988, net_1987, net_1986, net_1985, net_1984, net_1983, net_1982, net_1981, net_1980, net_1979, net_1978, net_1977, net_1976, net_1975, net_1974, net_1973, net_1972, net_1971, net_1970, net_1969, net_1968, net_1967, net_1966, net_1965, net_1964, net_1963, net_1962, net_1961, net_1960, net_1959, net_1958, net_1957, net_1956, net_1955, net_1954, net_1953, net_1952, net_1951, net_1950, net_1949, net_1948, net_1947, net_1946, net_1945, net_1944, net_1943, net_1942, net_1941, net_1940, net_1939, net_1938, net_1937, net_1936, net_1935, net_1934, net_1933, net_1932, net_1931, net_1930, net_1929, net_1928})
 );
 s_3_cpu_6_decode_17_InstructionDecode s_8_instance_9_id_decode (
     .s_4_port_11_instruction({net_2942, net_2941, net_2940, net_2939, net_2938, net_2937, net_2936, net_2935, net_2934, net_2933, net_2932, net_2931, net_2930, net_2929, net_2928, net_2927, net_2926, net_2925, net_2924, net_2923, net_2922, net_2921, net_2920, net_2919, net_2918, net_2917, net_2916, net_2915, net_2914, net_2913, net_2912, net_2911}),
-    .s_4_port_17_instruction_valid(net_9714),
-    .s_4_port_7_control_5_valid(net_9715),
-    .s_4_port_7_control_11_unsupported(net_9716),
-    .s_4_port_7_control_4_halt(net_9717),
-    .s_4_port_7_control_6_memory(net_9718),
-    .s_4_port_7_control_5_store(net_9719),
-    .s_4_port_7_control_11_memory_size({net_9721, net_9720}),
-    .s_4_port_7_control_13_load_unsigned(net_9722),
-    .s_4_port_7_control_14_store_constant(net_9723),
-    .s_4_port_7_control_11_address_get(net_9724),
-    .s_4_port_7_control_11_special_get(net_9725),
-    .s_4_port_7_control_11_special_put(net_9726),
-    .s_4_port_7_control_17_special_immediate(net_9727),
-    .s_4_port_7_control_13_special_index({net_9732, net_9731, net_9730, net_9729, net_9728}),
+    .s_4_port_17_instruction_valid(net_9715),
+    .s_4_port_7_control_5_valid(net_9716),
+    .s_4_port_7_control_11_unsupported(net_9717),
+    .s_4_port_7_control_4_halt(net_9718),
+    .s_4_port_7_control_6_memory(net_9719),
+    .s_4_port_7_control_5_store(net_9720),
+    .s_4_port_7_control_11_memory_size({net_9722, net_9721}),
+    .s_4_port_7_control_13_load_unsigned(net_9723),
+    .s_4_port_7_control_14_store_constant(net_9724),
+    .s_4_port_7_control_11_address_get(net_9725),
+    .s_4_port_7_control_11_special_get(net_9726),
+    .s_4_port_7_control_11_special_put(net_9727),
+    .s_4_port_7_control_17_special_immediate(net_9728),
+    .s_4_port_7_control_13_special_index({net_9733, net_9732, net_9731, net_9730, net_9729}),
     .s_4_port_7_control_6_branch(net_4183),
     .s_4_port_7_control_20_branch_unconditional(net_4184),
-    .s_4_port_7_control_16_branch_condition({net_9737, net_9736, net_9735}),
+    .s_4_port_7_control_16_branch_condition({net_9738, net_9737, net_9736}),
     .s_4_port_7_control_13_branch_offset({net_4248, net_4247, net_4246, net_4245, net_4244, net_4243, net_4242, net_4241, net_4240, net_4239, net_4238, net_4237, net_4236, net_4235, net_4234, net_4233, net_4232, net_4231, net_4230, net_4229, net_4228, net_4227, net_4226, net_4225, net_4224, net_4223, net_4222, net_4221, net_4220, net_4219, net_4218, net_4217, net_4216, net_4215, net_4214, net_4213, net_4212, net_4211, net_4210, net_4209, net_4208, net_4207, net_4206, net_4205, net_4204, net_4203, net_4202, net_4201, net_4200, net_4199, net_4198, net_4197, net_4196, net_4195, net_4194, net_4193, net_4192, net_4191, net_4190, net_4189, net_4188, net_4187, net_4186, net_4185}),
-    .s_4_port_7_control_8_writes_x(net_9802),
-    .s_4_port_7_control_4_push(net_9803),
-    .s_4_port_7_control_7_push_go(net_9804),
-    .s_4_port_7_control_2_go(net_9805),
-    .s_4_port_7_control_3_pop(net_9806),
-    .s_4_port_7_control_5_put_g(net_9807),
-    .s_4_port_7_control_5_put_l(net_9808),
-    .s_4_port_7_control_4_save(net_9809),
-    .s_4_port_7_control_6_unsave(net_9810),
-    .s_4_port_7_control_4_trap(net_9811),
-    .s_4_port_7_control_4_swym(net_9812),
-    .s_4_port_7_control_7_alu_sel({net_9815, net_9814, net_9813}),
-    .s_4_port_7_control_2_op({net_9819, net_9818, net_9817, net_9816}),
+    .s_4_port_7_control_8_writes_x(net_9803),
+    .s_4_port_7_control_4_push(net_9804),
+    .s_4_port_7_control_7_push_go(net_9805),
+    .s_4_port_7_control_2_go(net_9806),
+    .s_4_port_7_control_3_pop(net_9807),
+    .s_4_port_7_control_5_put_g(net_9808),
+    .s_4_port_7_control_5_put_l(net_9809),
+    .s_4_port_7_control_4_save(net_9810),
+    .s_4_port_7_control_6_unsave(net_9811),
+    .s_4_port_7_control_4_trap(net_9812),
+    .s_4_port_7_control_4_swym(net_9813),
+    .s_4_port_7_control_7_alu_sel({net_9816, net_9815, net_9814}),
+    .s_4_port_7_control_2_op({net_9820, net_9819, net_9818, net_9817}),
     .s_4_port_7_control_6_r1_sel({net_4166, net_4165, net_4164, net_4163, net_4162, net_4161, net_4160, net_4159}),
     .s_4_port_7_control_6_r2_sel({net_4174, net_4173, net_4172, net_4171, net_4170, net_4169, net_4168, net_4167}),
     .s_4_port_7_control_5_w_sel({net_4182, net_4181, net_4180, net_4179, net_4178, net_4177, net_4176, net_4175}),
-    .s_4_port_7_control_8_arg1_imm(net_9844),
-    .s_4_port_7_control_8_arg2_imm(net_9845),
-    .s_4_port_7_control_9_arg1_zero(net_9846),
-    .s_4_port_7_control_9_arg2_wyde(net_9847),
-    .s_4_port_7_control_5_imm_y({net_9911, net_9910, net_9909, net_9908, net_9907, net_9906, net_9905, net_9904, net_9903, net_9902, net_9901, net_9900, net_9899, net_9898, net_9897, net_9896, net_9895, net_9894, net_9893, net_9892, net_9891, net_9890, net_9889, net_9888, net_9887, net_9886, net_9885, net_9884, net_9883, net_9882, net_9881, net_9880, net_9879, net_9878, net_9877, net_9876, net_9875, net_9874, net_9873, net_9872, net_9871, net_9870, net_9869, net_9868, net_9867, net_9866, net_9865, net_9864, net_9863, net_9862, net_9861, net_9860, net_9859, net_9858, net_9857, net_9856, net_9855, net_9854, net_9853, net_9852, net_9851, net_9850, net_9849, net_9848}),
-    .s_4_port_7_control_5_imm_z({net_9975, net_9974, net_9973, net_9972, net_9971, net_9970, net_9969, net_9968, net_9967, net_9966, net_9965, net_9964, net_9963, net_9962, net_9961, net_9960, net_9959, net_9958, net_9957, net_9956, net_9955, net_9954, net_9953, net_9952, net_9951, net_9950, net_9949, net_9948, net_9947, net_9946, net_9945, net_9944, net_9943, net_9942, net_9941, net_9940, net_9939, net_9938, net_9937, net_9936, net_9935, net_9934, net_9933, net_9932, net_9931, net_9930, net_9929, net_9928, net_9927, net_9926, net_9925, net_9924, net_9923, net_9922, net_9921, net_9920, net_9919, net_9918, net_9917, net_9916, net_9915, net_9914, net_9913, net_9912}),
-    .s_4_port_7_control_6_imm_yz({net_10039, net_10038, net_10037, net_10036, net_10035, net_10034, net_10033, net_10032, net_10031, net_10030, net_10029, net_10028, net_10027, net_10026, net_10025, net_10024, net_10023, net_10022, net_10021, net_10020, net_10019, net_10018, net_10017, net_10016, net_10015, net_10014, net_10013, net_10012, net_10011, net_10010, net_10009, net_10008, net_10007, net_10006, net_10005, net_10004, net_10003, net_10002, net_10001, net_10000, net_9999, net_9998, net_9997, net_9996, net_9995, net_9994, net_9993, net_9992, net_9991, net_9990, net_9989, net_9988, net_9987, net_9986, net_9985, net_9984, net_9983, net_9982, net_9981, net_9980, net_9979, net_9978, net_9977, net_9976}),
-    .s_4_port_7_control_5_imm_x({net_10103, net_10102, net_10101, net_10100, net_10099, net_10098, net_10097, net_10096, net_10095, net_10094, net_10093, net_10092, net_10091, net_10090, net_10089, net_10088, net_10087, net_10086, net_10085, net_10084, net_10083, net_10082, net_10081, net_10080, net_10079, net_10078, net_10077, net_10076, net_10075, net_10074, net_10073, net_10072, net_10071, net_10070, net_10069, net_10068, net_10067, net_10066, net_10065, net_10064, net_10063, net_10062, net_10061, net_10060, net_10059, net_10058, net_10057, net_10056, net_10055, net_10054, net_10053, net_10052, net_10051, net_10050, net_10049, net_10048, net_10047, net_10046, net_10045, net_10044, net_10043, net_10042, net_10041, net_10040})
+    .s_4_port_7_control_8_arg1_imm(net_9845),
+    .s_4_port_7_control_8_arg2_imm(net_9846),
+    .s_4_port_7_control_9_arg1_zero(net_9847),
+    .s_4_port_7_control_9_arg2_wyde(net_9848),
+    .s_4_port_7_control_5_imm_y({net_9912, net_9911, net_9910, net_9909, net_9908, net_9907, net_9906, net_9905, net_9904, net_9903, net_9902, net_9901, net_9900, net_9899, net_9898, net_9897, net_9896, net_9895, net_9894, net_9893, net_9892, net_9891, net_9890, net_9889, net_9888, net_9887, net_9886, net_9885, net_9884, net_9883, net_9882, net_9881, net_9880, net_9879, net_9878, net_9877, net_9876, net_9875, net_9874, net_9873, net_9872, net_9871, net_9870, net_9869, net_9868, net_9867, net_9866, net_9865, net_9864, net_9863, net_9862, net_9861, net_9860, net_9859, net_9858, net_9857, net_9856, net_9855, net_9854, net_9853, net_9852, net_9851, net_9850, net_9849}),
+    .s_4_port_7_control_5_imm_z({net_9976, net_9975, net_9974, net_9973, net_9972, net_9971, net_9970, net_9969, net_9968, net_9967, net_9966, net_9965, net_9964, net_9963, net_9962, net_9961, net_9960, net_9959, net_9958, net_9957, net_9956, net_9955, net_9954, net_9953, net_9952, net_9951, net_9950, net_9949, net_9948, net_9947, net_9946, net_9945, net_9944, net_9943, net_9942, net_9941, net_9940, net_9939, net_9938, net_9937, net_9936, net_9935, net_9934, net_9933, net_9932, net_9931, net_9930, net_9929, net_9928, net_9927, net_9926, net_9925, net_9924, net_9923, net_9922, net_9921, net_9920, net_9919, net_9918, net_9917, net_9916, net_9915, net_9914, net_9913}),
+    .s_4_port_7_control_6_imm_yz({net_10040, net_10039, net_10038, net_10037, net_10036, net_10035, net_10034, net_10033, net_10032, net_10031, net_10030, net_10029, net_10028, net_10027, net_10026, net_10025, net_10024, net_10023, net_10022, net_10021, net_10020, net_10019, net_10018, net_10017, net_10016, net_10015, net_10014, net_10013, net_10012, net_10011, net_10010, net_10009, net_10008, net_10007, net_10006, net_10005, net_10004, net_10003, net_10002, net_10001, net_10000, net_9999, net_9998, net_9997, net_9996, net_9995, net_9994, net_9993, net_9992, net_9991, net_9990, net_9989, net_9988, net_9987, net_9986, net_9985, net_9984, net_9983, net_9982, net_9981, net_9980, net_9979, net_9978, net_9977}),
+    .s_4_port_7_control_5_imm_x({net_10104, net_10103, net_10102, net_10101, net_10100, net_10099, net_10098, net_10097, net_10096, net_10095, net_10094, net_10093, net_10092, net_10091, net_10090, net_10089, net_10088, net_10087, net_10086, net_10085, net_10084, net_10083, net_10082, net_10081, net_10080, net_10079, net_10078, net_10077, net_10076, net_10075, net_10074, net_10073, net_10072, net_10071, net_10070, net_10069, net_10068, net_10067, net_10066, net_10065, net_10064, net_10063, net_10062, net_10061, net_10060, net_10059, net_10058, net_10057, net_10056, net_10055, net_10054, net_10053, net_10052, net_10051, net_10050, net_10049, net_10048, net_10047, net_10046, net_10045, net_10044, net_10043, net_10042, net_10041})
 );
 s_3_cpu_6_decode_17_InstructionDecode s_8_instance_9_ex_decode (
     .s_4_port_11_instruction({net_4496, net_4495, net_4494, net_4493, net_4492, net_4491, net_4490, net_4489, net_4488, net_4487, net_4486, net_4485, net_4484, net_4483, net_4482, net_4481, net_4480, net_4479, net_4478, net_4477, net_4476, net_4475, net_4474, net_4473, net_4472, net_4471, net_4470, net_4469, net_4468, net_4467, net_4466, net_4465}),
-    .s_4_port_17_instruction_valid(net_10136),
-    .s_4_port_7_control_5_valid(net_10137),
-    .s_4_port_7_control_11_unsupported(net_10138),
+    .s_4_port_17_instruction_valid(net_10137),
+    .s_4_port_7_control_5_valid(net_10138),
+    .s_4_port_7_control_11_unsupported(net_10139),
     .s_4_port_7_control_4_halt(s_4_port_7_decoded_4_halt[0]),
     .s_4_port_7_control_6_memory(s_4_port_7_decoded_6_memory[0]),
     .s_4_port_7_control_5_store(s_4_port_7_decoded_5_store[0]),
@@ -4720,7 +4722,7 @@ s_8_$builtin_3_Mux_args_2b541f5c6f922aaf58b910c71727a49b979faa42cd1e788b110b3378
     .s_4_port_6_select({s_4_port_7_decoded_9_arg1_zero[0], s_4_port_7_decoded_8_arg1_imm[0]}),
     .s_4_port_6_option_1_0({net_4561, net_4560, net_4559, net_4558, net_4557, net_4556, net_4555, net_4554, net_4553, net_4552, net_4551, net_4550, net_4549, net_4548, net_4547, net_4546, net_4545, net_4544, net_4543, net_4542, net_4541, net_4540, net_4539, net_4538, net_4537, net_4536, net_4535, net_4534, net_4533, net_4532, net_4531, net_4530, net_4529, net_4528, net_4527, net_4526, net_4525, net_4524, net_4523, net_4522, net_4521, net_4520, net_4519, net_4518, net_4517, net_4516, net_4515, net_4514, net_4513, net_4512, net_4511, net_4510, net_4509, net_4508, net_4507, net_4506, net_4505, net_4504, net_4503, net_4502, net_4501, net_4500, net_4499, net_4498}),
     .s_4_port_6_option_1_1({s_4_port_7_decoded_5_imm_y[63], s_4_port_7_decoded_5_imm_y[62], s_4_port_7_decoded_5_imm_y[61], s_4_port_7_decoded_5_imm_y[60], s_4_port_7_decoded_5_imm_y[59], s_4_port_7_decoded_5_imm_y[58], s_4_port_7_decoded_5_imm_y[57], s_4_port_7_decoded_5_imm_y[56], s_4_port_7_decoded_5_imm_y[55], s_4_port_7_decoded_5_imm_y[54], s_4_port_7_decoded_5_imm_y[53], s_4_port_7_decoded_5_imm_y[52], s_4_port_7_decoded_5_imm_y[51], s_4_port_7_decoded_5_imm_y[50], s_4_port_7_decoded_5_imm_y[49], s_4_port_7_decoded_5_imm_y[48], s_4_port_7_decoded_5_imm_y[47], s_4_port_7_decoded_5_imm_y[46], s_4_port_7_decoded_5_imm_y[45], s_4_port_7_decoded_5_imm_y[44], s_4_port_7_decoded_5_imm_y[43], s_4_port_7_decoded_5_imm_y[42], s_4_port_7_decoded_5_imm_y[41], s_4_port_7_decoded_5_imm_y[40], s_4_port_7_decoded_5_imm_y[39], s_4_port_7_decoded_5_imm_y[38], s_4_port_7_decoded_5_imm_y[37], s_4_port_7_decoded_5_imm_y[36], s_4_port_7_decoded_5_imm_y[35], s_4_port_7_decoded_5_imm_y[34], s_4_port_7_decoded_5_imm_y[33], s_4_port_7_decoded_5_imm_y[32], s_4_port_7_decoded_5_imm_y[31], s_4_port_7_decoded_5_imm_y[30], s_4_port_7_decoded_5_imm_y[29], s_4_port_7_decoded_5_imm_y[28], s_4_port_7_decoded_5_imm_y[27], s_4_port_7_decoded_5_imm_y[26], s_4_port_7_decoded_5_imm_y[25], s_4_port_7_decoded_5_imm_y[24], s_4_port_7_decoded_5_imm_y[23], s_4_port_7_decoded_5_imm_y[22], s_4_port_7_decoded_5_imm_y[21], s_4_port_7_decoded_5_imm_y[20], s_4_port_7_decoded_5_imm_y[19], s_4_port_7_decoded_5_imm_y[18], s_4_port_7_decoded_5_imm_y[17], s_4_port_7_decoded_5_imm_y[16], s_4_port_7_decoded_5_imm_y[15], s_4_port_7_decoded_5_imm_y[14], s_4_port_7_decoded_5_imm_y[13], s_4_port_7_decoded_5_imm_y[12], s_4_port_7_decoded_5_imm_y[11], s_4_port_7_decoded_5_imm_y[10], s_4_port_7_decoded_5_imm_y[9], s_4_port_7_decoded_5_imm_y[8], s_4_port_7_decoded_5_imm_y[7], s_4_port_7_decoded_5_imm_y[6], s_4_port_7_decoded_5_imm_y[5], s_4_port_7_decoded_5_imm_y[4], s_4_port_7_decoded_5_imm_y[3], s_4_port_7_decoded_5_imm_y[2], s_4_port_7_decoded_5_imm_y[1], s_4_port_7_decoded_5_imm_y[0]}),
-    .s_4_port_6_option_1_2({net_10719, net_10718, net_10717, net_10716, net_10715, net_10714, net_10713, net_10712, net_10711, net_10710, net_10709, net_10708, net_10707, net_10706, net_10705, net_10704, net_10703, net_10702, net_10701, net_10700, net_10699, net_10698, net_10697, net_10696, net_10695, net_10694, net_10693, net_10692, net_10691, net_10690, net_10689, net_10688, net_10687, net_10686, net_10685, net_10684, net_10683, net_10682, net_10681, net_10680, net_10679, net_10678, net_10677, net_10676, net_10675, net_10674, net_10673, net_10672, net_10671, net_10670, net_10669, net_10668, net_10667, net_10666, net_10665, net_10664, net_10663, net_10662, net_10661, net_10660, net_10659, net_10658, net_10657, net_10656}),
+    .s_4_port_6_option_1_2({net_10720, net_10719, net_10718, net_10717, net_10716, net_10715, net_10714, net_10713, net_10712, net_10711, net_10710, net_10709, net_10708, net_10707, net_10706, net_10705, net_10704, net_10703, net_10702, net_10701, net_10700, net_10699, net_10698, net_10697, net_10696, net_10695, net_10694, net_10693, net_10692, net_10691, net_10690, net_10689, net_10688, net_10687, net_10686, net_10685, net_10684, net_10683, net_10682, net_10681, net_10680, net_10679, net_10678, net_10677, net_10676, net_10675, net_10674, net_10673, net_10672, net_10671, net_10670, net_10669, net_10668, net_10667, net_10666, net_10665, net_10664, net_10663, net_10662, net_10661, net_10660, net_10659, net_10658, net_10657}),
     .s_4_port_8_selected({net_1155, net_1154, net_1153, net_1152, net_1151, net_1150, net_1149, net_1148, net_1147, net_1146, net_1145, net_1144, net_1143, net_1142, net_1141, net_1140, net_1139, net_1138, net_1137, net_1136, net_1135, net_1134, net_1133, net_1132, net_1131, net_1130, net_1129, net_1128, net_1127, net_1126, net_1125, net_1124, net_1123, net_1122, net_1121, net_1120, net_1119, net_1118, net_1117, net_1116, net_1115, net_1114, net_1113, net_1112, net_1111, net_1110, net_1109, net_1108, net_1107, net_1106, net_1105, net_1104, net_1103, net_1102, net_1101, net_1100, net_1099, net_1098, net_1097, net_1096, net_1095, net_1094, net_1093, net_1092})
 );
 s_8_$builtin_3_Mux_args_2b541f5c6f922aaf58b910c71727a49b979faa42cd1e788b110b337822b976a4 s_8_instance_8_arg2_mux (

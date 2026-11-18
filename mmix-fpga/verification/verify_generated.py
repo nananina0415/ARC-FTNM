@@ -176,7 +176,6 @@ class Checks:
     def cpu(self):
         module = next(m for m in self.modules if m["module"] == self.mapping["top"])
         p = lambda *path: enc("port", *path)
-        alu = "dut." + enc("instance", "alu") + "."
         reg = "dut." + enc("instance", "reg") + "."
         lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module)
         clock, reset, calib = p("clock"), p("reset"), p("init_calib_complete")
@@ -206,7 +205,7 @@ class Checks:
                   f"      pending=1;delay_count=3;saved_address={araddr};requests=requests+1;end",
                   f"    if({rvalid} && {rready}) begin pending=0;{rvalid}<=0;end",
                   f"    if({reg}{p('general','w_en')}) begin",
-                  f"      if(writes>=expected_writes || {reg}{p('general','w_sel')}!==expected_dest[writes][7:0] || {alu}{p('res')}!==expected_value[writes]) $fatal(1,\"writeback mismatch at %0d\", writes);",
+                  f"      if(writes>=expected_writes || {reg}{p('general','w_sel')}!==expected_dest[writes][7:0] || {reg}{p('general','w_data')}!==expected_value[writes]) $fatal(1,\"writeback mismatch at %0d\", writes);",
                   "      writes=writes+1; end",
                   f"    if({p('axi','write','awvalid')} || {p('axi','write','wvalid')}) $fatal(1,\"unexpected AXI write\");",
                   "  end end",

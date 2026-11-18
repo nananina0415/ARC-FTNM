@@ -88,7 +88,7 @@ class StackModel:
         if (self.pending()+self.get('rL')) & (RING-1) == 0: self.spill()
 
     def grow_to(self, x):
-        """Each increase returns to EXECUTE, so it counts as another visit."""
+        """Each increase retries the instruction, so it counts as another execution."""
         while self.get('rG') > x >= self.get('rL'):
             self.increase_l()
             self.visits[self.pc] = self.visits.get(self.pc, 0)+1

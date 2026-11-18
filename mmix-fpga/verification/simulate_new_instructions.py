@@ -11,12 +11,7 @@ from verify_generated import Checks, ROOT, cache_ready, enc
 
 sys.path.insert(0, str(ROOT))
 from verification.cpu_suite.assembler import assemble  # noqa: E402
-from cycle_trace import STATES, SPECIAL_NAMES, instrumentation, load_frames, render  # noqa: E402
-
-REQUEST, WAIT, EXECUTE, HALTED, MEMORY_REQUEST, MEMORY_WAIT, MEMORY_COMMIT, STACK, READ = 0, 1, 2, 3, 5, 6, 7, 8, 9
-PATH_EXECUTE = [REQUEST, WAIT, READ, EXECUTE]
-PATH_MEMORY = [REQUEST, WAIT, READ, EXECUTE, MEMORY_REQUEST, MEMORY_WAIT, MEMORY_COMMIT]
-PATH_HALT = [REQUEST, WAIT, READ, EXECUTE, HALTED]
+from cycle_trace import SPECIAL_NAMES, instrumentation, load_frames, render  # noqa: E402
 
 # (pc, opcode, source text). Immediate and backward forms have their own opcodes.
 PROGRAM = [
@@ -150,36 +145,21 @@ def testbench(checks, module, words):
     return lines
 
 
-def state_of(frame):
-    return int(frame["state"], 16) if frame["state"] in "012345678" else None
-
-
-def without_growth(path):
-    """Marginal $X adds EXECUTE -> STACK -> EXECUTE before the instruction runs."""
-    result = []
-    for state in path:
-        if state == STACK:
-            result.pop()
-        elif state == EXECUTE and result and result[-1] == EXECUTE:
-            continue
-        else:
-            result.append(state)
-    return result
-
-
-def split_instructions(frames, start):
-    """Group clocks into instructions. A new instruction begins on each entry into REQUEST."""
-    items, previous = [], None
+def executions(frames, start):
+    """EX executions in order: (frame index, pc, word). Marginal $X retries the same
+    instruction after growing L, so consecutive repeats of one PC are one instruction."""
+    found = []
     for index in range(start, len(frames)):
-        state = state_of(frames[index])
-        if state == REQUEST and previous != REQUEST:
-            items.append({"first": index, "path": [], "pc": int(frames[index]["pc"], 16)})
-        if items and state != previous:
-            items[-1]["path"].append(state)
-        if items:
-            items[-1]["last"] = index
-        previous = state
-    return items
+        edge = frames[index]["edge"]
+        if not edge["exec"]:
+            continue
+        pc = int(edge["exec_pc"], 16)
+        if found and found[-1]["pc"] == pc:
+            found[-1]["attempts"] += 1
+            found[-1]["last"] = index
+            continue
+        found.append({"first": index, "last": index, "pc": pc, "word": edge["exec_word"], "attempts": 1})
+    return found
 
 
 def judge(frames, memory_image):
@@ -190,7 +170,7 @@ def judge(frames, memory_image):
     if frames[-1]["done"] != "1":
         errors.append("final clock is not HALTED")
 
-    items = split_instructions(frames, start)
+    items = executions(frames, start)
     order = [item["pc"] for item in items]
     if order != PC_ORDER:
         mismatch = next((i for i, (a, b) in enumerate(zip(order, PC_ORDER)) if a != b), min(len(order), len(PC_ORDER)))
@@ -199,21 +179,14 @@ def judge(frames, memory_image):
     for item in items:
         pc = item["pc"]
         opcode = OPCODE.get(pc)
-        memory_kind = opcode is not None and (0x80 <= opcode <= 0x8F or 0xA0 <= opcode <= 0xB5)
-        expected = PATH_HALT if pc == 0xCC else PATH_MEMORY if memory_kind else PATH_EXECUTE
-        if without_growth(item["path"]) != expected:
-            errors.append(f"pc={pc:#x} state path {[STATES[s] if s is not None else 'X' for s in item['path']]}")
-        executing = [i for i in range(item["first"], item["last"] + 1) if state_of(frames[i]) == EXECUTE]
-        if not executing:
-            continue
-        frame = frames[executing[0]]
         word = int.from_bytes(bytes(memory_image[pc + i] for i in range(4)), "big") if pc + 3 < 256 else None
-        if frame["instruction_valid"] != "1" or word is None or int(frame["instruction"], 16) != word:
-            errors.append(f"pc={pc:#x} instruction buffer={frame['instruction']} valid={frame['instruction_valid']} RAM={word}")
+        if word is None or int(item["word"], 16) != word:
+            errors.append(f"pc={pc:#x} EX instruction={item['word']} RAM={word}")
         if opcode is not None and word is not None and word >> 24 != opcode:
             errors.append(f"pc={pc:#x} opcode {word >> 24:#x}, expected {opcode:#x}")
 
-    actual_writes = [(int(frames[i - 1]["pc"], 16), int(frames[i]["edge"]["dest"], 16), int(frames[i]["edge"]["value"], 16))
+    # The writing instruction is the one in WB just before the edge.
+    actual_writes = [(int(frames[i]["edge"]["wb_pc"], 16), int(frames[i]["edge"]["dest"], 16), int(frames[i]["edge"]["value"], 16))
                      for i in range(start, len(frames)) if frames[i]["edge"]["write"]]
     if actual_writes != WRITES:
         mismatch = next((i for i, (a, b) in enumerate(zip(actual_writes, WRITES)) if a != b), min(len(actual_writes), len(WRITES)))
@@ -231,8 +204,9 @@ def judge(frames, memory_image):
         errors.append(f"memory changed on {len(changed)} clocks, expected {len(STORES)}")
     for number, (aw, w, b, clock, store) in enumerate(zip(aw_edges, w_edges, b_edges, changed, STORES)):
         pc, line, strobe, data = store
-        if int(frames[aw - 1]["pc"], 16) != pc or int(frames[w - 1]["pc"], 16) != pc:
-            errors.append(f"store {number}: handshake during pc={frames[aw - 1]['pc']}, expected {pc:#x}")
+        # A store waits in WB from its request until the B response.
+        if int(frames[aw]["edge"]["wb_pc"], 16) != pc or int(frames[w]["edge"]["wb_pc"], 16) != pc:
+            errors.append(f"store {number}: handshake while WB pc={frames[aw]['edge']['wb_pc']}, expected {pc:#x}")
         if int(frames[aw - 1]["axi"]["awaddr"], 16) != line:
             errors.append(f"store {number}: AWADDR={frames[aw - 1]['axi']['awaddr']}, expected {line:#x}")
         if int(frames[w - 1]["axi"]["wstrb"], 16) != strobe:
@@ -241,16 +215,12 @@ def judge(frames, memory_image):
             snapshot[address] = byte
         if [int(x, 16) for x in frames[clock]["memory"]] != snapshot:
             errors.append(f"store {number}: RAM after clock {clock} differs from expected bytes")
-        owner = next((item for item in items if item["pc"] == pc), None)
-        commit = None
-        if owner:
-            commit = next((i for i in range(owner["first"], owner["last"] + 1) if state_of(frames[i]) == MEMORY_COMMIT), None)
-        if commit is None or commit < b:
-            errors.append(f"store {number}: instruction finished before its B response (commit={commit}, B={b})")
+        if not frames[b]["edge"]["wb"] or int(frames[b]["edge"]["wb_pc"], 16) != pc:
+            errors.append(f"store {number}: not in WB at its B response (WB pc={frames[b]['edge']['wb_pc']})")
 
     last = frames[-1]
-    if int(last["pc"], 16) != 0xCC:
-        errors.append(f"final PC={last['pc']}")
+    if int(last["stop_pc"], 16) != 0xCC:
+        errors.append(f"final PC={last['stop_pc']}")
     # Slots: ring l[0..255], global g[k] at 256+k. With rO=0 and G=255, local $k is slot k.
     registers = [0] * 512
     for _, dest, value in WRITES:
@@ -269,7 +239,7 @@ def judge(frames, memory_image):
     halted = next((i for i in range(start, len(frames)) if frames[i]["done"] == "1"), None)
     if halted is not None:
         for frame in frames[halted + 1:]:
-            if frame["pc"] != frames[halted]["pc"] or frame["memory"] != frames[halted]["memory"] or frame["edge"]["write"]:
+            if frame["stop_pc"] != frames[halted]["stop_pc"] or frame["memory"] != frames[halted]["memory"] or frame["edge"]["write"]:
                 errors.append("state changed after HALT")
                 break
 
@@ -277,8 +247,8 @@ def judge(frames, memory_image):
               "register_writes": len(actual_writes), "stores": len(b_edges),
               "axi_reads": sum(1 for f in frames[start:] if f["edge"]["AR"]),
               "opcodes_executed": sorted({f"{OPCODE[i['pc']]:#04x}" for i in items if i["pc"] in OPCODE}),
-              "instructions": [{"pc": f"{i['pc']:#04x}", "clocks": i["last"] - i["first"] + 1,
-                                "path": [STATES[s] if s is not None else "X" for s in i["path"]]} for i in items]}
+              "instructions": [{"pc": f"{i['pc']:#04x}", "ex_clock": i["first"] - start,
+                                "attempts": i["attempts"]} for i in items]}
     return errors, report
 
 

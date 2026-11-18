@@ -96,6 +96,8 @@ seq Control {
     pub done: Out<bit,1>
     pub fault: Out<bit,1>
     pub fault_reason: Out<bit,3> // [0] fetch/data access, [1] decode, [2] trip
+    // 이번 클록에 EX 명령이 실행됐다(비워지지 않고 EX를 지남, 단독 실행 시도, trip). 검증 하네스가 센다.
+    pub executed: Out<bit,1>
 
     mut pc: reg::ValueReg<WORD_SIZE>  // 정지한 명령(HALT 또는 fault)의 PC
     mut reason: reg::ValueReg<3>
@@ -235,6 +237,8 @@ wire Control {
     alias ex_advance = or(normal_exec, mem_advance, getput_retire, stack_retire)
     alias redirect = or(mispredict, go_exec, getput_retire, stack_retire, stack_retry)
     alias fault_any = or(fault_ex, wb_fault, stack_fault)
+    // 페치 오류와 무효 명령은 실행으로 세지 않는다. retry 뒤 다시 실행하면 다시 센다.
+    executed <- or(normal_exec, mem_advance, getput_retire, halt_exec, stack_start, and(fault_ex, not(ex_error.out), decoded_valid))
 
     // ---- 단계 진행 ----
     alias ex_accept = or(not(ex_full.out), ex_advance, stack_retry)
@@ -352,7 +356,9 @@ wire Control {
 
     // ---- IF: 요청 주소 ----
     // ID 명령을 RF로 넘기는 클록에 그 다음 주소(예측)를 요청한다. 방향 전환이 우선이다.
+    // 페치 오류 명령 뒤는 요청하지 않는다(그 명령이 EX에서 fault를 내거나 앞 명령의 방향 전환으로 비워진다).
     alias id_taken = and(id_branch, or(id_unconditional, fetch.instruction[28]))
+    alias id_follow = and(id_consume, not(fetch.error))
     alias fetch_accept = and(fetch.req_valid, fetch.req_ready)
     id_next.a <- fetch.res_pc
     { id_next.b[0,1,3..WORD_SIZE] } <= 0
@@ -364,19 +370,19 @@ wire Control {
     predict.select <- id_taken
     predict.option[0] <- id_next.sum
     predict.option[1] <- id_target.target
-    request_pc.select[0] <- id_consume
+    request_pc.select[0] <- id_follow
     request_pc.select[1] <- redirect
     request_pc.option[0] <- fetch_pc.out
     request_pc.option[1] <- predict.selected
     request_pc.option[2] <- redirect_pc.selected
-    fetch.req_valid <- and(run, or(redirect, id_consume, not(fetch_sent.out)))
+    fetch.req_valid <- and(run, or(redirect, id_follow, not(fetch_sent.out)))
     request_pc.selected -> fetch.req_pc
     fetch.res_ready <- id_consume
     fetch.flush <- and(active, redirect)
-    fetch_pc.w_en <- or(redirect, id_consume)
+    fetch_pc.w_en <- or(redirect, id_follow)
     request_pc.selected -> fetch_pc.in
     fetch_sent.w_en <- 1
-    fetch_sent.in <- or(fetch_accept, and(fetch_sent.out, not(redirect), not(id_consume)))
+    fetch_sent.in <- or(fetch_accept, and(fetch_sent.out, not(redirect), not(id_follow)))
 
     // ---- EX: 분기와 방향 전환 ----
     pc_add.a <- ex_pc.out
