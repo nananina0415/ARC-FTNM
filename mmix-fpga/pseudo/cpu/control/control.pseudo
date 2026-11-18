@@ -1,9 +1,39 @@
-// 직렬 실행 제어. 메모리 명령은 주소 계산/요청/응답/저장 단계를 분리한다.
+// 5단계 파이프라인 제어: IF -> ID -> RF -> EX -> WB. 단계마다 진행/멈춤/비움을 정한다.
+// IF: Fetch가 PC로 I-cache를 읽는다. ID: 페치 응답을 해독해 레지스터 읽기 번호를 낸다(CPU의 ID 해독기).
+// RF: 레지스터 블록 RAM 값이 나온다. EX: 연산·주소·분기 판정, load/store 요청(CPU의 EX 해독기).
+// WB: 레지스터 쓰기. load는 이 단계에서 캐시 응답을 받는다.
+// 분기 예측: ID에서 PB*와 JMP는 taken으로 목표를 바로 요청하고 B*는 다음 명령을 요청한다. EX에서 틀리면 비운다.
+// 레지스터 스택·GET/PUT·HALT·L을 늘리는 쓰기는 EX에서 단독으로 실행한다(앞 명령이 끝난 뒤, 끝나면 뒤 명령을 비운다).
 seq Control {
     pub clock: In<bit,1>
     pub reset: In<bit,1>
     pub fetch: *fetch::FetchIO
     pub memory: *memory::MemoryIO
+
+    // ID 단계 명령(페치 응답)의 해독 결과
+    pub id_r1_sel: In<bit,8>
+    pub id_r2_sel: In<bit,8>
+    pub id_x_sel: In<bit,8>
+    pub id_branch: In<bit,1>
+    pub id_unconditional: In<bit,1>
+    pub id_offset: WordIn
+
+    // 레지스터 읽기 번호(논리)와 그 다음 클록에 나오는 값
+    pub read_r1_sel: Out<bit,8>
+    pub read_r2_sel: Out<bit,8>
+    pub read_x_sel: Out<bit,8>
+    pub r1_data: WordIn
+    pub r2_data: WordIn
+    pub x_data: WordIn
+
+    // EX 단계 명령. CPU의 EX 해독기가 해독한다.
+    pub ex_instruction: Out<bit,32>
+    pub ex_valid: Out<bit,1>  // EX에 페치 오류 없는 명령이 있으면 1
+    pub operand_r1: WordOut  // WB에서 전달한 값까지 반영한 EX 피연산자
+    pub operand_r2: WordOut
+    pub operand_x: WordOut
+
+    // EX 해독 결과
     pub decoded_valid: In<bit,1>
     pub decoded_halt: In<bit,1>
     pub decoded_memory: In<bit,1>
@@ -17,7 +47,6 @@ seq Control {
     pub decoded_branch: In<bit,1>
     pub branch_unconditional: In<bit,1>
     pub branch_condition: In<bit,3>
-    pub branch_value: WordIn
     pub branch_offset: WordIn
     pub decoded_writes_x: In<bit,1>
     pub decoded_push: In<bit,1>
@@ -31,7 +60,7 @@ seq Control {
     pub decoded_trap: In<bit,1>
     pub decoded_swym: In<bit,1>
     pub decoded_x: In<bit,8>
-    pub special_value: WordIn
+    pub special_value: WordIn  // PUT 값($Z 또는 Z)
     pub stack_regs: *reg::StackDirectIO
     pub stack_r1_physical: Out<bit,1>
     pub stack_r1_slot: Out<bit,9>
@@ -46,97 +75,363 @@ seq Control {
     pub stack_special_sel: Out<bit,5>
     pub stack_special_data: WordIn
     pub stack_special_value: WordOut
-    pub effective_address: WordIn
+    pub effective_address: WordIn  // operand_r1 + operand_r2(또는 즉치)
     pub store_data: WordIn
     pub trip_req: In<bit,1>
-    pub execute_en: Out<bit,1>
-    pub load_write_en: Out<bit,1>
+
+    // EX 결과. ex_value/ex_write는 CPU가 아래 enable로 고른 값이다.
+    pub execute_en: Out<bit,1>  // ALU 명령이 EX를 지나는 클록
     pub address_write_en: Out<bit,1>
     pub special_get_en: Out<bit,1>
     pub special_put_en: Out<bit,1>
     pub address_result: WordOut
-    pub memory_active: Out<bit,1>
+    pub ex_value: WordIn
+    pub ex_write: In<bit,1>
+
+    // WB 레지스터 쓰기
+    pub wb_en: Out<bit,1>
+    pub wb_sel: Out<bit,8>
+    pub wb_data: WordOut
+
     pub done: Out<bit,1>
     pub fault: Out<bit,1>
     pub fault_reason: Out<bit,3> // [0] fetch/data access, [1] decode, [2] trip
-    mut state: reg::ValueReg<4>
-    mut pc: reg::ValueReg<WORD_SIZE>
-    mut address: reg::ValueReg<WORD_SIZE>
+
+    mut pc: reg::ValueReg<WORD_SIZE>  // 정지한 명령(HALT 또는 fault)의 PC
     mut reason: reg::ValueReg<3>
+    mut halted: reg::ValueReg<1>
+    mut failed: reg::ValueReg<1>
+
+    // IF: 다음에 요청할 주소. fetch_sent=0이면 아직 요청하지 않았다.
+    mut fetch_pc: reg::ValueReg<WORD_SIZE>
+    mut fetch_sent: reg::ValueReg<1>
+
+    // RF 단계
+    mut rf_valid: reg::ValueReg<1>
+    mut rf_pc: reg::ValueReg<WORD_SIZE>
+    mut rf_instruction: reg::ValueReg<32>
+    mut rf_error: reg::ValueReg<1>
+    mut rf_r1: reg::ValueReg<8>
+    mut rf_r2: reg::ValueReg<8>
+    mut rf_x: reg::ValueReg<8>
+
+    // EX 단계
+    mut ex_full: reg::ValueReg<1>
+    mut ex_pc: reg::ValueReg<WORD_SIZE>
+    mut ex_instruction_q: reg::ValueReg<32>
+    mut ex_error: reg::ValueReg<1>
+    mut ex_r1: reg::ValueReg<8>
+    mut ex_r2: reg::ValueReg<8>
+    mut ex_x: reg::ValueReg<8>
+    mut ex_read: reg::ValueReg<1>  // 단독 실행 명령이 EX에서 레지스터·특수 레지스터를 읽는 한 클록을 지났다
+    mut ex_stack: reg::ValueReg<1>  // StackControl 실행 중
+    mut op_r1: reg::ValueReg<WORD_SIZE>
+    mut op_r2: reg::ValueReg<WORD_SIZE>
+    mut op_x: reg::ValueReg<WORD_SIZE>
+
+    // WB 단계
+    mut wb_valid: reg::ValueReg<1>
+    mut wb_pc: reg::ValueReg<WORD_SIZE>
+    mut wb_dest: reg::ValueReg<8>
+    mut wb_write: reg::ValueReg<1>
+    mut wb_value: reg::ValueReg<WORD_SIZE>
+    mut wb_mem: reg::ValueReg<1>  // 메모리 응답을 기다린다
+    mut wb_load: reg::ValueReg<1>
+
     mut stack: StackControl
-    sel: Decoder<4,16>
-    pc_add: Adder<WORD_SIZE>
+
+    id_next: Adder<WORD_SIZE>  // ID 명령 PC + 4
+    id_target: RelativeAddress
+    predict: Mux<2,WORD_SIZE>
+    request_pc: Mux<3,WORD_SIZE>  // 0: fetch_pc, 1: 예측 주소, 2: EX의 방향 전환
+    read_r1: Mux<3,8>  // 0: ID, 1: RF(멈춘 RF 명령을 다시 읽는다), 2: EX(단독 실행)
+    read_r2: Mux<3,8>
+    read_x: Mux<3,8>
+
+    match_rf_r1: RegisterMatch
+    match_rf_r2: RegisterMatch
+    match_rf_x: RegisterMatch
+    match_ex_r1: RegisterMatch
+    match_ex_r2: RegisterMatch
+    match_ex_x: RegisterMatch
+    op_r1_source: Mux<3,WORD_SIZE>  // 0: 레지스터 값, 1: 유지, 2: WB 값
+    op_r2_source: Mux<3,WORD_SIZE>
+    op_x_source: Mux<3,WORD_SIZE>
+    operand_r1_mux: Mux<2,WORD_SIZE>
+    operand_r2_mux: Mux<2,WORD_SIZE>
+    operand_x_mux: Mux<2,WORD_SIZE>
+    wb_data_mux: Mux<2,WORD_SIZE>
+
+    pc_add: Adder<WORD_SIZE>  // EX 명령 PC + 4
     branch: Branch
-    branch_base: Mux<2,WORD_SIZE>  // POP은 rJ 기준, 그 외는 현재 PC 기준
-    next_pc: Mux<4,WORD_SIZE>
+    branch_base: Mux<2,WORD_SIZE>  // POP은 rJ 기준, 그 외는 EX 명령 PC 기준
+    redirect_pc: Mux<5,WORD_SIZE>
     memory_address: Mux<2,WORD_SIZE>
     memory_data: Mux<2,WORD_SIZE>
     address_source: Mux<3,WORD_SIZE>  // GETA 목표, SAVE의 컨텍스트 주소, GO의 복귀 주소
+    stop_pc: Mux<2,WORD_SIZE>
 }
-wire Control {
-    alias {
-        REQUEST=0
-        WAIT=1
-        EXECUTE=2
-        HALTED=3
-        FAULT=4
-        MEMORY_REQUEST=5
-        MEMORY_WAIT=6
-        MEMORY_COMMIT=7
-        STACK=8
-        READ=9
-    }
-    alias active=not(reset)
-    alias request=sel.out[REQUEST]
-    alias waiting=sel.out[WAIT]
-    alias executing=sel.out[EXECUTE]
-    alias completed=sel.out[HALTED]
-    alias failed=sel.out[FAULT]
-    alias mem_request=sel.out[MEMORY_REQUEST]
-    alias mem_wait=sel.out[MEMORY_WAIT]
-    alias mem_commit=sel.out[MEMORY_COMMIT]
-    alias stack_active=sel.out[STACK]
-    alias reading=sel.out[READ]
-    alias response_ok=and(fetch.res_valid, not(fetch.error), decoded_valid)
-    alias stack_enter=and(active, executing, response_ok, stack.required)
-    alias stack_exit=or(stack.retire, stack.retry, stack_fault)
-    alias stack_fault=stack.access_fault
-    alias non_alu=or(decoded_branch, decoded_geta, decoded_go, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
-    alias success=and(response_ok, not(stack.required), or(decoded_halt, decoded_memory, non_alu, not(trip_req)))
-    alias retire_execute=and(active, executing, success, not(decoded_halt), not(decoded_memory))
-    alias retire_mem=and(active, mem_commit)
-    alias halt_now=and(executing, success, decoded_halt)
-    alias start_mem=and(executing, success, decoded_memory)
-    alias req_fire=and(fetch.req_valid, fetch.req_ready)
-    alias mem_fire=and(memory.req_valid, memory.req_ready)
-    alias wait_fault=and(waiting, fetch.res_valid, not(response_ok))
-    alias exec_fault=and(executing, not(success), not(stack_enter))
-    alias mem_fault=and(mem_wait, memory.res_valid, memory.error)
-    alias mem_success=and(mem_wait, memory.res_valid, not(memory.error))
-    alias enter_fault=or(wait_fault, exec_fault, mem_fault, stack_fault)
-    clock => { state.clock, pc.clock, address.clock, reason.clock, stack.clock }
-    reset => { state.reset, pc.reset, address.reset, reason.reset, stack.reset }
-    state.w_en <- 1
-    state.out -> sel.in
-    sel.out[10..16] -> OPENED
-    // 명령을 받으면 READ에서 한 클록 레지스터 블록 RAM을 읽은 뒤 EXECUTE한다. 레지스터 스택 처리 뒤 재실행도 READ를 거친다.
-    state.in[0] <- or(and(request, req_fire), and(waiting, not(fetch.res_valid)), and(waiting, response_ok), halt_now, completed, start_mem, and(mem_request, not(mem_fire)), mem_success, stack.retry)
-    state.in[1] <- or(reading, halt_now, completed, and(mem_request, mem_fire), and(mem_wait, not(mem_fault)))
-    state.in[2] <- or(enter_fault, failed, start_mem, mem_request, mem_wait)
-    state.in[3] <- or(stack_enter, and(stack_active, not(stack_exit)), and(waiting, response_ok), stack.retry)
 
-    stack.start <- stack_enter
+wire Control {
+    alias active = not(reset)
+    alias run = and(active, not(halted.out), not(failed.out))
+
+    clock => {
+        pc.clock, reason.clock, halted.clock, failed.clock, fetch_pc.clock, fetch_sent.clock,
+        rf_valid.clock, rf_pc.clock, rf_instruction.clock, rf_error.clock, rf_r1.clock, rf_r2.clock, rf_x.clock,
+        ex_full.clock, ex_pc.clock, ex_instruction_q.clock, ex_error.clock, ex_r1.clock, ex_r2.clock, ex_x.clock,
+        ex_read.clock, ex_stack.clock, op_r1.clock, op_r2.clock, op_x.clock,
+        wb_valid.clock, wb_pc.clock, wb_dest.clock, wb_write.clock, wb_value.clock, wb_mem.clock, wb_load.clock,
+        stack.clock,
+    }
+    reset => {
+        pc.reset, reason.reset, halted.reset, failed.reset, fetch_pc.reset, fetch_sent.reset,
+        rf_valid.reset, rf_pc.reset, rf_instruction.reset, rf_error.reset, rf_r1.reset, rf_r2.reset, rf_x.reset,
+        ex_full.reset, ex_pc.reset, ex_instruction_q.reset, ex_error.reset, ex_r1.reset, ex_r2.reset, ex_x.reset,
+        ex_read.reset, ex_stack.reset, op_r1.reset, op_r2.reset, op_x.reset,
+        wb_valid.reset, wb_pc.reset, wb_dest.reset, wb_write.reset, wb_value.reset, wb_mem.reset, wb_load.reset,
+        stack.reset,
+    }
+
+    // ---- WB ----
+    alias wb_done = and(wb_valid.out, or(not(wb_mem.out), and(memory.res_valid, not(memory.error))))
+    alias wb_fault = and(run, wb_valid.out, wb_mem.out, memory.res_valid, memory.error)
+    alias wb_free = or(not(wb_valid.out), wb_done)  // 이번 클록이 끝나면 WB가 빈다
+    alias wb_forward = and(wb_valid.out, wb_write.out)
+    wb_data_mux.select <- wb_load.out
+    wb_data_mux.option[0] <- wb_value.out
+    wb_data_mux.option[1] <- memory.read_data
+    wb_data_mux.selected -> wb_data
+    wb_dest.out -> wb_sel
+    wb_en <- and(active, wb_done, wb_write.out)
+
+    // ---- EX 분류 ----
+    alias non_alu = or(decoded_branch, decoded_geta, decoded_go, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
+    alias serial = or(decoded_halt, decoded_get, decoded_put, stack.required)
+    alias trip = and(not(decoded_memory), not(decoded_halt), not(non_alu), trip_req)
+    alias bad = or(ex_error.out, not(decoded_valid), trip)
+    alias s_mode = and(ex_full.out, serial)
+
+    // load 결과는 WB에서야 나오므로 그 값을 읽는 EX 명령은 한 클록 기다린다(그동안 피연산자에 받아 둔다).
+    alias reads_x = and(decoded_store, not(decoded_store_constant))
+    alias load_use = and(wb_valid.out, wb_load.out, or(match_ex_r1.same, match_ex_r2.same, and(reads_x, match_ex_x.same)))
+    alias ex_go = and(run, ex_full.out, wb_free, not(load_use), not(ex_stack.out))
+    alias fault_ex = and(ex_go, bad)
+    alias normal = and(ex_go, not(bad), not(serial))
+    alias normal_exec = and(normal, not(decoded_memory))
+    alias mem_issue = and(normal, decoded_memory)
+    alias mem_advance = and(mem_issue, memory.req_ready)
+    // 단독 실행: 첫 클록에 EX가 자기 번호로 레지스터·특수 레지스터를 읽고 다음 클록부터 실행한다.
+    alias serial_ready = and(ex_go, not(bad), serial, ex_read.out)
+    alias getput_retire = and(serial_ready, or(decoded_get, decoded_put), not(stack.required))
+    alias halt_exec = and(serial_ready, decoded_halt)
+    alias stack_start = and(serial_ready, stack.required)
+    alias stack_fault = and(run, ex_stack.out, stack.access_fault)
+    alias stack_retire = and(ex_stack.out, stack.retire)
+    alias stack_retry = and(ex_stack.out, stack.retry)
+    alias predicted_taken = or(branch_unconditional, ex_instruction_q.out[28])  // PB*(opcode bit 4)와 JMP
+    alias mispredict = and(normal_exec, decoded_branch, xor(branch.taken, predicted_taken))
+    alias go_exec = and(normal_exec, decoded_go)
+    alias ex_advance = or(normal_exec, mem_advance, getput_retire, stack_retire)
+    alias redirect = or(mispredict, go_exec, getput_retire, stack_retire, stack_retry)
+    alias fault_any = or(fault_ex, wb_fault, stack_fault)
+
+    // ---- 단계 진행 ----
+    alias ex_accept = or(not(ex_full.out), ex_advance, stack_retry)
+    alias rf_advance = and(run, rf_valid.out, ex_accept, not(redirect))
+    alias rf_stay = and(rf_valid.out, not(rf_advance), not(redirect))
+    alias rf_accept = or(not(rf_valid.out), rf_advance)
+    alias id_consume = and(run, fetch.res_valid, rf_accept, not(redirect))
+
+    rf_valid.w_en <- 1
+    rf_valid.in <- or(id_consume, rf_stay)
+    { rf_pc.w_en, rf_instruction.w_en, rf_error.w_en, rf_r1.w_en, rf_r2.w_en, rf_x.w_en } <= id_consume
+    fetch.res_pc -> rf_pc.in
+    fetch.instruction -> rf_instruction.in
+    fetch.error -> rf_error.in
+    id_r1_sel -> rf_r1.in
+    id_r2_sel -> rf_r2.in
+    id_x_sel -> rf_x.in
+
+    ex_full.w_en <- 1
+    ex_full.in <- or(rf_advance, and(ex_full.out, not(ex_advance), not(stack_retry)))
+    { ex_pc.w_en, ex_instruction_q.w_en, ex_error.w_en, ex_r1.w_en, ex_r2.w_en, ex_x.w_en } <= rf_advance
+    rf_pc.out -> ex_pc.in
+    rf_instruction.out -> ex_instruction_q.in
+    rf_error.out -> ex_error.in
+    rf_r1.out -> ex_r1.in
+    rf_r2.out -> ex_r2.in
+    rf_x.out -> ex_x.in
+    ex_instruction_q.out -> ex_instruction
+    ex_valid <- and(ex_full.out, not(ex_error.out))
+    ex_read.w_en <- 1
+    ex_read.in <- and(not(rf_advance), ex_full.out, not(ex_advance), not(stack_retry), or(ex_read.out, and(ex_go, serial)))
+    ex_stack.w_en <- 1
+    ex_stack.in <- or(stack_start, and(ex_stack.out, not(or(stack.retire, stack.retry, stack.access_fault))))
+
+    wb_valid.w_en <- 1
+    wb_valid.in <- or(ex_advance, and(wb_valid.out, not(wb_done), not(wb_fault)))
+    { wb_pc.w_en, wb_dest.w_en, wb_write.w_en, wb_value.w_en, wb_mem.w_en, wb_load.w_en } <= ex_advance
+    ex_pc.out -> wb_pc.in
+    ex_x.out -> wb_dest.in
+    wb_write.in <- or(ex_write, and(mem_advance, not(decoded_store)))
+    ex_value -> wb_value.in
+    wb_mem.in <- mem_advance
+    wb_load.in <- and(mem_advance, not(decoded_store))
+
+    // ---- 레지스터 읽기 번호 ----
+    // 읽은 값은 다음 클록에 나온다. 다음 클록에 RF에 있을 명령의 번호를 낸다.
+    // 단독 실행 중에는 EX 명령의 번호를 낸다(뒤 명령은 끝난 뒤 비운다).
+    read_r1.select[0] <- and(rf_stay, not(s_mode))
+    read_r1.select[1] <- s_mode
+    read_r1.option[0] <- id_r1_sel
+    read_r1.option[1] <- rf_r1.out
+    read_r1.option[2] <- ex_r1.out
+    read_r1.selected -> read_r1_sel
+    read_r2.select[0] <- and(rf_stay, not(s_mode))
+    read_r2.select[1] <- s_mode
+    read_r2.option[0] <- id_r2_sel
+    read_r2.option[1] <- rf_r2.out
+    read_r2.option[2] <- ex_r2.out
+    read_r2.selected -> read_r2_sel
+    read_x.select[0] <- and(rf_stay, not(s_mode))
+    read_x.select[1] <- s_mode
+    read_x.option[0] <- id_x_sel
+    read_x.option[1] <- rf_x.out
+    read_x.option[2] <- ex_x.out
+    read_x.selected -> read_x_sel
+
+    // ---- 전달 ----
+    // RF -> EX로 넘어갈 때는 레지스터 값을, EX에 머무는 동안은 받아 둔 값을 저장한다.
+    // 어느 쪽이든 WB가 같은 번호를 쓰고 있으면 WB 값(load 포함)을 저장한다.
+    wb_dest.out => { match_rf_r1.a, match_rf_r2.a, match_rf_x.a, match_ex_r1.a, match_ex_r2.a, match_ex_x.a }
+    rf_r1.out -> match_rf_r1.b
+    rf_r2.out -> match_rf_r2.b
+    rf_x.out -> match_rf_x.b
+    ex_r1.out -> match_ex_r1.b
+    ex_r2.out -> match_ex_r2.b
+    ex_x.out -> match_ex_x.b
+    alias fwd_r1 = and(wb_forward, or(and(rf_advance, match_rf_r1.same), and(not(rf_advance), match_ex_r1.same)))
+    alias fwd_r2 = and(wb_forward, or(and(rf_advance, match_rf_r2.same), and(not(rf_advance), match_ex_r2.same)))
+    alias fwd_x = and(wb_forward, or(and(rf_advance, match_rf_x.same), and(not(rf_advance), match_ex_x.same)))
+    op_r1_source.select[0] <- and(not(rf_advance), not(fwd_r1))
+    op_r1_source.select[1] <- fwd_r1
+    op_r1_source.option[0] <- r1_data
+    op_r1_source.option[1] <- op_r1.out
+    op_r1_source.option[2] <- wb_data_mux.selected
+    op_r1.w_en <- 1
+    op_r1_source.selected -> op_r1.in
+    op_r2_source.select[0] <- and(not(rf_advance), not(fwd_r2))
+    op_r2_source.select[1] <- fwd_r2
+    op_r2_source.option[0] <- r2_data
+    op_r2_source.option[1] <- op_r2.out
+    op_r2_source.option[2] <- wb_data_mux.selected
+    op_r2.w_en <- 1
+    op_r2_source.selected -> op_r2.in
+    op_x_source.select[0] <- and(not(rf_advance), not(fwd_x))
+    op_x_source.select[1] <- fwd_x
+    op_x_source.option[0] <- x_data
+    op_x_source.option[1] <- op_x.out
+    op_x_source.option[2] <- wb_data_mux.selected
+    op_x.w_en <- 1
+    op_x_source.selected -> op_x.in
+    // EX 사용 값: 바로 앞 명령(WB)의 ALU 결과는 그대로 전달한다. load 결과는 load_use로 기다린다.
+    alias wb_alu_forward = and(wb_forward, not(wb_load.out))
+    operand_r1_mux.select <- and(wb_alu_forward, match_ex_r1.same)
+    operand_r1_mux.option[0] <- op_r1.out
+    operand_r1_mux.option[1] <- wb_value.out
+    operand_r1_mux.selected -> operand_r1
+    operand_r2_mux.select <- and(wb_alu_forward, match_ex_r2.same)
+    operand_r2_mux.option[0] <- op_r2.out
+    operand_r2_mux.option[1] <- wb_value.out
+    operand_r2_mux.selected -> operand_r2
+    operand_x_mux.select <- and(wb_alu_forward, match_ex_x.same)
+    operand_x_mux.option[0] <- op_x.out
+    operand_x_mux.option[1] <- wb_value.out
+    operand_x_mux.selected -> operand_x
+
+    // ---- IF: 요청 주소 ----
+    // ID 명령을 RF로 넘기는 클록에 그 다음 주소(예측)를 요청한다. 방향 전환이 우선이다.
+    alias id_taken = and(id_branch, or(id_unconditional, fetch.instruction[28]))
+    alias fetch_accept = and(fetch.req_valid, fetch.req_ready)
+    id_next.a <- fetch.res_pc
+    { id_next.b[0,1,3..WORD_SIZE] } <= 0
+    id_next.b[2] <- 1
+    id_next.c_in <- 0
+    id_next.c_out -> OPENED
+    fetch.res_pc -> id_target.base
+    id_offset -> id_target.offset
+    predict.select <- id_taken
+    predict.option[0] <- id_next.sum
+    predict.option[1] <- id_target.target
+    request_pc.select[0] <- id_consume
+    request_pc.select[1] <- redirect
+    request_pc.option[0] <- fetch_pc.out
+    request_pc.option[1] <- predict.selected
+    request_pc.option[2] <- redirect_pc.selected
+    fetch.req_valid <- and(run, or(redirect, id_consume, not(fetch_sent.out)))
+    request_pc.selected -> fetch.req_pc
+    fetch.res_ready <- id_consume
+    fetch.flush <- and(active, redirect)
+    fetch_pc.w_en <- or(redirect, id_consume)
+    request_pc.selected -> fetch_pc.in
+    fetch_sent.w_en <- 1
+    fetch_sent.in <- or(fetch_accept, and(fetch_sent.out, not(redirect), not(id_consume)))
+
+    // ---- EX: 분기와 방향 전환 ----
+    pc_add.a <- ex_pc.out
+    { pc_add.b[0,1,3..WORD_SIZE] } <= 0
+    pc_add.b[2] <- 1
+    pc_add.c_in <- 0
+    pc_add.c_out -> OPENED
+    decoded_branch -> branch.enable
+    branch_unconditional -> branch.unconditional
+    branch_condition -> branch.condition_select
+    operand_r1_mux.selected -> branch.value
+    branch_base.select <- decoded_pop
+    branch_base.option[0] <- ex_pc.out
+    branch_base.option[1] <- stack_regs.rJ_out
+    branch_base.selected -> branch.pc
+    branch_offset -> branch.offset
+    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO, GO), 3: rT(TRAP), 4: 같은 명령(retry)
+    alias to_target = or(and(mispredict, branch.taken), and(stack_retire, or(decoded_pop, and(decoded_push, not(decoded_push_go)))))
+    alias to_trap = and(stack_retire, decoded_trap)
+    alias to_effective = or(go_exec, and(stack_retire, decoded_push_go))
+    redirect_pc.select[0] <- or(to_target, to_trap)
+    redirect_pc.select[1] <- or(to_effective, to_trap)
+    redirect_pc.select[2] <- stack_retry
+    redirect_pc.option[0] <- pc_add.sum
+    redirect_pc.option[1] <- branch.target
+    redirect_pc.option[2] <- effective_address
+    redirect_pc.option[3] <- stack_regs.rT_out
+    redirect_pc.option[4] <- ex_pc.out
+
+    // ---- EX: 결과 ----
+    execute_en <- and(normal_exec, not(non_alu))
+    address_write_en <- or(and(normal_exec, or(decoded_geta, decoded_go)), stack.save_write)
+    special_get_en <- and(getput_retire, decoded_get)
+    special_put_en <- and(getput_retire, decoded_put)
+    // 0: GETA 목표, 1: SAVE 컨텍스트 주소, 2: GO의 $X = @+4
+    address_source.select[0] <- stack.save_write
+    address_source.select[1] <- decoded_go
+    address_source.option[0] <- branch.target
+    address_source.option[1] <- stack.save_address
+    address_source.option[2] <- pc_add.sum
+    address_source.selected -> address_result
+
+    // ---- 레지스터 스택 ----
+    stack.start <- stack_start
     decoded_writes_x -> stack.writes_x
     decoded_push -> stack.push
     decoded_pop -> stack.pop
     decoded_put_g -> stack.put_g
-    stack.put_l <- and(retire_execute, decoded_put_l)
+    stack.put_l <- and(getput_retire, decoded_put, decoded_put_l)
     decoded_save -> stack.save
     decoded_unsave -> stack.unsave
     decoded_trap -> stack.trap
     stack_regs.rJ_out -> stack.rJ
     pc_add.sum -> stack.pc_next
-    fetch.instruction -> stack.instruction
+    ex_instruction_q.out -> stack.instruction
     stack.special_value -> stack_special_value
     stack.special_en -> stack_special_en
     stack.special_write -> stack_special_write
@@ -167,82 +462,62 @@ wire Control {
     stack.w_slot -> stack_w_slot
     stack.w_data -> stack_w_data
 
-    pc_add.a <- pc.out
-    { pc_add.b[0,1,3..WORD_SIZE] } <= 0
-    pc_add.b[2] <- 1
-    pc_add.c_in <- 0
-    pc_add.c_out -> OPENED
-    decoded_branch -> branch.enable
-    branch_unconditional -> branch.unconditional
-    branch_condition -> branch.condition_select
-    branch_value -> branch.value
-    branch_base.select <- decoded_pop
-    branch_base.option[0] <- pc.out
-    branch_base.option[1] <- stack_regs.rJ_out
-    branch_base.selected -> branch.pc
-    branch_offset -> branch.offset
-    // 0: PC+4, 1: 상대 목표(분기, PUSHJ, POP), 2: $Y+$Z(PUSHGO, GO), 3: rT(TRAP)
-    next_pc.select[0] <- or(and(retire_execute, branch.taken), and(stack.retire, or(decoded_pop, decoded_trap, and(decoded_push, not(decoded_push_go)))))
-    next_pc.select[1] <- or(and(retire_execute, decoded_go), and(stack.retire, or(decoded_push_go, decoded_trap)))
-    next_pc.option[0] <- pc_add.sum
-    next_pc.option[1] <- branch.target
-    next_pc.option[2] <- effective_address
-    next_pc.option[3] <- stack_regs.rT_out
-    // 0: GETA 목표, 1: SAVE 컨텍스트 주소, 2: GO의 $X = @+4
-    address_source.select[0] <- stack.save_write
-    address_source.select[1] <- decoded_go
-    address_source.option[0] <- branch.target
-    address_source.option[1] <- stack.save_address
-    address_source.option[2] <- pc_add.sum
-    address_source.selected -> address_result
-    pc.w_en <- or(retire_execute, retire_mem, stack.retire)
-    pc.in <- next_pc.selected
-    address.w_en <- and(active, start_mem)
-    address.in <- effective_address
-
-    fetch.req_valid <- and(active, request)
-    fetch.req_pc <- pc.out
-    fetch.res_ready <- and(active, or(and(executing, not(start_mem), not(stack_enter)), mem_commit, wait_fault, mem_fault, stack.retire, stack_fault))
-    fetch.res_pc -> OPENED
-    fetch.flush <- 0
-    fetch.busy -> OPENED
-
-    // spill/fill도 같은 메모리 경로를 쓴다. 주소는 rS, 크기는 octa다.
-    memory.req_valid <- and(active, or(mem_request, stack.mem_valid))
+    // ---- 메모리 ----
+    // EX에서 요청하고 WB에서 응답을 받는다. spill/fill은 단독 실행 중 같은 경로를 쓴다(주소는 rS, 크기는 octa).
+    memory.req_valid <- and(active, or(mem_issue, stack.mem_valid))
     stack.mem_ready <- memory.req_ready
-    memory_address.select <- stack_active
-    memory_address.option[0] <- address.out
+    memory_address.select <- ex_stack.out
+    memory_address.option[0] <- effective_address
     memory_address.option[1] <- stack_regs.rS_out
     memory_address.selected -> memory.address
     memory.store <- or(decoded_store, stack.mem_store)
-    memory.size[0] <- or(decoded_memory_size[0], stack_active)
-    memory.size[1] <- or(decoded_memory_size[1], stack_active)
+    memory.size[0] <- or(decoded_memory_size[0], ex_stack.out)
+    memory.size[1] <- or(decoded_memory_size[1], ex_stack.out)
     memory.zero_extend <- decoded_load_unsigned
-    memory_data.select <- stack_active
+    memory_data.select <- ex_stack.out
     memory_data.option[0] <- store_data
     memory_data.option[1] <- stack.mem_write_data
     memory_data.selected -> memory.write_data
-    memory.res_ready <- and(active, or(mem_commit, mem_fault, stack.mem_res_ready))
+    memory.res_ready <- and(active, or(and(wb_valid.out, wb_mem.out), stack.mem_res_ready))
     memory.res_valid -> stack.mem_res_valid
     memory.error -> stack.mem_error
-    memory.read_data -> stack.mem_read_data // CPU도 결과 쓰기 mux에서 별도로 사용
-    // spill/fill의 라인 단위 전송. 스택 상태가 아니면 stack.mem_line은 0이다.
+    memory.read_data -> stack.mem_read_data
     stack.mem_line -> memory.line
     stack.mem_line_mask -> memory.line_mask
     stack.mem_line_data -> memory.line_write_data
     memory.line_read_data -> stack.mem_line_read
-    memory_active <- or(mem_request, mem_wait, mem_commit, stack_active)
-    execute_en <- and(retire_execute, not(non_alu))
-    load_write_en <- and(retire_mem, not(decoded_store))
-    address_write_en <- or(and(retire_execute, or(decoded_geta, decoded_go)), stack.save_write)
-    special_get_en <- and(retire_execute, decoded_get)
-    special_put_en <- and(retire_execute, decoded_put)
 
-    reason.w_en <- enter_fault
-    reason.in[0] <- or(and(fetch.res_valid, fetch.error), mem_fault, stack.access_fault)
-    reason.in[1] <- and(not(mem_fault), not(stack.access_fault), or(and(not(fetch.error), not(decoded_valid)), and(executing, not(fetch.res_valid))))
-    reason.in[2] <- and(executing, response_ok, not(decoded_memory), not(decoded_halt), not(non_alu), trip_req)
+    // ---- 정지 ----
+    halted.w_en <- halt_exec
+    halted.in <- 1
+    failed.w_en <- fault_any
+    failed.in <- 1
+    stop_pc.select <- wb_fault
+    stop_pc.option[0] <- ex_pc.out
+    stop_pc.option[1] <- wb_pc.out
+    pc.w_en <- or(halt_exec, fault_any)
+    stop_pc.selected -> pc.in
+    pc.out -> OPENED  // 회로에서는 쓰지 않고 검증 하네스가 관찰한다
+    reason.w_en <- fault_any
+    reason.in[0] <- or(and(fault_ex, ex_error.out), wb_fault, stack_fault)
+    reason.in[1] <- and(fault_ex, not(ex_error.out), not(decoded_valid))
+    reason.in[2] <- and(fault_ex, not(ex_error.out), decoded_valid, trip)
     reason.out -> fault_reason
-    done <- and(active, completed)
-    fault <- and(active, failed)
+    // 진행 중인 페치 AXI 읽기가 끝난 뒤 정지를 알린다.
+    done <- and(active, halted.out, not(fetch.busy))
+    fault <- and(active, failed.out, not(fetch.busy))
+}
+
+// 8비트 레지스터 번호가 같으면 1
+comb RegisterMatch {
+    pub a: In<bit,8>
+    pub b: In<bit,8>
+    pub same: Out<bit,1>
+}
+
+wire RegisterMatch {
+    same <- not(or(
+        xor(a[0], b[0]), xor(a[1], b[1]), xor(a[2], b[2]), xor(a[3], b[3]),
+        xor(a[4], b[4]), xor(a[5], b[5]), xor(a[6], b[6]), xor(a[7], b[7]),
+    ))
 }

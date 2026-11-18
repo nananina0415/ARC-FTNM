@@ -20,10 +20,15 @@
      범용 슬롯 512개(로컬 ring 256 + 글로벌 256, 레지스터 RAM 타일 수 그대로) — 구현함, 시뮬레이션 미실행
      L은 사양대로 G까지, PUT rG 재배치와 레지스터 스택 범위 fault 없음. 설명: pseudo/cpu/reg/README.md
   5. 5단계 IF -> ID -> RF -> EX -> WB, 파이프라인 제어 유닛(진행/멈춤/비움)
-     분기 예측: PB*는 taken, B*는 not-taken. 목표는 ID에서 계산
+     분기 예측: PB*는 taken, B*는 not-taken. 목표는 ID에서 계산 — 구현함, 시뮬레이션 미실행
+     load-use는 한 클록 멈춤, 단독 실행 명령의 retry는 같은 PC부터 다시 페치. 설명: pseudo/cpu/control/README.md
+     6단계 전까지 CPU 검증 하네스는 동작하지 않는다(Control의 state 레지스터가 없어짐)
   6. 검증 하네스 조정 (executions = 비워지지 않고 EX를 지난 횟수)
   7. 원격 합성과 타이밍(MIG ui_clk 100MHz)
 
   최적화 여지: marginal 쓰기로 L이 늘어나는 명령은 지금 설계에서 직렬화(앞 명령을 모두 끝낸 뒤 단독 실행)한다.
   ID 단계에서 L을 미리 갱신하고, 분기 예측 실패로 비울 때 되돌리면 멈추지 않고 처리할 수 있다.
   GCC 코드는 함수 앞부분마다 L을 늘리므로 성능 차이가 날 수 있다.
+
+
+나중에 나누기 유닛을 경량으로 최적화해야함

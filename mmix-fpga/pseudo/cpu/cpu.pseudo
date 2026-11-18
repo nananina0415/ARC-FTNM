@@ -14,7 +14,7 @@ seq Cpu {
     pub init_calib_complete: In<bit,1>  // MIG 출력. 1일 때만 새 페치 요청 수락
     pub axi: AxiMaster   // FPGA RAM controller의 AXI slave에 연결
 
-    pub decoded: DecodeControl  // 제어유닛용 해독 결과
+    pub decoded: DecodeControl  // EX 단계 명령의 해독 결과
     pub done: Out<bit,1>  // HALT 명령으로 정지
     pub fault: Out<bit,1>  // 오류로 정지
     pub fault_reason: Out<bit,3>  // [0] 페치/데이터 접근, [1] 미지원, [2] trip
@@ -28,14 +28,15 @@ seq Cpu {
     mut read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
     read1_slot: Mux<2,9>  // 레지스터 스택 내부 읽기는 9비트 슬롯을 직접 지정
-    writeback_mux: Mux<4,WORD_SIZE>
+    ex_value_mux: Mux<3,WORD_SIZE>  // EX 결과: ALU / 주소 / GET 값
     store_data_mux: Mux<2,WORD_SIZE>
     special_source: Mux<2,WORD_SIZE>
     special_select: Mux<2,5>  // SAVE/UNSAVE는 StackControl이 번호를 지정
     special_drive: Mux<2,WORD_SIZE>  // UNSAVE는 메모리 값을 버스에 구동
     special_access: ::reg::SpecialAccess
     special_driver: TriState
-    decode: InstructionDecode
+    id_decode: InstructionDecode  // ID 단계: 페치 응답
+    ex_decode: InstructionDecode  // EX 단계 명령
     arg1_mux: Mux<3,WORD_SIZE>  // $r1 / unsigned Y / 0
     arg2_mux: Mux<3,WORD_SIZE>  // $Z / unsigned Z / shifted YZ
 }
@@ -49,36 +50,35 @@ wire Cpu {
     control.done -> done
     control.fault -> fault
     control.fault_reason -> fault_reason
-    control.decoded_valid <- and(decode.control.valid, special_access.allowed)
-    decode.control.halt -> control.decoded_halt
-    decode.control.memory -> control.decoded_memory
-    decode.control.store -> control.decoded_store
-    decode.control.store_constant -> control.decoded_store_constant
-    decode.control.memory_size -> control.decoded_memory_size
-    decode.control.load_unsigned -> control.decoded_load_unsigned
-    decode.control.address_get -> control.decoded_geta
-    decode.control.special_get -> control.decoded_get
-    decode.control.special_put -> control.decoded_put
-    decode.control.branch -> control.decoded_branch
-    decode.control.branch_unconditional -> control.branch_unconditional
-    decode.control.branch_condition -> control.branch_condition
-    decode.control.branch_offset -> control.branch_offset
-    reg.general.r1_data -> control.branch_value
+    control.decoded_valid <- and(ex_decode.control.valid, special_access.allowed)
+    ex_decode.control.halt -> control.decoded_halt
+    ex_decode.control.memory -> control.decoded_memory
+    ex_decode.control.store -> control.decoded_store
+    ex_decode.control.store_constant -> control.decoded_store_constant
+    ex_decode.control.memory_size -> control.decoded_memory_size
+    ex_decode.control.load_unsigned -> control.decoded_load_unsigned
+    ex_decode.control.address_get -> control.decoded_geta
+    ex_decode.control.special_get -> control.decoded_get
+    ex_decode.control.special_put -> control.decoded_put
+    ex_decode.control.branch -> control.decoded_branch
+    ex_decode.control.branch_unconditional -> control.branch_unconditional
+    ex_decode.control.branch_condition -> control.branch_condition
+    ex_decode.control.branch_offset -> control.branch_offset
     alu.trip_req -> control.trip_req
 
-    decode.control.writes_x -> control.decoded_writes_x
-    decode.control.push -> control.decoded_push
-    decode.control.push_go -> control.decoded_push_go
-    decode.control.go -> control.decoded_go
-    decode.control.pop -> control.decoded_pop
-    decode.control.put_g -> control.decoded_put_g
-    decode.control.put_l -> control.decoded_put_l
-    decode.control.save -> control.decoded_save
-    decode.control.unsave -> control.decoded_unsave
-    decode.control.trap -> control.decoded_trap
-    decode.control.swym -> control.decoded_swym
+    ex_decode.control.writes_x -> control.decoded_writes_x
+    ex_decode.control.push -> control.decoded_push
+    ex_decode.control.push_go -> control.decoded_push_go
+    ex_decode.control.go -> control.decoded_go
+    ex_decode.control.pop -> control.decoded_pop
+    ex_decode.control.put_g -> control.decoded_put_g
+    ex_decode.control.put_l -> control.decoded_put_l
+    ex_decode.control.save -> control.decoded_save
+    ex_decode.control.unsave -> control.decoded_unsave
+    ex_decode.control.trap -> control.decoded_trap
+    ex_decode.control.swym -> control.decoded_swym
     reg.stack.rT_out -> control.stack_regs.rT_out
-    decode.control.w_sel -> control.decoded_x
+    ex_decode.control.w_sel -> control.decoded_x
     reg.special.data -> control.stack_special_data
     special_source.selected -> control.special_value
     reg.general.r1_data -> control.stack_r1_data
@@ -106,21 +106,21 @@ wire Cpu {
 
     reg.stack.rG_out -> special_access.g
     reg.stack.rL_out -> special_access.l
-    decode.control.save -> special_access.save
-    decode.control.w_sel -> special_access.x
-    special_source.select <- decode.control.special_immediate
-    special_source.option[0] <- reg.general.r2_data
-    special_source.option[1] <- decode.control.imm_z
-    decode.control.special_get -> special_access.get
-    decode.control.special_put -> special_access.put
-    decode.control.special_index -> special_access.index
+    ex_decode.control.save -> special_access.save
+    ex_decode.control.w_sel -> special_access.x
+    special_source.select <- ex_decode.control.special_immediate
+    special_source.option[0] <- control.operand_r2
+    special_source.option[1] <- ex_decode.control.imm_z
+    ex_decode.control.special_get -> special_access.get
+    ex_decode.control.special_put -> special_access.put
+    ex_decode.control.special_index -> special_access.index
     special_source.selected -> special_access.value
     reg.special.enable <- or(control.special_get_en, control.special_put_en, control.stack_special_en)
     special_select.select <- control.stack_special_en
-    special_select.option[0] <- decode.control.special_index
+    special_select.option[0] <- ex_decode.control.special_index
     special_select.option[1] <- control.stack_special_sel
     special_select.selected -> reg.special.sel
-    reg.special.rw <- and(not(decode.control.special_put), not(control.stack_special_write))
+    reg.special.rw <- and(not(ex_decode.control.special_put), not(control.stack_special_write))
     special_driver.enable <- or(control.special_put_en, control.stack_special_write)
     special_drive.select <- control.stack_special_write
     special_drive.option[0] <- special_source.selected
@@ -128,95 +128,145 @@ wire Cpu {
     special_drive.selected -> special_driver.in
     special_driver.out -> reg.special.data
 
-    fetch.control.instruction -> decode.instruction
-    decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
-    decoded.valid <- and(decode.control.valid, special_access.allowed)
-    decoded.unsupported <- or(decode.control.unsupported, and(decode.control.valid, not(special_access.allowed)))
-    decode.control.halt -> decoded.halt
-    decode.control.memory -> decoded.memory
-    decode.control.store -> decoded.store
-    decode.control.memory_size -> decoded.memory_size
-    decode.control.load_unsigned -> decoded.load_unsigned
-    decode.control.store_constant -> decoded.store_constant
-    decode.control.address_get -> decoded.address_get
-    decode.control.special_get -> decoded.special_get
-    decode.control.special_put -> decoded.special_put
-    decode.control.special_immediate -> decoded.special_immediate
-    decode.control.special_index -> decoded.special_index
-    decode.control.branch -> decoded.branch
-    decode.control.branch_unconditional -> decoded.branch_unconditional
-    decode.control.branch_condition -> decoded.branch_condition
-    decode.control.branch_offset -> decoded.branch_offset
-    decode.control.writes_x -> decoded.writes_x
-    decode.control.push -> decoded.push
-    decode.control.push_go -> decoded.push_go
-    decode.control.go -> decoded.go
-    decode.control.pop -> decoded.pop
-    decode.control.put_g -> decoded.put_g
-    decode.control.put_l -> decoded.put_l
-    decode.control.save -> decoded.save
-    decode.control.unsave -> decoded.unsave
-    decode.control.trap -> decoded.trap
-    decode.control.swym -> decoded.swym
-    decode.control.alu_sel -> decoded.alu_sel
-    decode.control.op -> decoded.op
-    decode.control.r1_sel -> decoded.r1_sel
-    decode.control.r2_sel -> decoded.r2_sel
-    decode.control.w_sel -> decoded.w_sel
-    decode.control.arg1_imm -> decoded.arg1_imm
-    decode.control.arg2_imm -> decoded.arg2_imm
-    decode.control.arg1_zero -> decoded.arg1_zero
-    decode.control.arg2_wyde -> decoded.arg2_wyde
-    decode.control.imm_y -> decoded.imm_y
-    decode.control.imm_z -> decoded.imm_z
-    decode.control.imm_yz -> decoded.imm_yz
-    decode.control.imm_x -> decoded.imm_x
+    // ID 해독기는 레지스터 읽기 번호와 분기 예측에, EX 해독기는 실행에 쓴다.
+    fetch.control.instruction -> id_decode.instruction
+    id_decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
+    id_decode.control.r1_sel -> control.id_r1_sel
+    id_decode.control.r2_sel -> control.id_r2_sel
+    id_decode.control.w_sel -> control.id_x_sel
+    id_decode.control.branch -> control.id_branch
+    id_decode.control.branch_unconditional -> control.id_unconditional
+    id_decode.control.branch_offset -> control.id_offset
+    id_decode.control.valid -> OPENED
+    id_decode.control.unsupported -> OPENED
+    id_decode.control.halt -> OPENED
+    id_decode.control.memory -> OPENED
+    id_decode.control.store -> OPENED
+    id_decode.control.memory_size -> OPENED
+    id_decode.control.load_unsigned -> OPENED
+    id_decode.control.store_constant -> OPENED
+    id_decode.control.address_get -> OPENED
+    id_decode.control.special_get -> OPENED
+    id_decode.control.special_put -> OPENED
+    id_decode.control.special_immediate -> OPENED
+    id_decode.control.special_index -> OPENED
+    id_decode.control.branch_condition -> OPENED
+    id_decode.control.writes_x -> OPENED
+    id_decode.control.push -> OPENED
+    id_decode.control.push_go -> OPENED
+    id_decode.control.go -> OPENED
+    id_decode.control.pop -> OPENED
+    id_decode.control.put_g -> OPENED
+    id_decode.control.put_l -> OPENED
+    id_decode.control.save -> OPENED
+    id_decode.control.unsave -> OPENED
+    id_decode.control.trap -> OPENED
+    id_decode.control.swym -> OPENED
+    id_decode.control.alu_sel -> OPENED
+    id_decode.control.op -> OPENED
+    id_decode.control.arg1_imm -> OPENED
+    id_decode.control.arg2_imm -> OPENED
+    id_decode.control.arg1_zero -> OPENED
+    id_decode.control.arg2_wyde -> OPENED
+    id_decode.control.imm_y -> OPENED
+    id_decode.control.imm_z -> OPENED
+    id_decode.control.imm_yz -> OPENED
+    id_decode.control.imm_x -> OPENED
+    control.ex_instruction -> ex_decode.instruction
+    ex_decode.instruction_valid <- and(control.ex_valid, not(reset))
+    decoded.valid <- and(ex_decode.control.valid, special_access.allowed)
+    decoded.unsupported <- or(ex_decode.control.unsupported, and(ex_decode.control.valid, not(special_access.allowed)))
+    ex_decode.control.halt -> decoded.halt
+    ex_decode.control.memory -> decoded.memory
+    ex_decode.control.store -> decoded.store
+    ex_decode.control.memory_size -> decoded.memory_size
+    ex_decode.control.load_unsigned -> decoded.load_unsigned
+    ex_decode.control.store_constant -> decoded.store_constant
+    ex_decode.control.address_get -> decoded.address_get
+    ex_decode.control.special_get -> decoded.special_get
+    ex_decode.control.special_put -> decoded.special_put
+    ex_decode.control.special_immediate -> decoded.special_immediate
+    ex_decode.control.special_index -> decoded.special_index
+    ex_decode.control.branch -> decoded.branch
+    ex_decode.control.branch_unconditional -> decoded.branch_unconditional
+    ex_decode.control.branch_condition -> decoded.branch_condition
+    ex_decode.control.branch_offset -> decoded.branch_offset
+    ex_decode.control.writes_x -> decoded.writes_x
+    ex_decode.control.push -> decoded.push
+    ex_decode.control.push_go -> decoded.push_go
+    ex_decode.control.go -> decoded.go
+    ex_decode.control.pop -> decoded.pop
+    ex_decode.control.put_g -> decoded.put_g
+    ex_decode.control.put_l -> decoded.put_l
+    ex_decode.control.save -> decoded.save
+    ex_decode.control.unsave -> decoded.unsave
+    ex_decode.control.trap -> decoded.trap
+    ex_decode.control.swym -> decoded.swym
+    ex_decode.control.alu_sel -> decoded.alu_sel
+    ex_decode.control.op -> decoded.op
+    ex_decode.control.r1_sel -> decoded.r1_sel
+    ex_decode.control.r2_sel -> decoded.r2_sel
+    ex_decode.control.w_sel -> decoded.w_sel
+    ex_decode.control.arg1_imm -> decoded.arg1_imm
+    ex_decode.control.arg2_imm -> decoded.arg2_imm
+    ex_decode.control.arg1_zero -> decoded.arg1_zero
+    ex_decode.control.arg2_wyde -> decoded.arg2_wyde
+    ex_decode.control.imm_y -> decoded.imm_y
+    ex_decode.control.imm_z -> decoded.imm_z
+    ex_decode.control.imm_yz -> decoded.imm_yz
+    ex_decode.control.imm_x -> decoded.imm_x
 
-    decode.control.alu_sel -> alu.alu_sel
-    decode.control.op -> alu.op
+    ex_decode.control.alu_sel -> alu.alu_sel
+    ex_decode.control.op -> alu.op
     read1_slot.select <- control.stack_r1_physical
-    read1_slot.option[0][0..8] <- decode.control.r1_sel
+    read1_slot.option[0][0..8] <- control.read_r1_sel
     read1_slot.option[0][8] <- 0
     read1_slot.option[1] <- control.stack_r1_slot
     read1_slot.selected -> reg.general.r1_sel
-    decode.control.r2_sel -> reg.general.r2_sel
-    decode.control.w_sel -> reg.general.w_sel
-    decode.control.w_sel -> reg.general.x_sel  // store 데이터 $X
+    control.read_r2_sel -> reg.general.r2_sel
+    control.read_x_sel -> reg.general.x_sel  // store 데이터 $X
+    reg.general.r2_data -> control.r2_data
+    reg.general.x_data -> control.x_data
+    reg.general.r1_data -> control.r1_data
 
     // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
-    arg1_mux.select[0] <- decode.control.arg1_imm
-    arg1_mux.select[1] <- decode.control.arg1_zero
-    arg1_mux.option[0] <- reg.general.r1_data
-    arg1_mux.option[1] <- decode.control.imm_y
+    // 레지스터 피연산자는 Control이 WB 값 전달까지 반영한 EX 단계 값이다.
+    arg1_mux.select[0] <- ex_decode.control.arg1_imm
+    arg1_mux.select[1] <- ex_decode.control.arg1_zero
+    arg1_mux.option[0] <- control.operand_r1
+    arg1_mux.option[1] <- ex_decode.control.imm_y
     arg1_mux.option[2] <- 0
     arg1_mux.selected -> alu.arg1
-    arg2_mux.select[0] <- decode.control.arg2_imm
-    arg2_mux.select[1] <- decode.control.arg2_wyde
-    arg2_mux.option[0] <- reg.general.r2_data
-    arg2_mux.option[1] <- decode.control.imm_z
-    arg2_mux.option[2] <- decode.control.imm_yz
+    arg2_mux.select[0] <- ex_decode.control.arg2_imm
+    arg2_mux.select[1] <- ex_decode.control.arg2_wyde
+    arg2_mux.option[0] <- control.operand_r2
+    arg2_mux.option[1] <- ex_decode.control.imm_z
+    arg2_mux.option[2] <- ex_decode.control.imm_yz
     arg2_mux.selected -> alu.arg2
 
     // 명령 없음/페치 오류/미지원 명령/reset에서는 저장하지 않음.
-    alu.write_en <- and(control.execute_en, decode.control.valid)
-    trip_req <- and(decode.control.valid, alu.trip_req)
+    alu.write_en <- and(control.execute_en, ex_decode.control.valid)
+    trip_req <- and(ex_decode.control.valid, alu.trip_req)
     address_add.a <- arg1_mux.selected
     address_add.b <- arg2_mux.selected
     address_add.c_in <- 0
     address_add.c_out -> OPENED
     address_add.sum -> control.effective_address
-    store_data_mux.select <- decode.control.store_constant
-    store_data_mux.option[0] <- reg.general.x_data
-    store_data_mux.option[1] <- decode.control.imm_x
+    store_data_mux.select <- ex_decode.control.store_constant
+    store_data_mux.option[0] <- control.operand_x
+    store_data_mux.option[1] <- ex_decode.control.imm_x
     store_data_mux.selected -> control.store_data
-    writeback_mux.select[0] <- or(control.load_write_en, control.special_get_en)
-    writeback_mux.select[1] <- or(control.address_write_en, control.special_get_en)
-    writeback_mux.option[0] <- alu.res
-    writeback_mux.option[1] <- memory.control.read_data
-    writeback_mux.option[2] <- control.address_result
-    writeback_mux.option[3] <- reg.special.data
-    writeback_mux.selected -> reg.general.w_data
-    reg.general.w_en <- or(alu.res_w_en, control.load_write_en, control.address_write_en, control.special_get_en)
+    // EX 결과는 Control이 WB 단계로 넘겨 쓴다. load 값은 WB에서 메모리 응답을 쓴다.
+    ex_value_mux.select[0] <- control.address_write_en
+    ex_value_mux.select[1] <- control.special_get_en
+    ex_value_mux.option[0] <- alu.res
+    ex_value_mux.option[1] <- control.address_result
+    ex_value_mux.option[2] <- reg.special.data
+    ex_value_mux.selected -> control.ex_value
+    control.ex_write <- or(alu.res_w_en, control.address_write_en, control.special_get_en)
+    control.wb_sel -> reg.general.w_sel
+    control.wb_data -> reg.general.w_data
+    control.wb_en -> reg.general.w_en
 
     reg.alu_direct.rA_in -> alu.spec_direct.rA_in
     reg.alu_direct.rD_in -> alu.spec_direct.rD_in
@@ -239,7 +289,7 @@ wire Cpu {
     control.fetch.flush -> fetch.control.flush
     fetch.control.busy -> control.fetch.busy
 
-    // 데이터 메모리 접근. store 데이터 $X는 레지스터 읽기 포트 3에서 온다.
+    // 데이터 메모리 접근. store 데이터 $X는 읽기 포트 x로 읽어 Control이 전달한 EX 피연산자다.
     control.memory.req_valid -> memory.control.req_valid
     control.memory.address -> memory.control.address
     control.memory.store -> memory.control.store
@@ -255,7 +305,6 @@ wire Cpu {
     memory.control.res_valid -> control.memory.res_valid
     memory.control.read_data -> control.memory.read_data
     memory.control.error -> control.memory.error
-    control.memory_active -> OPENED
     fetch.axi.arid -> read_select.instruction.arid
     memory.axi.read.arid -> read_select.data.arid
     read_select.bus.arid -> axi.read.arid
