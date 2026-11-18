@@ -17,11 +17,15 @@ signed 부분 저장 STB/STW/STT의 overflow/V 처리는 아직 구현하지 않
 `lane.pseudo`의 `AlignLane`, `LoadLane`, `StoreLane`이 정렬, MMIX big-endian 변환,
 부호 확장, byte lane과 WSTRB 생성을 맡는다. 크기 입력은 log2(bytes), 즉 0/1/2/3이다.
 정렬된 접근은 32바이트 라인을 넘지 않는다. 요청 수락 때 주소·크기·확장 방식·데이터를
-캡처하므로 AXI 대기 중에도 payload가 유지된다. 캐시 적중 경로도 같은 LoadLane을 사용한다.
+캡처하므로 AXI 대기 중에도 payload가 유지된다.
 
-[캐시 구성](../cache/README.md)은 32바이트 라인 8개다. 읽기 적중은 캐시에서 응답하고
-미스는 AXI에서 라인을 채운다. 쓰기는 write-through/no-write-allocate이며 정상 B 응답 뒤
-적중 라인의 해당 바이트만 갱신한다. CPU는 store 응답 뒤 I-cache를 무효화한다.
+[캐시 구성](../cache/README.md)은 32바이트 라인 512개(16KB)다. 요청을 받은 클록에
+캐시를 읽고, load는 다음 클록에 적중이면 바로 응답한다. 미스는 AXI에서 라인을 채운 뒤
+캐시를 다시 읽어 응답한다. load 값과 `line_read_data`는 캐시 읽기 결과를 LoadLane과
+LineSwap에 통과시킨 값이며 별도 응답 레지스터는 없다.
+쓰기는 write-through/no-write-allocate이며 정상 B 응답 뒤 적중 라인의 해당 바이트만
+갱신한다. 오류 B 응답이면 그 라인을 무효화한다. store 응답 때 그 주소를
+`instruction_invalidate_address`로 내보내 I-cache의 같은 라인을 무효화한다.
 
 MIG의 256비트 AXI 포트에는 32바이트 정렬 주소와 full-width 단일 beat를 보낸다.
 store는 해당 바이트만 WSTRB로 활성화하며, read-modify-write를 하지 않는다.
@@ -34,8 +38,8 @@ AW와 W는 독립적으로 수락될 때까지 VALID와 payload를 유지하고 
 WSTRB로 활성화하고 캐시도 같은 마스크로 갱신한다. 읽기는 라인 전체를 같은 형식으로
 `line_read_data`에 돌려준다. 일반 load/store 경로는 바뀌지 않는다.
 
-Control은 EXECUTE에서 주소를 캡처하고 MEMORY_REQUEST에서 일반 store의 읽기 포트 1을
-$X로 전환한다. STCO는 별도 상수 입력을 선택한다. load 결과만 MEMORY_COMMIT에서
+Control은 EXECUTE에서 주소를 캡처한다. 일반 store 데이터 $X는 레지스터 읽기 포트 x에서
+오고, STCO는 별도 상수 입력을 선택한다. load 결과만 MEMORY_COMMIT에서
 GPR에 쓰며, store는 GPR을 쓰지 않는다. 데이터 오류는 fault_reason bit 0이다.
 
 AXI 읽기 선택기는 직렬 Control 단계에 따른다. 여러 outstanding 요청을 지원하려면

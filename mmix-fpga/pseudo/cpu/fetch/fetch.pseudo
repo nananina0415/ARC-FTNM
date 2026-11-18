@@ -1,5 +1,7 @@
-// L1 I-cache: 한 라인에 명령어 8개, 32바이트 라인 8개. 요청은 한 번에 하나.
+// L1 I-cache(LineCache, 16KB)를 통한 명령어 인출. 요청은 한 번에 하나.
 // valid && ready인 클록 상승 에지에서 요청/응답 전달.
+// 요청을 받은 클록에 캐시를 읽고 다음 클록에 hit면 응답한다. miss면 AXI로 라인을 읽어
+// 캐시에 채운 뒤 다시 읽어 응답한다. 응답 명령어는 캐시 읽기 결과에서 고른다.
 // PC 하위 2비트는 명령어 위치 선택에 쓰지 않는다(MMIX: GO 목표의 하위 2비트는 무시되고 PC에만 남는다).
 // 응답은 제어유닛이 받을 때까지 유지. error=1이면 instruction 실행 금지.
 // PC 갱신(+4/분기)과 예외 처리는 제어유닛 담당.
@@ -21,78 +23,83 @@ seq Fetch {
     pub clock: In<bit,1>
     pub reset: In<bit,1>  // 동기 active-high. RAM AXI 측도 같은 reset 경계 사용
     pub ram_ready: In<bit,1>  // MIG.init_calib_complete. 새 요청만 차단, 진행 중 요청은 유지
-    pub invalidate: In<bit,1>  // store 완료 시 보수적으로 I-cache 전체 무효화
+    pub invalidate: In<bit,1>  // store 완료. invalidate_address의 I-cache 라인만 지운다
+    pub invalidate_address: In<bit,30>
     pub control: FetchIO
     pub axi: AxiRead
 
     mut pc:          FetchReg<WORD_SIZE>
+    mut lookup:      FetchReg<1>  // 캐시 읽기 결과가 나온 클록
+    mut refill:      FetchReg<1>  // 채운 라인을 다시 읽는 클록
     mut addr_wait:   FetchReg<1>
     mut data_wait:   FetchReg<1>
     mut output_full: FetchReg<1>
     mut bus_error:   FetchReg<1>
-    mut instruction: FetchReg<32>
     mut error:       FetchReg<1>
 
+    mut cache: cache::LineCache
+    read_address: Mux<2,30>
     tetra_mux: Mux<8,32>
-    instruction_mux: Mux<2,32>
-    error_mux: Mux<2,1>
-    mut cache: cache::LineCache8
-    line_source: Mux<2,256>
-    tetra_index: Mux<2,3>
 }
 
 wire Fetch {
     alias active = not(reset)
     alias accept = and(control.req_valid, control.req_ready)
-    alias out_of_range = or(control.req_pc[30..WORD_SIZE])
-    alias invalid_pc = out_of_range
+    alias invalid_pc = or(control.req_pc[30..WORD_SIZE])
     alias bad_pc = and(accept, invalid_pc)
     alias start = and(accept, not(invalid_pc))
-    alias cached = and(start, cache.hit, not(invalidate))
-    alias miss = and(start, not(and(cache.hit, not(invalidate))))
+    alias hit = and(lookup.out, cache.hit)
+    alias miss = and(lookup.out, not(cache.hit))
     alias ar_fire = and(axi.arvalid, axi.arready)
     alias r_fire = and(axi.rvalid, axi.rready)
     alias last_fire = and(r_fire, axi.rlast)
     alias consume = and(control.res_valid, control.res_ready)
     alias response_error = or(axi.rresp[0,1], axi.rid[0..4], not(axi.rlast))
-    alias finish = or(bad_pc, last_fire, cached)
+    alias failed = and(last_fire, or(bus_error.out, response_error))
+    alias filled = and(active, last_fire, not(bus_error.out), not(response_error))
 
     clock => {
-        pc.clock, addr_wait.clock, data_wait.clock, output_full.clock,
-        bus_error.clock, instruction.clock, error.clock,
+        pc.clock, lookup.clock, refill.clock, addr_wait.clock, data_wait.clock,
+        output_full.clock, bus_error.clock, error.clock,
     }
     reset => {
-        pc.reset, addr_wait.reset, data_wait.reset, output_full.reset,
-        bus_error.reset, instruction.reset, error.reset,
+        pc.reset, lookup.reset, refill.reset, addr_wait.reset, data_wait.reset,
+        output_full.reset, bus_error.reset, error.reset,
     }
+
+    // 요청을 받은 클록에는 요청 PC로, 채운 다음 클록에는 저장한 PC로 캐시를 읽는다
     clock -> cache.clock
     reset -> cache.reset
-    invalidate -> cache.invalidate
-    control.req_pc[0..30] -> cache.lookup_address
-    pc.out[0..30] -> cache.update_address
-    cache.fill_en <- and(active, last_fire, not(bus_error.out), not(response_error), not(invalidate))
-    cache.fill_data <- axi.rdata
+    cache.read <- or(start, refill.out)
+    read_address.select <- refill.out
+    read_address.option[0] <- [ control.req_pc[0..30] ]
+    read_address.option[1] <- [ pc.out[0..30] ]
+    read_address.selected -> cache.read_address
+    pc.out[0..30] => { cache.compare_address, cache.write_address }
+    cache.write_data <- axi.rdata
+    cache.fill_en <- filled
     cache.store_en <- 0
-    cache.store_data <- 0
     cache.store_mask <- 0
-    line_source.select <- cached
-    line_source.option[0] <- axi.rdata
-    line_source.option[1] <- cache.line
-    tetra_index.select <- cached
-    tetra_index.option[0] <- [ pc.out[2..5] ]
-    tetra_index.option[1] <- [ control.req_pc[2..5] ]
+    cache.invalidate <- and(active, invalidate)
+    invalidate_address -> cache.invalidate_address
 
-    control.req_ready <- and(active, ram_ready, not(or(addr_wait.out, data_wait.out, output_full.out)))
+    control.req_ready <- and(active, ram_ready, cache.ready, not(or(lookup.out, refill.out, addr_wait.out, data_wait.out, output_full.out)))
     pc.w_en <- accept
     pc.in <- control.req_pc
+    lookup.w_en <- 1
+    lookup.in <- or(start, refill.out)
+    refill.w_en <- 1
+    refill.in <- filled
 
-    // 요청을 발행한 뒤 ARREADY가 올 때까지 주소와 ARVALID 유지
+    // miss를 확인한 뒤 ARREADY가 올 때까지 주소와 ARVALID 유지
     addr_wait.w_en <- 1
     addr_wait.in <- or(miss, and(addr_wait.out, not(ar_fire)))
     data_wait.w_en <- 1
     data_wait.in <- or(ar_fire, and(data_wait.out, not(last_fire)))
+    // hit 응답은 조회 클록에 바로 내고, 받지 않으면 output_full로 유지한다.
+    // 캐시는 다음 조회까지 읽기 결과를 유지하므로 명령어를 따로 저장하지 않는다.
     output_full.w_en <- 1
-    output_full.in <- or(finish, and(output_full.out, not(consume)))
+    output_full.in <- or(bad_pc, failed, and(or(output_full.out, hit), not(consume)))
 
     // 32바이트 정렬 주소에서 256비트 한 beat 읽음. 상위 주소는 요청 수락 시 검사.
     axi.arid <- 0
@@ -113,37 +120,30 @@ wire Fetch {
 
     // AXI byte lane 0가 가장 낮은 바이트 주소.
     // MMIX big-endian 명령어: 낮은 주소의 바이트가 instruction[24..32](OP).
-    tetra_mux.select <- tetra_index.selected
-    tetra_mux.option[0] <- [ line_source.selected[0..32] ]
-    tetra_mux.option[1] <- [ line_source.selected[32..64] ]
-    tetra_mux.option[2] <- [ line_source.selected[64..96] ]
-    tetra_mux.option[3] <- [ line_source.selected[96..128] ]
-    tetra_mux.option[4] <- [ line_source.selected[128..160] ]
-    tetra_mux.option[5] <- [ line_source.selected[160..192] ]
-    tetra_mux.option[6] <- [ line_source.selected[192..224] ]
-    tetra_mux.option[7] <- [ line_source.selected[224..256] ]
-    instruction_mux.select <- bad_pc
-    instruction_mux.option[0][24..32] <- [ tetra_mux.selected[0..8] ]
-    instruction_mux.option[0][16..24] <- [ tetra_mux.selected[8..16] ]
-    instruction_mux.option[0][8..16]  <- [ tetra_mux.selected[16..24] ]
-    instruction_mux.option[0][0..8]   <- [ tetra_mux.selected[24..32] ]
-    instruction_mux.option[1] <- 0
-    instruction.w_en <- finish
-    instruction.in <- instruction_mux.selected
+    tetra_mux.select <- [ pc.out[2..5] ]
+    tetra_mux.option[0] <- [ cache.line[0..32] ]
+    tetra_mux.option[1] <- [ cache.line[32..64] ]
+    tetra_mux.option[2] <- [ cache.line[64..96] ]
+    tetra_mux.option[3] <- [ cache.line[96..128] ]
+    tetra_mux.option[4] <- [ cache.line[128..160] ]
+    tetra_mux.option[5] <- [ cache.line[160..192] ]
+    tetra_mux.option[6] <- [ cache.line[192..224] ]
+    tetra_mux.option[7] <- [ cache.line[224..256] ]
+    control.instruction[24..32] <- [ tetra_mux.selected[0..8] ]
+    control.instruction[16..24] <- [ tetra_mux.selected[8..16] ]
+    control.instruction[8..16]  <- [ tetra_mux.selected[16..24] ]
+    control.instruction[0..8]   <- [ tetra_mux.selected[24..32] ]
 
     // 단일 beat 응답은 RLAST=1이어야 함.
     // 잘못된 다중 beat 응답도 RLAST까지 소진하고 오류로 보고.
     bus_error.w_en <- or(ar_fire, r_fire)
     bus_error.in <- and(not(ar_fire), or(bus_error.out, response_error))
-    error_mux.select <- bad_pc
-    error_mux.option[0] <- and(last_fire, or(bus_error.out, response_error))
-    error_mux.option[1] <- 1
-    error.w_en <- finish
-    error.in <- error_mux.selected
+    // 요청을 받을 때 지우고, 범위 오류나 AXI 오류 응답일 때 1
+    error.w_en <- or(accept, last_fire)
+    error.in <- or(bad_pc, failed)
 
-    control.res_valid <- and(active, output_full.out)
+    control.res_valid <- and(active, or(output_full.out, hit))
     control.res_pc <- pc.out
-    control.instruction <- instruction.out
     control.error <- error.out
 }
 

@@ -5,66 +5,80 @@
 | 항목 | I-cache | D-cache |
 |---|---|---|
 | 캐시라인 | 32바이트 = 4바이트 명령어 8개 | 32바이트 = 64비트 데이터 4개 |
-| 라인 수 | 8개 | 8개 |
-| 데이터 용량 | 256바이트 | 256바이트 |
+| 라인 수 | 512개 | 512개 |
+| 데이터 용량 | 16KB | 16KB |
 | 매핑 | 직접 사상 | 직접 사상 |
 | 채우기 | AXI에서 256비트 한 beat | AXI에서 256비트 한 beat |
-| 쓰기 | CPU store 응답 뒤 전체 무효화 | write-through / no-write-allocate |
+| 쓰기 | CPU store 응답 때 그 주소의 라인만 무효화 | write-through / no-write-allocate |
 
-I-cache의 요청 사항은 라인당 명령어 8개다. 총 라인 수는 우선 D-cache와 같은
-8개로 선택했다. 캐시는 각각 별도 LineCache8 인스턴스로 상태를 공유하지 않는다.
+두 캐시는 같은 LineCache 소자를 각각 하나씩 쓰며 상태를 공유하지 않는다.
 
-30비트 RAM 주소에서 offset=[4:0], index=[7:5], tag=[29:8]이다.
-각 블록은 valid, 22비트 tag, 256비트 data를 저장한다.
-같은 index의 다른 tag가 들어오면 그 블록을 교체한다. reset은 valid를 지운다.
-용량은 캐시 소자에 정의하며 프로그램 주소나 실행 횟수와 무관하다.
+30비트 RAM 주소에서 offset=[4:0], index=[13:5], tag=[29:14]이다.
 
-## 읽기
+| 저장 | 소자 | 내용 |
+|---|---|---|
+| 데이터 | `SyncRam<512,256,32>` | 라인 512개, 바이트 단위 쓰기 레인 32개 |
+| tag | `SyncRam<512,17,1>` | [15:0] tag, [16] valid |
 
-요청을 수락할 때 cache tag/valid를 조회한다. 적중이면 캐시 데이터에서 명령어나
-octa를 선택해 응답 버퍼에 기록하고 AXI AR 요청을 내지 않는다.
-미스이면 기존 AXI 경로로 라인 전체를 읽는다. RLAST를 받은 정상 응답만 채운다.
-RRESP/ID 오류 또는 잘못된 다중 beat 응답으로 누적 오류가 있으면 채우지 않는다.
-응답은 기존 ready/valid 버퍼를 사용해 소비할 때까지 유지한다.
+데이터와 tag 모두 블록 RAM에 두어 라인 선택 mux와 라인별 플립플롭을 쓰지 않는다.
+LUT는 tag 비교, 쓰기 레인 선택, index 선택, reset 정리 카운터에만 쓴다.
+같은 index의 다른 tag가 들어오면 그 라인을 교체한다.
 
-데이터는 AXI byte lane 순서로 저장하고, CPU 값으로 선택할 때 기존 big-endian
-변환을 적용한다. 명령어는 주소 [4:2], octa는 [4:3]으로 라인 내 위치를 고른다.
-캐시 적중 경로에서도 주소 범위 검사는 유지한다.
+## 조회
+
+블록 RAM은 동기 읽기다. `read=1`인 클록에 `read_address`의 라인을 읽고 다음 클록부터
+`line`과 tag가 나온다. `read=0`인 동안 마지막 읽기 결과를 그대로 유지한다.
+`hit`는 유지 중인 결과의 valid·tag를 `compare_address`와 비교한다.
+
+블록 RAM은 같은 클록에 쓴 칸을 읽으면 쓰기 전 값을 낸다. 그래서 읽는 클록에
+캐시 쓰기(fill, store, invalidate)가 있었으면 그 조회는 miss로 본다.
+
+## reset
+
+블록 RAM 내용은 reset으로 지워지지 않는다. reset 뒤 512클록 동안 index 0부터
+한 클록에 하나씩 valid를 지우며 그동안 `ready=0`이다. Fetch와 MemoryAccess는
+`ready=0`인 동안 요청을 받지 않는다.
 
 ## 쓰기
 
-모든 store는 RAM에 쓴다. AW/W/B의 기존 독립 핸드셰이크와 완료 대기는 유지한다.
-B 응답이 정상일 때만 D-cache에 동일 tag의 유효 라인이 있다면 WSTRB의 해당
-바이트를 갱신한다. 쓰기 미스는 라인을 새로 채우지 않는다.
-오류 응답은 D-cache 전체를 무효화해 부분 성공 가능성이 있는 오래된 값을 피한다.
-이 설계에는 dirty bit, write-back, write buffer가 없다.
+| 입력 | 동작 |
+|---|---|
+| `fill_en` | `write_address` 라인 전체를 `write_data`로 채우고 tag와 valid=1을 쓴다 |
+| `store_en` | `hit`일 때만 `store_mask` 바이트를 `write_data`로 바꾼다. tag·valid는 그대로 |
+| `invalidate` | `invalidate_address` 라인의 valid를 지운다. 같은 클록의 fill보다 우선한다 |
 
-명령어/데이터 주소 공간이 같으므로 store 응답 시 I-cache를 보수적으로 전부
-무효화한다. 에러 응답도 포함한다. 코드 변경 뒤 다음 fetch가 오래된 명령어를
-사용하지 않게 하는 초기 정책이다. 주소별 무효화, SYNCD/SYNCID, DMA snoop은 없다.
-이는 캐시를 없애거나 CPU를 특정 프로그램에 맞추는 동작이 아니다.
+invalidate와 fill이 겹치면 데이터도 쓰지 않는다. tag RAM 쓰기 포트가 하나이기 때문이며,
+채우지 못한 라인은 다음 조회에서 miss가 되어 다시 읽는다.
 
-## 기존 예제에서의 예상 접근 수
+## 사용 방식
 
-5개 명령어가 같은 라인에 있고, RAM[10]과 RAM[11]도 같은 데이터 라인에 있다.
-따라서 다음 검증 시 기대하는 AXI 읽기는 총 3회다.
+Fetch와 MemoryAccess는 같은 순서로 캐시를 쓴다.
 
-1. 첫 명령어 라인 읽기: LDO/LDO/ADD/STO까지 같은 라인에서 실행.
-2. RAM[10]의 데이터 라인 읽기: RAM[11]은 D-cache 적중.
-3. store 응답이 I-cache를 무효화한 뒤 HALT를 위한 명령어 라인 재읽기.
+1. 요청을 받은 클록에 요청 주소로 캐시를 읽는다.
+2. 다음 클록에 hit면 캐시 읽기 결과로 바로 응답한다. 받지 않으면 응답 유지 플래그를 세운다.
+3. miss면 AXI로 라인을 읽는다. RLAST를 받은 정상 응답만 채운다.
+4. 채운 다음 클록에 같은 주소로 다시 읽고, 그다음 클록에 hit로 응답한다.
 
-데이터 store는 이전과 같이 1회다. 캐시가 없는 버전의 읽기 7회와 구분한다.
-이 기대치는 이후 요청받은 실제 RTL 시뮬레이션에서도 읽기 3회로 확인했다.
+응답 값은 항상 캐시 읽기 결과에서 고른다. 결과를 유지하는 동안 같은 캐시를 다시 읽지
+않으므로 응답 버퍼를 따로 두지 않는다. RRESP/ID 오류나 잘못된 다중 beat 응답이면
+채우지 않고 오류로 응답한다. 캐시 적중 경로에서도 주소 범위 검사는 유지한다.
 
-## 구현과 확인 범위
+데이터는 AXI byte lane 순서로 저장하고, CPU 값으로 선택할 때 big-endian 변환을 적용한다.
+명령어는 주소 [4:2], octa는 [4:3]으로 라인 내 위치를 고른다.
 
-CacheBlock은 재사용 가능한 ValueReg와 byte-mask Mux로 구성했고 LineCache8이
-블록 선택·tag 비교를 담당한다. Fetch와 MemoryAccess는 캐시 hit/miss에 따라
-기존 버퍼와 AXI 경로를 선택한다. 제어유닛의 명령 의미는 변경하지 않았다.
-현재는 레지스터 기반 조합 조회이며 FPGA BRAM 사용이나 특정 타이밍을 보장하지 않는다.
-동시 요청은 계속 한 건이며 ReadSelect의 직렬 트랜잭션 조건을 유지한다.
+## store
 
-의사코드를 src/cpu 아래 Verilog로 변환하고 사용자 요청에 따라 시뮬레이션했다.
-프로그램·캐시 단위 검사·기존 CPU 회귀가 통과했다. 최신 dump/HTML은 캐시 적용 후이며,
-이전 기록은 별도 보존했다. [비교 보고서](../../../docs/cache-simulation-comparison.md)를 참고한다.
-Vivado 합성·타이밍·보드 동작은 확인하지 않았다.
+모든 store는 RAM에 쓴다. AW/W/B의 독립 핸드셰이크와 완료 대기를 유지한다.
+D-cache는 store 요청을 받을 때도 그 주소의 라인을 읽어 두고, B 응답이 정상이면
+동일 tag의 유효 라인일 때만 WSTRB 바이트를 갱신한다. 쓰기 미스는 라인을 채우지 않는다.
+오류 응답이면 일부만 쓰였을 수 있는 그 라인을 무효화한다.
+dirty bit, write-back, write buffer는 없다.
+
+명령어와 데이터 주소 공간이 같으므로 store 응답 때(오류 응답 포함) 그 주소의 I-cache
+라인을 무효화한다. 다른 라인은 유지한다. SYNCD/SYNCID와 DMA snoop은 없다.
+
+## 확인 범위
+
+의사코드를 Verilog로 변환했다. 캐시 단위 검사(`verification/verify_generated.py --only cache`)는
+이 구조에 맞춰 작성했고 실행하지 않았다. Vivado 합성에서 블록 RAM으로 추론되는지,
+타이밍, 보드 동작은 확인하지 않았다.

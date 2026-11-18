@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from verify_generated import Checks, ROOT, enc
+from verify_generated import Checks, ROOT, cache_ready, enc
 
 
 def main():
@@ -93,7 +93,7 @@ def main():
               *[f" put_instruction({i*4},32'h{word:08x});" for i, word in enumerate(program)],
               " for(j=0;j<8;j=j+1) begin memory[80+j]=a[(7-j)*8+:8];memory[88+j]=b[(7-j)*8+:8];end",
               " for(j=0;j<256;j=j+1) before_memory[j]=memory[j];",
-              f" repeat(3) @(negedge {clk});{reset}=0;repeat(5) @(negedge {clk});{calib}=1;limit=0;",
+              f" repeat(3) @(negedge {clk});{reset}=0;wait({cache_ready()});repeat(5) @(negedge {clk});{calib}=1;limit=0;",
               f" while(!{p('done')} && !{p('fault')} && limit<1000) begin @(negedge {clk});limit=limit+1;end",
               f" if(limit==1000 || {p('fault')} || !{p('done')}) $fatal(1,\"program failed, reason=%0d\",{p('fault_reason')});",
               " if(reads!=3 || loads!=1 || stores!=1 || acks!=1 || writes!=3) $fatal(1,\"transaction counts with I/D caches\");",

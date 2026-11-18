@@ -20,6 +20,12 @@ def enc(*parts):
     return "s_" + "_".join(f"{len(str(x))}_{x}" for x in parts)
 
 
+def cache_ready():
+    """Both CPU caches clear their valid bits for 512 clocks after reset; wait on this before running."""
+    ready = lambda unit: f"dut.{enc('instance', unit)}.{enc('instance', 'cache')}.{enc('port', 'ready')}"
+    return f"({ready('fetch')} && {ready('memory')})"
+
+
 def signed(value):
     return value - (1 << 64) if value >> 63 else value
 
@@ -211,7 +217,7 @@ class Checks:
                   "for(j=0;j<256;j=j+1) memory[j]=0;",
                   f"repeat(3) @(negedge {clock}); end endtask",
                   "task run_case; input integer reason; integer limit; begin",
-                  f"{reset}=0; repeat(7) @(negedge {clock}); {calib}=1; limit=0;",
+                  f"{reset}=0; wait({cache_ready()}); repeat(7) @(negedge {clock}); {calib}=1; limit=0;",
                   f"while(!{p('done')} && !{p('fault')} && limit<600) begin @(negedge {clock});limit=limit+1;end",
                   f"if(limit==600) $fatal(1,\"CPU timeout\");",
                   f"if(reason==0) begin if(!{p('done')} || {p('fault')}) $fatal(1,\"expected HALT\"); end",
@@ -331,40 +337,67 @@ class Checks:
         for port in module["ports"]:
             if port["direction"] == "in" and port["path"] != ["clock"]:
                 lines.append(f"{port['name']}=0;")
-        lines += [f"{p('reset')}=1;repeat(2) @(negedge {p('clock')});{p('reset')}=0;"]
+        def start():
+            lines.append(f"{p('reset')}=1;repeat(2) @(negedge {p('clock')});{p('reset')}=0;")
+            lines.append(f"@(negedge {p('clock')});if({p('ready')}!==1'b0) $fatal(1,\"cache ready during clear\");")
+            lines.append(f"wait({p('ready')}===1'b1);@(negedge {p('clock')});")
+        def read(address):
+            # Synchronous read: the result appears after the next rising edge and is held while read=0.
+            lines.append(f"{p('read_address')}=30'd{address};{p('compare_address')}=30'd{address};{p('read')}=1;"
+                         f"@(negedge {p('clock')});{p('read')}=0;#1;")
         def lookup(address, hit, data=None):
-            lines.append(f"{p('lookup_address')}=30'd{address};#1;if({p('hit')}!==1'b{hit}) $fatal(1,\"cache hit addr {address}\");")
+            read(address)
+            lines.append(f"if({p('hit')}!==1'b{hit}) $fatal(1,\"cache hit addr {address}\");")
             if data is not None:
                 lines.append(f"if({p('line')}!==256'h{data:064x}) $fatal(1,\"cache data addr {address}\");")
+        def write(port, address, data=0, mask=0, extra=""):
+            lines.append(f"@(negedge {p('clock')});{p('write_address')}=30'd{address};{p('invalidate_address')}=30'd{address};"
+                         f"{p('write_data')}=256'h{data:064x};{p('store_mask')}=32'h{mask:08x};{p(port)}=1;{extra}"
+                         f"@(negedge {p('clock')});{p(port)}=0;")
+        start()
         values = [int.from_bytes(bytes([i+1])*32, "little") for i in range(8)]
+        base, alias_ = 0x1000, 0x1000 + 16384  # same index, different tag
         for i in range(8):
-            lookup(0x1000+i*32, 0)
-            lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1000+i*32};{p('fill_data')}=256'h{values[i]:064x};{p('fill_en')}=1;",
-                      f"@(negedge {p('clock')});{p('fill_en')}=0;"]
-        for i in range(8): lookup(0x1000+i*32, 1, values[i])
-        # Byte-mask store hit: update bytes 16..23 only.
+            lookup(base+i*32, 0)
+            write("fill_en", base+i*32, values[i])
+        for i in range(8): lookup(base+i*32, 1, values[i])
+        # Byte-mask store hit: update bytes 16..23 only. store_en uses the held lookup result.
         pattern = int.from_bytes(bytes([0xab])*32, "little")
-        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1000+3*32};{p('store_data')}=256'h{pattern:064x};{p('store_mask')}=32'h00ff0000;{p('store_en')}=1;",
-                  f"@(negedge {p('clock')});{p('store_en')}=0;"]
+        lookup(base+3*32, 1)
+        write("store_en", base+3*32, pattern, 0x00ff0000)
         bytes_ = bytearray([4]*32)
         bytes_[16:24] = bytes([0xab])*8
         values[3] = int.from_bytes(bytes_, "little")
-        for i in range(8): lookup(0x1000+i*32, 1, values[i])
+        for i in range(8): lookup(base+i*32, 1, values[i])
         # Store miss must not allocate or overwrite the conflicting resident line.
-        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1100};{p('store_en')}=1;",
-                  f"@(negedge {p('clock')});{p('store_en')}=0;"]
-        lookup(0x1100, 0)
-        lookup(0x1000, 1, values[0])
-        # Read fill at the same index replaces one line, preserving the other seven.
-        lines += [f"@(negedge {p('clock')});{p('update_address')}=30'd{0x1100};{p('fill_data')}=256'h{pattern:064x};{p('fill_en')}=1;",
-                  f"@(negedge {p('clock')});{p('fill_en')}=0;"]
-        lookup(0x1100, 1, pattern)
-        lookup(0x1000, 0)
-        for i in range(1,8): lookup(0x1000+i*32, 1, values[i])
-        lines += [f"@(negedge {p('clock')});{p('invalidate')}=1;@(negedge {p('clock')});{p('invalidate')}=0;"]
-        for i in range(8): lookup(0x1000+i*32, 0)
-        lookup(0x1100, 0)
-        lines += ['$display("PASS cache: eight resident lines, masked store hit, no-write-allocate, conflict replacement, invalidate");$finish;end endmodule']
+        lookup(alias_, 0)
+        write("store_en", alias_, pattern, 0xffffffff)
+        lookup(alias_, 0)
+        lookup(base, 1, values[0])
+        # Fill at the same index replaces one line, preserving the others.
+        write("fill_en", alias_, pattern)
+        lookup(alias_, 1, pattern)
+        lookup(base, 0)
+        for i in range(1,8): lookup(base+i*32, 1, values[i])
+        # Invalidate clears only the addressed line.
+        write("invalidate", base+1*32)
+        lookup(base+1*32, 0)
+        for i in range(2,8): lookup(base+i*32, 1, values[i])
+        # Invalidate wins over a fill in the same clock.
+        write("fill_en", base+1*32, values[1], extra=f"{p('invalidate')}=1;")
+        lines.append(f"{p('invalidate')}=0;")
+        lookup(base+1*32, 0)
+        # A read in the same clock as a write reports a miss.
+        lines.append(f"{p('read_address')}=30'd{base+2*32};{p('compare_address')}=30'd{base+2*32};{p('read')}=1;"
+                     f"{p('write_address')}=30'd{base+5*32};{p('write_data')}=256'h{values[5]:064x};{p('fill_en')}=1;"
+                     f"@(negedge {p('clock')});{p('read')}=0;{p('fill_en')}=0;#1;"
+                     f"if({p('hit')}!==1'b0) $fatal(1,\"cache stale read\");")
+        lookup(base+2*32, 1, values[2])
+        # Reset clears every line.
+        start()
+        for i in range(2,8): lookup(base+i*32, 0)
+        lookup(alias_, 0)
+        lines += ['$display("PASS cache: resident lines, masked store hit, no-write-allocate, conflict replacement, line invalidate, stale read, reset clear");$finish;end endmodule']
         self.simulate("cache", "\n".join(lines))
 
 

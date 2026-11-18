@@ -19,7 +19,7 @@ python verification/verify_generated.py --iverilog path/to/iverilog.exe
 
 `--rtl` 기본값은 src/cpu, `--out` 기본값은 build/verification이다.
 `--only parity`, `lint`, `alu`, `decoder`, `cpu`로 한 검사를 선택할 수 있다.
-`--only cache`는 8라인 유지·충돌·masked store·무효화만 별도로 시뮬레이션한다.
+`--only cache`는 LineCache의 reset 정리·라인 유지·충돌·masked store·라인 무효화·동시 쓰기 조회만 별도로 시뮬레이션한다.
 테스트벤치와 컴파일/실행 로그, results.json을 출력 폴더에 저장한다.
 
 검사 범위:

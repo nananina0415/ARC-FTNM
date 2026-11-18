@@ -7,7 +7,7 @@ The viewer is written even when a check fails so the failing clock can be inspec
 import json
 import sys
 
-from verify_generated import Checks, ROOT, enc
+from verify_generated import Checks, ROOT, cache_ready, enc
 
 sys.path.insert(0, str(ROOT))
 from verification.cpu_suite.assembler import assemble  # noqa: E402
@@ -140,7 +140,7 @@ def testbench(checks, module, words):
             lines.append(f"{port['name']}=0;")
     lines += [f"@(negedge {clk});{reset}=1;{calib}=0;", "for(j=0;j<256;j=j+1) memory[j]=8'ha5;"]
     lines += [f"memory[{address}]=8'h{byte:02x};" for address, byte in sorted(words.items())]
-    lines += [f"repeat(3) @(negedge {clk});{reset}=0;repeat(5) @(negedge {clk});{calib}=1;limit=0;",
+    lines += [f"repeat(3) @(negedge {clk});{reset}=0;wait({cache_ready()});repeat(5) @(negedge {clk});{calib}=1;limit=0;",
               f"while(!{p('done')} && !{p('fault')} && limit<5000) begin @(negedge {clk});limit=limit+1;end",
               f"if(limit==5000) $fatal(1,\"clock limit reached\");",
               f"if({p('fault')}) begin repeat(3) @(negedge {clk});$fatal(1,\"fault reason=%0d\",{p('fault_reason')});end",

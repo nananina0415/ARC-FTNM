@@ -45,6 +45,7 @@ wire Cpu {
     reset => { reg.reset, fetch.reset, control.reset, memory.reset }
     init_calib_complete => { fetch.ram_ready, memory.ram_ready }
     memory.instruction_invalidate -> fetch.invalidate
+    memory.instruction_invalidate_address -> fetch.invalidate_address
     control.done -> done
     control.fault -> fault
     control.fault_reason -> fault_reason

@@ -410,7 +410,7 @@ CS 거짓은 쓰기 0회와 기존 목적지 유지, ZS 거짓은 쓰기 1회와
 | 데이터 주소 | octa 내 0~7의 정렬 내림, 32바이트 라인 내 0/8/16/24, 라인·index·tag 경계 |
 | RAM 주소 폭 | 마지막 유효 octa와 범위 밖 주소. 범위 밖은 AXI 요청 없이 오류 |
 | I-cache | 한 라인의 8명령, 다음 라인, 복수 라인 유지와 충돌, store 후 코드 재읽기 |
-| D-cache | 같은 라인 재읽기, 8개 index의 동시 유지, 주소 +256의 tag 충돌과 교체 |
+| D-cache | 같은 라인 재읽기, 여러 index의 동시 유지, 주소 +16KB의 tag 충돌과 교체 |
 | store | hit 시 byte-mask 갱신, miss에서 no-write-allocate, RAM의 쓰기 완료와 캐시 일치 |
 | 오류 | RRESP/BRESP·잘못된 ID·에러 라인 미채움·store 오류 뒤 무효화 |
 | AXI | 독립 AW/W 역압, AR 역압, R/B 지연, VALID/payload 유지, 응답 전 명령 완료 금지 |

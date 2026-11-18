@@ -53,7 +53,10 @@ def bench(rtl):
     aliases = {'clk':p('clock'), 'rst':p('reset'), 'calib':p('init_calib_complete'),
                'done':p('done'), 'fault':p('fault'), 'reason':p('fault_reason'),
                'pc':ctl+inst('pc')+'.'+p('out'), 'state':ctl+inst('state')+'.'+p('out'),
-               'wen':reg+p('general','w_en')}
+               'wen':reg+p('general','w_en'),
+               # Both caches clear their valid bits for 512 clocks after reset.
+               'cache_ready':'(dut.'+inst('fetch')+'.'+inst('cache')+'.'+p('ready')+' && dut.'
+                             +inst('memory')+'.'+inst('cache')+'.'+p('ready')+')'}
     for side, fields in [('read','arvalid arready araddr arlen arsize arid arburst arprot rvalid rready rdata rresp rid rlast'),
                          ('write','awvalid awready awaddr awlen awsize awid awburst wvalid wready wdata wstrb wlast bvalid bready bid bresp')]:
         for field in fields.split(): aliases[field] = p('axi',side,field)
@@ -122,7 +125,7 @@ initial begin
  $readmemh({directory,"/image.hex"},memory);$readmemh({directory,"/registers.hex"},initial_g);
  $readmemh({directory,"/special.hex"},initial_s);$readmemh({directory,"/config.hex"},settings);profile=settings[0];
  repeat(3) @(negedge @clk@);#1;@rst@=0;fixture();
- repeat(2) @(negedge @clk@);#1;running=1;@calib@=1;limit=0;
+ wait(@cache_ready@);repeat(2) @(negedge @clk@);#1;running=1;@calib@=1;limit=0;
  while(!@done@ && !@fault@ && limit<settings[1]) begin @(negedge @clk@);#1;limit=limit+1;end
  if(@done@ || @fault@) begin quiet=1;repeat(10) begin @(negedge @clk@);#1;end end
  dump();$display("CASE %s cycles=%0d",directory,cycles);

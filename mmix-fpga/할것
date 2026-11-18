@@ -14,7 +14,8 @@
   1. 의사코드/변환기에 BRAM 소자 SyncRam 추가
   2. 범용 레지스터(BRAM 3벌: $Y, $Z, store의 $X 읽기용)와 특수 레지스터(GET/PUT 전용)를 SyncRam으로
      ALU·스택이 직접 배선으로 읽는 rA rD rH rM rR rJ rO rS rG rL은 플립플롭 유지
-  3. I-cache, D-cache를 SyncRam으로, 각각 16KB(32바이트 라인 512개). I-cache는 store한 주소의 라인만 무효화
+  3. I-cache, D-cache를 SyncRam으로, 각각 16KB(32바이트 라인 512개). I-cache는 store한 주소의 라인만 무효화 — 구현함, 시뮬레이션 미실행
+     valid는 tag RAM에 두고 reset 뒤 512클록 동안 지운다. 설명: pseudo/cpu/cache/README.md
   4. 중간 합성으로 LUT 확인 (CPU 목표 30,000~35,000 LUT)
   5. 5단계 IF -> ID -> RF -> EX -> WB, 파이프라인 제어 유닛(진행/멈춤/비움)
      분기 예측: PB*는 taken, B*는 not-taken. 목표는 ID에서 계산

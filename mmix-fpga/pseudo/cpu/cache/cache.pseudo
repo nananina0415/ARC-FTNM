@@ -1,56 +1,91 @@
-// 8 direct-mapped blocks × 32 bytes = 256 bytes.
-// 주소: tag[29:8], index[7:5], offset[4:0]. AXI byte lane 순서 그대로 저장.
-seq LineCache8 {
+// 직접 사상 32바이트 라인 512개 = 16KB. 데이터와 tag는 블록 RAM(SyncRam)에 둔다.
+// 주소: tag[29:14], index[13:5], offset[4:0]. 데이터는 AXI byte lane 순서 그대로 저장한다.
+// 조회는 동기 읽기다. read=1인 클록의 read_address 라인을 읽어 다음 클록부터 line을 낸다.
+// read=0인 동안 마지막 조회 결과를 유지하고, hit는 그 결과의 valid·tag를 compare_address와 비교한다.
+// reset 뒤 512클록 동안 모든 라인의 valid를 지우며 그동안 ready=0이다.
+seq LineCache {
     pub clock: In<bit,1>
     pub reset: In<bit,1>
-    pub invalidate: In<bit,1>
-    pub lookup_address: In<bit,30>
+    pub ready: Out<bit,1>
+    pub read: In<bit,1>
+    pub read_address: In<bit,30>
+    pub compare_address: In<bit,30>
     pub hit: Out<bit,1>
     pub line: Out<bit,256>
-    pub update_address: In<bit,30>
-    pub fill_en: In<bit,1>
-    pub fill_data: In<bit,256>
-    pub store_en: In<bit,1>
-    pub store_data: In<bit,256>
+    pub write_address: In<bit,30>
+    pub write_data: In<bit,256>
+    pub fill_en: In<bit,1>      // write_address 라인 전체를 write_data로 채우고 valid로 만든다
+    pub store_en: In<bit,1>     // hit일 때만 store_mask 바이트를 write_data로 바꾼다. tag·valid는 그대로
     pub store_mask: In<bit,32>
-    mut blocks: [CacheBlock; 8]
-    select_update: Decoder<3,8>
-    tag_mux: Mux<8,22>
-    valid_mux: Mux<8,1>
-    data_mux: Mux<8,256>
+    pub invalidate: In<bit,1>   // invalidate_address 라인의 valid를 지운다. 같은 클록의 fill보다 우선
+    pub invalidate_address: In<bit,30>
+
+    mut data: SyncRam<512,256,32>
+    mut tags: SyncRam<512,17,1>  // [0..16] tag, [16] valid
+    mut stale: reg::ValueReg<1>   // 조회한 클록에 쓰기가 있었으면 1
+    mut sweep_index: reg::ValueReg<9>
+    mut swept: reg::ValueReg<1>
+    sweep_next: Adder<9>
+    clear_index: Mux<2,9>
+    tag_index: Mux<2,9>
+    fill_lanes: Mux<2,32>
+    store_lanes: Mux<2,32>
 }
-wire LineCache8 {
-    clock => { blocks[0..8].clock }
-    reset => { blocks[0..8].reset }
-    invalidate => { blocks[0..8].invalidate }
-    update_address[5..8] -> select_update.in
-    update_address[8..30] => { blocks[0..8].update_tag }
-    fill_data => { blocks[0..8].fill_data }
-    store_data => { blocks[0..8].store_data }
-    store_mask => { blocks[0..8].store_mask }
-    blocks[0].fill_en <- and(fill_en, select_update.out[0])
-    blocks[0].store_en <- and(store_en, select_update.out[0])
-    blocks[1].fill_en <- and(fill_en, select_update.out[1])
-    blocks[1].store_en <- and(store_en, select_update.out[1])
-    blocks[2].fill_en <- and(fill_en, select_update.out[2])
-    blocks[2].store_en <- and(store_en, select_update.out[2])
-    blocks[3].fill_en <- and(fill_en, select_update.out[3])
-    blocks[3].store_en <- and(store_en, select_update.out[3])
-    blocks[4].fill_en <- and(fill_en, select_update.out[4])
-    blocks[4].store_en <- and(store_en, select_update.out[4])
-    blocks[5].fill_en <- and(fill_en, select_update.out[5])
-    blocks[5].store_en <- and(store_en, select_update.out[5])
-    blocks[6].fill_en <- and(fill_en, select_update.out[6])
-    blocks[6].store_en <- and(store_en, select_update.out[6])
-    blocks[7].fill_en <- and(fill_en, select_update.out[7])
-    blocks[7].store_en <- and(store_en, select_update.out[7])
-    lookup_address[5..8] => { tag_mux.select, valid_mux.select, data_mux.select }
-    [ blocks[0..8].tag ] -> [ tag_mux.option[0..8] ]
-    [ blocks[0..8].valid ] -> [ valid_mux.option[0..8] ]
-    [ blocks[0..8].data ] -> [ data_mux.option[0..8] ]
-    alias difference = xor(tag_mux.selected, [ lookup_address[8..30] ])
-    hit <- and(valid_mux.selected, not(or(difference[0..22])))
-    data_mux.selected -> line
-    lookup_address[0..5] -> OPENED
-    update_address[0..5] -> OPENED
+wire LineCache {
+    alias sweeping = not(swept.out)
+    alias clearing = or(sweeping, invalidate)
+    alias fill = and(fill_en, not(clearing))
+    alias tag_difference = xor([ tags.r_data[0..16] ], [ compare_address[14..30] ])
+
+    clock => { data.clock, tags.clock, stale.clock, sweep_index.clock, swept.clock }
+    reset => { stale.reset, sweep_index.reset, swept.reset }
+    ready <- swept.out
+
+    // reset 뒤 index 0부터 511까지 한 클록에 하나씩 valid를 지운다
+    sweep_index.w_en <- sweeping
+    sweep_next.a <- sweep_index.out
+    sweep_next.b <- 0
+    sweep_next.c_in <- 1
+    sweep_next.sum -> sweep_index.in
+    sweep_next.c_out -> OPENED
+    swept.w_en <- and(sweeping, and(sweep_index.out[0..9]))
+    swept.in <- 1
+
+    // 조회. 블록 RAM은 같은 클록 쓰기 전 값을 읽으므로 그 조회는 miss로 본다.
+    data.r_en <- read
+    tags.r_en <- read
+    read_address[5..14] => { data.r_addr, tags.r_addr }
+    read_address[0..5] -> OPENED
+    read_address[14..30] -> OPENED
+    stale.w_en <- read
+    stale.in <- or(fill_en, store_en, invalidate)
+    hit <- and(tags.r_data[16], not(stale.out), not(or(tag_difference[0..16])))
+    data.r_data -> line
+    compare_address[0..14] -> OPENED
+
+    // 데이터: fill은 32바이트 전부, store는 hit일 때 mask 바이트만
+    write_address[5..14] -> data.w_addr
+    write_data -> data.w_data
+    store_lanes.select <- and(store_en, hit)
+    store_lanes.option[0] <- 0
+    store_lanes.option[1] <- store_mask
+    fill_lanes.select <- fill
+    fill_lanes.option[0] <- store_lanes.selected
+    { fill_lanes.option[1][0..32] } <= 1
+    fill_lanes.selected -> data.w_en
+
+    // tag: 지우기(reset 정리, invalidate)가 fill보다 우선한다
+    clear_index.select <- sweeping
+    clear_index.option[0] <- [ invalidate_address[5..14] ]
+    clear_index.option[1] <- sweep_index.out
+    tag_index.select <- clearing
+    tag_index.option[0] <- [ write_address[5..14] ]
+    tag_index.option[1] <- clear_index.selected
+    tag_index.selected -> tags.w_addr
+    tags.w_en <- or(fill_en, clearing)
+    tags.w_data[0..16] <- [ write_address[14..30] ]
+    tags.w_data[16] <- fill
+    write_address[0..5] -> OPENED
+    invalidate_address[0..5] -> OPENED
+    invalidate_address[14..30] -> OPENED
 }
