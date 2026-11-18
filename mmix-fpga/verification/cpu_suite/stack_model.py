@@ -1,7 +1,7 @@
 """Register stack oracle written from mmix-doc 'Register stack' and mmix-sim PUSH/POP.
 
-Slots are physical: k>=G uses slot k, k<L uses (alpha+k) mod R, where R is the largest
-power of two not above G. It never reads the RTL or the crosscompiler output.
+Slots are physical (512): k<L uses ring slot (alpha+k) mod 256, k>=G uses slot 256+k.
+The ring has mmix-sim's default size of 256. It never reads the RTL or the crosscompiler output.
 Spill and POP fill move up to four octas within one 32-byte line per memory access
 (pseudo/cpu/reg/README.md 'spill/fill 단위'); UNSAVE still fills one octa at a time.
 """
@@ -9,6 +9,8 @@ from .catalog import MASK, SPECIAL
 
 
 SAVED_SPECIAL = [0, 1, 2, 3, 4, 5, 6, 23, 24, 25, 26, 27]  # rB..rR, rP..rZ
+RING = 256
+GLOBAL = 256  # global $k lives in slot GLOBAL+k
 
 
 class StackFault(Exception):
@@ -31,27 +33,22 @@ class StackModel:
     def put(self, name, value): self.spec[SPECIAL.index(name)] = value & MASK
 
     @property
-    def R(self):
-        G = self.get('rG')
-        return 128 if G >= 128 else 64 if G >= 64 else 32
+    def alpha(self): return (self.get('rO') >> 3) & (RING-1)
 
     @property
-    def alpha(self): return (self.get('rO') >> 3) & (self.R-1)
+    def gamma(self): return (self.get('rS') >> 3) & (RING-1)
 
-    @property
-    def gamma(self): return (self.get('rS') >> 3) & (self.R-1)
-
-    def ring(self, offset): return (self.alpha+offset) & (self.R-1)
+    def ring(self, offset): return (self.alpha+offset) & (RING-1)
 
     def pending(self): return (self.get('rO')-self.get('rS')) >> 3
 
     def read(self, k):
-        if k >= self.get('rG'): return self.slots[k]
+        if k >= self.get('rG'): return self.slots[GLOBAL+k]
         if k < self.get('rL'): return self.slots[self.ring(k)]
         return 0
 
     def write(self, k, value):
-        slot = k if k >= self.get('rG') else self.ring(k)
+        slot = GLOBAL+k if k >= self.get('rG') else self.ring(k)
         self.slots[slot] = value & MASK
         self.register_writes += 1
 
@@ -60,7 +57,7 @@ class StackModel:
         address, gamma = self.get('rS'), self.gamma
         count = min(self.pending(), 4-((address >> 3) & 3))
         for j in range(count):
-            value = self.slots[(gamma+j) & (self.R-1)]
+            value = self.slots[(gamma+j) & (RING-1)]
             for i, byte in enumerate(value.to_bytes(8, 'big')): self.memory[address+8*j+i] = byte
         self.put('rS', address+8*count)
         self.stores += 1
@@ -71,13 +68,13 @@ class StackModel:
         position = (address >> 3) & 3
         bound = position if position else 4
         level = self.pending()+self.get('rL')
-        free = (-level) & (self.R-1)
+        free = (-level) & (RING-1)
         cap = 4 if level == 0 else 1 if free == 0 else min(free, 4)
         count = min(bound, cap)
         self.put('rS', address-8*count)
         base, gamma = self.get('rS'), self.gamma
         for j in range(count):
-            self.slots[(gamma+j) & (self.R-1)] = int.from_bytes(
+            self.slots[(gamma+j) & (RING-1)] = int.from_bytes(
                 bytes(self.memory.get(base+8*j+i, 0xa5) for i in range(8)), 'big')
 
     def fill(self):
@@ -88,12 +85,11 @@ class StackModel:
     def increase_l(self):
         self.slots[self.ring(self.get('rL'))] = 0
         self.put('rL', self.get('rL')+1)
-        if (self.pending()+self.get('rL')) & (self.R-1) == 0: self.spill()
+        if (self.pending()+self.get('rL')) & (RING-1) == 0: self.spill()
 
     def grow_to(self, x):
         """Each increase returns to EXECUTE, so it counts as another visit."""
         while self.get('rG') > x >= self.get('rL'):
-            if x >= self.R-1: raise StackFault(2)
             self.increase_l()
             self.visits[self.pc] = self.visits.get(self.pc, 0)+1
 
@@ -115,10 +111,8 @@ class StackModel:
         y = self.slots[self.ring(x-1)] if x != 0 and x <= L else 0
         if self.pending() == 0: self.fill_line()
         k = self.slots[self.ring(-1)] & 0xff
-        if k >= self.R: raise StackFault(2)
         while self.pending() <= k: self.fill_line()
         new_l = min(k+(x if x <= L else L+1), self.get('rG'))
-        if new_l >= self.R: raise StackFault(2)
         if new_l > k: self.slots[self.ring(-1)] = y
         self.pc = (self.get('rJ')+4*yz) & MASK
         self.put('rO', self.get('rO')-8*(k+1))
@@ -142,7 +136,7 @@ class StackModel:
         self.put('rO', self.get('rO')+8*(n+1))
         self.put('rL', 0)
         while self.pending() != 0: self.spill()
-        for k in range(self.get('rG'), 256): self.store_octa(self.slots[k])
+        for k in range(self.get('rG'), 256): self.store_octa(self.slots[GLOBAL+k])
         for k in SAVED_SPECIAL: self.store_octa(self.spec[k])
         self.store_octa((self.get('rG') << 56) | self.get('rA'))
         self.put('rO', self.get('rS'))
@@ -154,25 +148,20 @@ class StackModel:
         self.put('rG', max(word >> 56, 32))
         self.put('rA', word & 0xc0c0)
         for k in reversed(SAVED_SPECIAL): self.spec[k] = self.load_octa()
-        for k in range(255, self.get('rG')-1, -1): self.slots[k] = self.load_octa()
+        for k in range(255, self.get('rG')-1, -1): self.slots[GLOBAL+k] = self.load_octa()
         self.fill()
         count = self.slots[self.gamma] & 0xff
-        if count >= self.R: raise StackFault(2)
         for _ in range(count): self.fill()
         self.put('rO', self.get('rS'))
-        self.put('rL', count)
+        self.put('rL', min(count, self.get('rG')))
 
     def put_special(self, name, value):
         if name == 'rL':
             if value < self.get('rL'): self.put('rL', value)
         elif name == 'rG':
-            old_r, L = self.R, self.get('rL')
-            new_r = 128 if value >= 128 else 64 if value >= 64 else 32
-            if value > 255 or value < 32 or value < L or (new_r != old_r and L != 0):
+            if value > 255 or value < 32 or value < self.get('rL'):
                 raise StackFault(2, executed=False)
-            if new_r != old_r:
-                while self.pending() != 0: self.spill()
-            for slot in range(value, self.get('rG')): self.slots[slot] = 0
+            for k in range(value, self.get('rG')): self.slots[GLOBAL+k] = 0
             self.put('rG', value)
         else:
             self.put(name, value)
@@ -208,8 +197,8 @@ class StackModel:
             self.put('rXX', (1 << 63) | (x << 16) | (y << 8) | z)
             self.put('rYY', self.read(y))
             self.put('rZZ', self.read(z))
-            self.put('rBB', self.slots[255])
-            self.slots[255] = self.get('rJ')
+            self.put('rBB', self.slots[GLOBAL+255])
+            self.slots[GLOBAL+255] = self.get('rJ')
             self.put('rK', 0)
             self.pc = self.get('rT')
             return True

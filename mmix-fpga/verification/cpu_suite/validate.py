@@ -1,7 +1,7 @@
 """Validate assertions before producing fixtures; no simulator dependencies."""
 import re
 
-from .catalog import ISA, SPECIAL, integer, ram_index
+from .catalog import ISA, SPECIAL, integer, ram_index, register_slot
 
 
 def validate(case):
@@ -30,7 +30,7 @@ def validate(case):
     require((expect['reason']==0)==(expect['stop']=='halt'),'Stop condition/fault reason mismatch')
     for state in (initial,expect):
         for key,value in state['registers'].items():
-            require(re.fullmatch(r'\$(0|[1-9][0-9]*)',key) and 0<=int(key[1:])<256,f'Invalid GPR: {key}')
+            register_slot(key,initial.get('explicit_stack',False))  # raises on a malformed key
             number(value,64)
         for key,value in state['special'].items():
             require(key in SPECIAL,f'Unknown special register: {key}');number(value,64)

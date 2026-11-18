@@ -1,10 +1,10 @@
 """PUSH/POP, marginal register and rG/rL programs with explicit register stack fixtures."""
 import json
 
-from .catalog import ISA, SPECIAL, MASK
-from .stack_model import StackModel
+from .catalog import ISA, SPECIAL, MASK, slot_name
+from .stack_model import GLOBAL, StackModel
 
-BASE = 0x800  # Mapped test RAM. BASE/8 mod R is 0, so the ring starts at slot 0.
+BASE = 0x800  # Mapped test RAM. BASE/8 mod 256 is 0, so the ring starts at slot 0.
 
 
 def operand_text(value):
@@ -79,7 +79,8 @@ def word_of(instruction, pc, labels):
 
 
 def save(root, op, label, lines, target, *, g=200, l=5, offset=0, pending=0, registers=None, memory=None, preset=None):
-    """target: index of the instruction under test. registers use logical numbers below L or G."""
+    """target: index of the instruction under test. registers use logical numbers; a marginal
+    number k presets ring slot l[k], which the program cannot see until L grows over it."""
     program, labels, source = assemble(lines)
     pc = target*4
     word = word_of(program[target], pc, labels)
@@ -88,10 +89,10 @@ def save(root, op, label, lines, target, *, g=200, l=5, offset=0, pending=0, reg
     for name, value in (('rG', g), ('rL', l), ('rO', BASE+8*offset), ('rS', BASE+8*(offset-pending))):
         special[SPECIAL.index(name)] = value
     for name, value in (preset or {}).items(): special[SPECIAL.index(name)] = value
-    slots = [0]*256
+    slots = [0]*512
     model = StackModel(program, labels, slots, special, memory or {})
     for number, value in (registers or {}).items():
-        slot = number if number >= g else model.ring(number) if number < l else number
+        slot = GLOBAL+number if number >= g else model.ring(number) if number < l else number
         slots[slot] = value & MASK
     model = StackModel(program, labels, slots, special, memory or {})
     stop, reason = model.run()
@@ -102,11 +103,11 @@ def save(root, op, label, lines, target, *, g=200, l=5, offset=0, pending=0, reg
     case = {'schema':1,'id':name,'target':{'mnemonic':ISA[op],'opcode':f'0x{op:02x}','pc':f'0x{pc:x}',
             'word':f'0x{word:08x}','executions':model.visits.get(pc,0)},'tags':['stack',label],
             'initial':{'entry':'0x0','explicit_stack':True,
-                       'registers':{f'${i}':f'0x{v:016x}' for i,v in enumerate(slots) if v},
+                       'registers':{slot_name(i):f'0x{v:016x}' for i,v in enumerate(slots) if v},
                        'special':{SPECIAL[i]:f'0x{v:016x}' for i,v in enumerate(special) if v},
                        'memory':{f'0x{a:x}':f'{v:02x}' for a,v in (memory or {}).items()}},
             'expect':{'stop':stop,'reason':reason,'pc':f'0x{model.pc:016x}',
-                      'registers':{f'${i}':f'0x{v:016x}' for i,v in enumerate(model.slots) if v!=slots[i]},
+                      'registers':{slot_name(i):f'0x{v:016x}' for i,v in enumerate(model.slots) if v!=slots[i]},
                       'special':{SPECIAL[i]:f'0x{v:016x}' for i,v in enumerate(model.spec) if v!=special[i]},
                       'memory':{f'0x{a:x}':f'{v:02x}' for a,v in model.memory.items() if v!=(memory or {}).get(a,0xa5)},
                       'unchanged_other_state':True,
@@ -158,17 +159,17 @@ def push_cases(root, op):
     emit('x_global', 250)
     emit('x_global_l_zero', 250, l=0)
     emit('return_value', 2, [('SETL', 0, 0x5a), ('POP', 1, 0)])
-    emit('ring_wrap', 2, l=5, offset=126)
-    for g, depth in ((40, 24), (80, 40), (130, 70)):
-        lines, target = recursion(op, depth)
-        r = 128 if g >= 128 else 64 if g >= 64 else 32
-        names.append(save(root, op, f'spill_fill_r{r}', lines, target, g=g, l=2, registers={0:0x10, 1:0x11, 253:0}))
+    emit('ring_wrap', 2, l=5, offset=254)
+    # Each Rec level holds 4 ring slots, so depth 72 (288 slots) overflows the 256-slot ring.
+    for g in (40, 200):
+        lines, target = recursion(op, 72)
+        names.append(save(root, op, f'spill_fill_g{g}', lines, target, g=g, l=2, registers={0:0x10, 1:0x11, 253:0}))
     # rS가 라인 중간(octa 1)에서 시작하면 첫 spill은 라인 끝까지 3칸, 이후는 4칸씩 옮긴다.
-    lines, target = recursion(op, 24)
+    lines, target = recursion(op, 72)
     names.append(save(root, op, 'spill_fill_unaligned', lines, target, g=40, l=2, offset=1,
                       registers={0:0x10, 1:0x11, 253:0}))
     # pending이 2뿐일 때 ring이 차면 2칸만 내보낸다(현재 로컬은 내보내지 않는다).
-    emit('spill_partial', 29, l=29, g=32, offset=2, pending=2)
+    emit('spill_partial', 253, l=253, g=254, offset=2, pending=2)
     return names
 
 
@@ -184,12 +185,13 @@ def pop_cases(root):
     emit('pop_above_l', [('POP', 5, 0)], x=4, registers=registers)
     lines = [('PUSHJ', 2, 'Sub'), ('TRAP',), ('TRAP',), 'Sub', ('POP', 0, 1)]
     names.append(save(root, 0xf8, 'pop_return_offset', lines, 3, registers=registers))
-    # With R<=G, a sum clamped to G always reaches R, so it stops as a range fault.
-    emit('pop_g_clamp_fault', [('SETL', 4, 1), ('POP', 5, 0)], x=30, g=32, l=31)
-    emit('pop_range_fault', [('SETL', 1, 1), ('POP', 2, 0)], x=126, g=128, l=127)
+    # k + X exceeds G, so the new L is clamped to G.
+    emit('pop_g_clamp', [('SETL', 4, 1), ('POP', 5, 0)], x=30, g=32, l=31)
+    # The 254-slot caller frame plus the callee's L=2 fills the ring (spill), then POP restores L=G=255.
+    emit('pop_l_reaches_g', [('SETL', 1, 1), ('POP', 2, 0)], x=253, g=255, l=254)
     # Growing L spills most of the caller, so POP has to fill several slots.
-    emit('pop_multi_fill', [('SETL', 25, 1), ('POP', 0, 0)], x=29, g=32, l=30,
-         registers={i:0x100+i for i in range(30)})
+    emit('pop_multi_fill', [('SETL', 25, 1), ('POP', 0, 0)], x=253, g=254, l=254,
+         registers={i:0x100+i for i in range(254)})
     return names
 
 
@@ -198,7 +200,7 @@ def marginal_cases(root):
     names.append(save(root, 0x23, 'marginal_read', [('ADDU', 1, 50, 1), ('TRAP',)], 0, l=2, registers={50:0x77}))
     names.append(save(root, 0x23, 'marginal_write_grows', [('ADDU', 5, 1, 1), ('TRAP',)], 0, l=2,
                       registers={1:0x41, 2:0x22, 3:0x33, 4:0x44}))
-    names.append(save(root, 0xe3, 'marginal_limit_fault', [('SETL', 127, 1), ('TRAP',)], 0, g=128, l=1))
+    names.append(save(root, 0xe3, 'marginal_to_g', [('SETL', 127, 1), ('TRAP',)], 0, g=128, l=1))
     names.append(save(root, 0x60, 'false_condition_grows', [('CSN', 10, 0, ('r', 1)), ('TRAP',)], 0, l=2,
                       registers={0:1, 1:0x55, 5:0x66}))
     return names
@@ -220,8 +222,8 @@ def special_cases(root):
     put('rl_no_grow', 30, l=9)
     put('rg_raise', 240, g=200, l=5)
     put('rg_lower_clear', 150, g=200, l=5, registers={150:0x99, 199:0x88, 149:0x77})
-    put('rg_ring_change_empty', 100, g=200, l=0, offset=4, pending=4, registers={0:0x10, 1:0x11, 2:0x12, 3:0x13})
-    put('rg_ring_change_with_locals', 100, g=200, l=5)
+    # Pending ring slots stay in the ring; PUT rG does not spill.
+    put('rg_lower_pending', 100, g=200, l=0, offset=4, pending=4, registers={0:0x10, 1:0x11, 2:0x12, 3:0x13})
     put('rg_below_32', 31, g=200, l=5)
     put('rg_below_l', 40, g=64, l=50)
     return names
@@ -238,7 +240,7 @@ def save_cases(root):
         names.append(save(root, 0xfa, label, [('SAVE', x), ('TRAP',)], 0, **kwargs))
     emit('save_l_zero', l=0, registers={200:0x77, 255:0x88})
     emit('save_locals', registers={**locals_, 200:0x77})
-    # The context stays inside mapped test RAM: 128 ring slots, 56 globals, 13 special slots.
+    # The context stays inside mapped test RAM: 127 locals and the hole, 56 globals, 13 special slots.
     emit('save_limit', l=127, registers={i: 0x100+i for i in range(127)})
     emit('save_pending', l=3, offset=8, pending=8, registers={i: 0x200+i for i in range(3)})
     emit('save_x_boundary', x=200, registers=locals_)
@@ -264,8 +266,8 @@ def unsave_cases(root):
     with_special = [('SAVE', 255), ('SETL', 1, 0xff), ('PUT', 'rM', ('r', 1)), ('UNSAVE', 255), ('TRAP',)]
     names.append(save(root, 0xfb, 'unsave_special_values', with_special, 3, registers=locals_,
                       preset={**SAVED_VALUES, 'rA':0xc0}))
-    ring_change = [('SAVE', 255), ('PUT', 'rG', 100), ('UNSAVE', 255), ('TRAP',)]
-    names.append(save(root, 0xfb, 'unsave_ring_change', ring_change, 2, registers={**locals_, 201:0x55}))
+    after_put_g = [('SAVE', 255), ('PUT', 'rG', 100), ('UNSAVE', 255), ('TRAP',)]
+    names.append(save(root, 0xfb, 'unsave_after_put_rg', after_put_g, 2, registers={**locals_, 201:0x55}))
     base = BASE
     # A stored G below 32 restores as 32, so the context holds the globals from $32.
     memory, top = context(base, 32, 0, stored_g=10)
@@ -274,8 +276,9 @@ def unsave_cases(root):
     names.append(save(root, 0xfb, 'unsave_z_unaligned', [('UNSAVE', 255), ('TRAP',)], 0, l=0, registers={255:top+5}, memory=memory))
     memory, top = context(base, 200, 0, a=0xffff)
     names.append(save(root, 0xfb, 'unsave_ra_masked', [('UNSAVE', 255), ('TRAP',)], 0, l=0, registers={255:top}, memory=memory))
+    # The hole says 200 locals with G=128: all 200 are loaded and L becomes min(200, G).
     memory, top = context(base, 128, 200)
-    names.append(save(root, 0xfb, 'unsave_count_fault', [('UNSAVE', 255), ('TRAP',)], 0, l=0, registers={255:top}, memory=memory))
+    names.append(save(root, 0xfb, 'unsave_count_clamp', [('UNSAVE', 255), ('TRAP',)], 0, l=0, registers={255:top}, memory=memory))
     names.append(save(root, 0xfb, 'unsave_invalid_x', [('RAW', 0xfb0100ff), ('TRAP',)], 0, l=0))
     return names
 

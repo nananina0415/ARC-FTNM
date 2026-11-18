@@ -27,7 +27,7 @@ seq Cpu {
     mut memory: MemoryAccess
     read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
-    read1_slot: Mux<2,8>  // 레지스터 스택 내부 읽기는 슬롯을 직접 지정
+    read1_slot: Mux<2,9>  // 레지스터 스택 내부 읽기는 9비트 슬롯을 직접 지정
     writeback_mux: Mux<4,WORD_SIZE>
     store_data_mux: Mux<2,WORD_SIZE>
     special_source: Mux<2,WORD_SIZE>
@@ -175,7 +175,8 @@ wire Cpu {
     decode.control.alu_sel -> alu.alu_sel
     decode.control.op -> alu.op
     read1_slot.select <- control.stack_r1_physical
-    read1_slot.option[0] <- decode.control.r1_sel
+    read1_slot.option[0][0..8] <- decode.control.r1_sel
+    read1_slot.option[0][8] <- 0
     read1_slot.option[1] <- control.stack_r1_slot
     read1_slot.selected -> reg.general.r1_sel
     decode.control.r2_sel -> reg.general.r2_sel

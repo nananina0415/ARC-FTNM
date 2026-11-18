@@ -4,11 +4,15 @@ module s_3_cpu_3_reg_14_RegisterWindow (
     input wire [7:0] s_4_port_3_sel,
     input wire [7:0] s_4_port_1_g,
     input wire [7:0] s_4_port_1_l,
-    input wire [6:0] s_4_port_5_alpha,
-    input wire [6:0] s_4_port_4_mask,
-    output wire [7:0] s_4_port_4_slot,
+    input wire [7:0] s_4_port_5_alpha,
+    output wire [8:0] s_4_port_4_slot,
     output wire [0:0] s_4_port_8_marginal
 );
+wire net_50;
+wire net_51;
+wire net_52;
+wire net_53;
+wire net_54;
 wire net_55;
 wire net_56;
 wire net_57;
@@ -21,12 +25,11 @@ wire net_63;
 wire net_64;
 wire net_65;
 wire net_66;
-wire net_67;
-wire net_68;
-wire net_69;
-wire net_70;
-wire net_71;
-wire net_72;
+wire net_76;
+wire net_77;
+wire net_78;
+wire net_79;
+wire net_80;
 wire net_81;
 wire net_82;
 wire net_83;
@@ -40,11 +43,9 @@ wire net_90;
 wire net_91;
 wire net_92;
 wire net_93;
-wire net_94;
-wire net_95;
-wire net_96;
-wire net_97;
-wire net_98;
+wire net_110;
+wire net_111;
+wire net_112;
 wire net_113;
 wire net_114;
 wire net_115;
@@ -52,54 +53,42 @@ wire net_116;
 wire net_117;
 wire net_118;
 wire net_119;
-wire net_120;
-wire net_121;
-wire net_123;
-wire net_124;
-wire net_125;
-wire net_126;
-wire net_127;
-wire net_128;
-wire net_129;
-wire net_130;
-wire net_174;
-wire net_175;
-wire net_176;
-assign net_63 = 1'd1;
-assign net_89 = 1'd1;
-assign net_113 = 1'd0;
-assign net_130 = 1'd0;
-assign {net_62, net_61, net_60, net_59, net_58, net_57, net_56, net_55} = ~({s_4_port_1_g[7], s_4_port_1_g[6], s_4_port_1_g[5], s_4_port_1_g[4], s_4_port_1_g[3], s_4_port_1_g[2], s_4_port_1_g[1], s_4_port_1_g[0]});
-assign {net_88, net_87, net_86, net_85, net_84, net_83, net_82, net_81} = ~({s_4_port_1_l[7], s_4_port_1_l[6], s_4_port_1_l[5], s_4_port_1_l[4], s_4_port_1_l[3], s_4_port_1_l[2], s_4_port_1_l[1], s_4_port_1_l[0]});
-assign {net_129, net_128, net_127, net_126, net_125, net_124, net_123} = ({net_120, net_119, net_118, net_117, net_116, net_115, net_114} & {s_4_port_4_mask[6], s_4_port_4_mask[5], s_4_port_4_mask[4], s_4_port_4_mask[3], s_4_port_4_mask[2], s_4_port_4_mask[1], s_4_port_4_mask[0]});
-assign net_174 = ~(net_72);
-assign net_175 = ~(net_98);
-assign net_176 = ~(net_175);
-assign s_4_port_8_marginal[0] = (net_174 & net_176);
+wire net_164;
+wire net_165;
+wire net_166;
+assign net_58 = 1'd1;
+assign net_84 = 1'd1;
+assign net_110 = 1'd0;
+assign {net_57, net_56, net_55, net_54, net_53, net_52, net_51, net_50} = ~({s_4_port_1_g[7], s_4_port_1_g[6], s_4_port_1_g[5], s_4_port_1_g[4], s_4_port_1_g[3], s_4_port_1_g[2], s_4_port_1_g[1], s_4_port_1_g[0]});
+assign {net_83, net_82, net_81, net_80, net_79, net_78, net_77, net_76} = ~({s_4_port_1_l[7], s_4_port_1_l[6], s_4_port_1_l[5], s_4_port_1_l[4], s_4_port_1_l[3], s_4_port_1_l[2], s_4_port_1_l[1], s_4_port_1_l[0]});
+assign net_164 = ~(s_4_port_4_slot[8]);
+assign net_165 = ~(net_93);
+assign net_166 = ~(net_165);
+assign s_4_port_8_marginal[0] = (net_164 & net_166);
 s_8_$builtin_5_Adder_args_8c98d396d4e298913f14ad3186e933dcf7c381317bff365d582835405c2c45dc s_8_instance_14_global_compare (
     .s_4_port_1_a({s_4_port_3_sel[7], s_4_port_3_sel[6], s_4_port_3_sel[5], s_4_port_3_sel[4], s_4_port_3_sel[3], s_4_port_3_sel[2], s_4_port_3_sel[1], s_4_port_3_sel[0]}),
-    .s_4_port_1_b({net_62, net_61, net_60, net_59, net_58, net_57, net_56, net_55}),
-    .s_4_port_4_c_in(net_63),
-    .s_4_port_3_sum({net_71, net_70, net_69, net_68, net_67, net_66, net_65, net_64}),
-    .s_4_port_5_c_out(net_72)
+    .s_4_port_1_b({net_57, net_56, net_55, net_54, net_53, net_52, net_51, net_50}),
+    .s_4_port_4_c_in(net_58),
+    .s_4_port_3_sum({net_66, net_65, net_64, net_63, net_62, net_61, net_60, net_59}),
+    .s_4_port_5_c_out(s_4_port_4_slot[8])
 );
 s_8_$builtin_5_Adder_args_8c98d396d4e298913f14ad3186e933dcf7c381317bff365d582835405c2c45dc s_8_instance_13_local_compare (
     .s_4_port_1_a({s_4_port_3_sel[7], s_4_port_3_sel[6], s_4_port_3_sel[5], s_4_port_3_sel[4], s_4_port_3_sel[3], s_4_port_3_sel[2], s_4_port_3_sel[1], s_4_port_3_sel[0]}),
-    .s_4_port_1_b({net_88, net_87, net_86, net_85, net_84, net_83, net_82, net_81}),
-    .s_4_port_4_c_in(net_89),
-    .s_4_port_3_sum({net_97, net_96, net_95, net_94, net_93, net_92, net_91, net_90}),
-    .s_4_port_5_c_out(net_98)
+    .s_4_port_1_b({net_83, net_82, net_81, net_80, net_79, net_78, net_77, net_76}),
+    .s_4_port_4_c_in(net_84),
+    .s_4_port_3_sum({net_92, net_91, net_90, net_89, net_88, net_87, net_86, net_85}),
+    .s_4_port_5_c_out(net_93)
 );
-s_8_$builtin_5_Adder_args_24a6ade6d35f1e5ecc7a2982ec631d0848f6d1a5bd903c1be2c04491e4cc224c s_8_instance_8_ring_add (
-    .s_4_port_1_a({s_4_port_5_alpha[6], s_4_port_5_alpha[5], s_4_port_5_alpha[4], s_4_port_5_alpha[3], s_4_port_5_alpha[2], s_4_port_5_alpha[1], s_4_port_5_alpha[0]}),
-    .s_4_port_1_b({s_4_port_3_sel[6], s_4_port_3_sel[5], s_4_port_3_sel[4], s_4_port_3_sel[3], s_4_port_3_sel[2], s_4_port_3_sel[1], s_4_port_3_sel[0]}),
-    .s_4_port_4_c_in(net_113),
-    .s_4_port_3_sum({net_120, net_119, net_118, net_117, net_116, net_115, net_114}),
-    .s_4_port_5_c_out(net_121)
+s_8_$builtin_5_Adder_args_8c98d396d4e298913f14ad3186e933dcf7c381317bff365d582835405c2c45dc s_8_instance_8_ring_add (
+    .s_4_port_1_a({s_4_port_5_alpha[7], s_4_port_5_alpha[6], s_4_port_5_alpha[5], s_4_port_5_alpha[4], s_4_port_5_alpha[3], s_4_port_5_alpha[2], s_4_port_5_alpha[1], s_4_port_5_alpha[0]}),
+    .s_4_port_1_b({s_4_port_3_sel[7], s_4_port_3_sel[6], s_4_port_3_sel[5], s_4_port_3_sel[4], s_4_port_3_sel[3], s_4_port_3_sel[2], s_4_port_3_sel[1], s_4_port_3_sel[0]}),
+    .s_4_port_4_c_in(net_110),
+    .s_4_port_3_sum({net_118, net_117, net_116, net_115, net_114, net_113, net_112, net_111}),
+    .s_4_port_5_c_out(net_119)
 );
 s_8_$builtin_3_Mux_args_762f0b4c61ef134463827910f7768e32915a214b61c13151bf69da7fa2061701 s_8_instance_8_slot_mux (
-    .s_4_port_6_select(net_72),
-    .s_4_port_6_option_1_0({net_130, net_129, net_128, net_127, net_126, net_125, net_124, net_123}),
+    .s_4_port_6_select(s_4_port_4_slot[8]),
+    .s_4_port_6_option_1_0({net_118, net_117, net_116, net_115, net_114, net_113, net_112, net_111}),
     .s_4_port_6_option_1_1({s_4_port_3_sel[7], s_4_port_3_sel[6], s_4_port_3_sel[5], s_4_port_3_sel[4], s_4_port_3_sel[3], s_4_port_3_sel[2], s_4_port_3_sel[1], s_4_port_3_sel[0]}),
     .s_4_port_8_selected({s_4_port_4_slot[7], s_4_port_4_slot[6], s_4_port_4_slot[5], s_4_port_4_slot[4], s_4_port_4_slot[3], s_4_port_4_slot[2], s_4_port_4_slot[1], s_4_port_4_slot[0]})
 );

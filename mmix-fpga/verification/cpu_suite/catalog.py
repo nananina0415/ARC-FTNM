@@ -1,4 +1,6 @@
 """Independent ISA catalog; never extracted from the DUT decoder."""
+import re
+
 PAIRS = {
     0x18: "MUL", 0x1a: "MULU", 0x1c: "DIV", 0x1e: "DIVU",
     0x20: "ADD", 0x22: "ADDU", 0x24: "SUB", 0x26: "SUBU",
@@ -61,6 +63,27 @@ def ram_index(address):
     raise ValueError(f"Unmapped test RAM address {address:#x}")
 
 
+SLOTS = 512  # ring l[0..255] in slots 0..255, global g[k] in slot 256+k
+
+
+def slot_name(slot):
+    """Physical slot name in mmix-sim notation: l[i] for the local ring, g[k] for globals."""
+    return f'l[{slot}]' if slot < 256 else f'g[{slot-256}]'
+
+
+def register_slot(key, explicit_stack):
+    """Case register key to physical slot. Without an explicit stack the fixture uses the flat
+    window rG=128, rL=127, rO=0, so $k (k<128) is ring slot k and $k (k>=128) is global."""
+    if explicit_stack:
+        match = re.fullmatch(r'([lg])\[(0|[1-9][0-9]*)\]', key)
+        if not match or int(match[2]) >= 256: raise ValueError(f'Invalid register slot: {key}')
+        return int(match[2]) + (256 if match[1] == 'g' else 0)
+    match = re.fullmatch(r'\$(0|[1-9][0-9]*)', key)
+    if not match or int(match[1]) >= 256: raise ValueError(f'Invalid GPR: {key}')
+    k = int(match[1])
+    return k if k < 128 else 256+k
+
+
 def integer(value):
     if not isinstance(value, str):
         raise ValueError("Architectural integers must be strings")
@@ -74,16 +97,16 @@ def required_coverage(op):
     if op==0xfd:return ['swym_zero','swym_fields','swym_no_grow']
     if op in (0xbe,0xbf,0xf2,0xf3):
         return ['basic','x_zero','x_marginal','x_global','x_global_l_zero','return_value','ring_wrap',
-                'spill_fill_r32','spill_fill_r64','spill_fill_r128','spill_fill_unaligned','spill_partial']
+                'spill_fill_g40','spill_fill_g200','spill_fill_unaligned','spill_partial']
     if op==0xf8:
-        return ['pop_zero','pop_one','pop_two','pop_above_l','pop_return_offset','pop_g_clamp_fault',
-                'pop_range_fault','pop_multi_fill']
+        return ['pop_zero','pop_one','pop_two','pop_above_l','pop_return_offset','pop_g_clamp',
+                'pop_l_reaches_g','pop_multi_fill']
     if op==0xfa:
         return ['save_l_zero','save_locals','save_limit','save_pending','save_x_boundary',
                 'save_special_values','save_x_not_global','save_invalid_z']
     if op==0xfb:
-        return ['unsave_round_trip','unsave_special_values','unsave_ring_change','unsave_g_below_32',
-                'unsave_z_unaligned','unsave_ra_masked','unsave_count_fault','unsave_invalid_x']
+        return ['unsave_round_trip','unsave_special_values','unsave_after_put_rg','unsave_g_below_32',
+                'unsave_z_unaligned','unsave_ra_masked','unsave_count_clamp','unsave_invalid_x']
     if op in GO_OPS:
         return ['basic','destination_register0','destination_register255','destination_alias_y',
                 'next_instruction','backward','low_bits','wraparound','target_fault'] + (
@@ -92,7 +115,7 @@ def required_coverage(op):
         return ['basic','destination_register0','destination_register255','zero','one','sign_before','sign_boundary','max_wyde','enables_preserved']
     if op in SPECIAL_OPS:
         stack=['rl','rg','ro','rs'] if op==0xfe else ['rl_shrink','rl_no_grow','rg_raise','rg_lower_clear',
-              'rg_ring_change_empty','rg_ring_change_with_locals','rg_below_32','rg_below_l']
+              'rg_lower_pending','rg_below_32','rg_below_l']
         return ['basic','destination_register0','destination_register255','ra_supported',
                 'unsupported_system_register','invalid_y','invalid_index'] + (['ra_unsupported_bits'] if op!=0xfe else []) + stack
     if op in BRANCHES:

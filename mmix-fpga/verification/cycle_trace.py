@@ -48,7 +48,7 @@ def instrumentation(path):
     for index, (side, name) in enumerate(pins):
         write((',' if index else '') + f'"{name}":"%h"', signal(side, name))
     write('},"registers":[')
-    for index in range(256):
+    for index in range(512):  # slots: ring l[0..255], then global g[k] at 256+k
         value = f"{regs}{enc('instance','ram_r1')}.mem[{index}]"
         write((',' if index else '') + '"%016h"', value)
     write('],"special":[')
@@ -74,7 +74,7 @@ def instrumentation(path):
 
 def load_frames(trace):
     frames = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if not frames or any(len(f["registers"]) != 256 or len(f["special"]) != 32 or len(f["memory"]) != 256 for f in frames):
+    if not frames or any(len(f["registers"]) != 512 or len(f["special"]) != 32 or len(f["memory"]) != 256 for f in frames):
         raise RuntimeError("Incomplete cycle dumps")
     return frames
 

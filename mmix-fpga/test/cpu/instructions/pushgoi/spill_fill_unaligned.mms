@@ -1,6 +1,6 @@
 % pushgoi.spill_fill_unaligned
         LOC 0
-Main    SETL $255,#0018
+Main    SETL $255,#0048
         GETA $254,Rec
         PUSHGO $3,$254,0
         TRAP 0,Halt,0

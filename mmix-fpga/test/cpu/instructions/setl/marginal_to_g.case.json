@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "setl.marginal_to_g",
+  "target": {
+    "mnemonic": "SETL",
+    "opcode": "0xe3",
+    "pc": "0x0",
+    "word": "0xe37f0001",
+    "executions": 128
+  },
+  "tags": [
+    "stack",
+    "marginal_to_g"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {},
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x0000000000000080",
+      "rL": "0x0000000000000001"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {
+      "l[127]": "0x0000000000000001"
+    },
+    "special": {
+      "rL": "0x0000000000000080"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "marginal_to_g"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

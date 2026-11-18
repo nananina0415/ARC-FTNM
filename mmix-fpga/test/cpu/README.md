@@ -37,11 +37,13 @@ python -m verification.cpu_suite --instruction SETH --instruction SETMH --instru
 
 ## 레지스터 스택 케이스
 
-`initial.explicit_stack`이 없는 케이스는 runner가 `rG=128`, `rL=127`을 주입한다. rO=0이므로
-`$0~$126`은 슬롯 번호와 같은 로컬, `$128~$255`는 글로벌이다. `$127`은 marginal이라 이 fixture의
+물리 슬롯은 512개다. `l[i]`는 로컬 ring 슬롯 i(0~255), `g[k]`는 글로벌 $k의 슬롯(256+k)이다.
+
+`initial.explicit_stack`이 없는 케이스는 레지스터를 `$k`로 적고 runner가 `rG=128`, `rL=127`을 주입한다.
+rO=0이므로 `$0~$126`은 `l[0]~l[126]`, `$128~$255`는 `g[128]~g[255]`다. `$127`은 marginal이라 이 fixture의
 프로그램에서 쓰지 않는다. `explicit_stack`이 참이면 케이스가 rG/rL/rO/rS를 직접 지정한다.
 
-레지스터 기대값은 논리 번호가 아니라 물리 슬롯 256개의 최종 값이다. `stack_cases.py`의 프로그램과
+explicit_stack 케이스의 레지스터는 논리 번호가 아니라 물리 슬롯(`l[i]`, `g[k]`)으로 적고 최종 값을 비교한다. `stack_cases.py`의 프로그램과
 `stack_model.py`의 독립 모델로 기대값을 만든다. 대상 PC의 `executions`는 EXECUTE에 머문 횟수이므로
 marginal `$X`로 L을 늘릴 때마다 1씩 늘어난다. 내부 0 쓰기, hole, fill은 `register_writes`에 세지
 않고 spill은 `memory_writes`에 센다. spill은 32바이트 라인 안 최대 4칸을 쓰기 1회로 내보내므로
@@ -92,7 +94,7 @@ MMIXAL의 종료 코드 외에 진단 메시지도 검사한다. 경고도 실�
 - `.mms → MMIXAL → MMO v1 loader → RAM → 실제 생성 CPU RTL` 경로를 실행한다.
 - fixture는 reset 후 실행 전에 플립플롭 저장 상태에 한 번 주입한다. 실행 중
   `force`나 기대값 주입은 없다. 대상 명령의 지원 여부와 무관하게 초기 상태는 fixture로 주입한다.
-- GPR 256개, 특수 레지스터 32개, 테스트 RAM 4,128바이트를 최종 덤프하여
+- GPR 슬롯 512개, 특수 레지스터 32개, 테스트 RAM 4,128바이트를 최종 덤프하여
   초기 상태와 명세의 차이만 반영한 기대 상태와 전부 비교한다.
 - RAM은 `0..4095`와 마지막 32바이트 `0x3fffffe0..0x3fffffff`를 sparse mapping한다.
   초기화하지 않은 바이트는 A5다. rA는 구현된 비트 6/7/14/15만 주입할 수 있다.
@@ -338,7 +340,7 @@ LDO/ADD/STO처럼 실제 명령 간 연결과 메모리·캐시를 확인할 int
 output wire에 값을 덮어쓰지 않고 실제 DFF 저장 변수에 주입한다.
 향후 표준 trace/debug 관찰 인터페이스를 추가해도 케이스 형식은 유지한다.
 
-일반 레지스터 256개와 특수 레지스터의 논리적 값을 비교한다.
+범용 레지스터 슬롯 512개와 특수 레지스터의 값을 비교한다.
 rA의 비트 재배치는 어댑터가 담당한다. 캐시 tag/data/valid는 아키텍처 레지스터와
 분리해 캐시 테스트에서 관찰한다.
 

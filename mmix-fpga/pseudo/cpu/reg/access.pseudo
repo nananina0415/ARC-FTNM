@@ -1,7 +1,7 @@
 // 실제 의미가 있는 특수 레지스터만 허용한다.
 // 8,9,12,14,16,17,18의 시스템 레지스터는 해당 서브시스템 구현 전까지 미지원.
 // rT, rK는 TRAP에 필요해 접근을 허용한다. 권한 검사는 아직 없다.
-// rO, rS는 읽기 전용이다. rG, rL은 PUT 값에 사양과 구현 제약을 적용한다.
+// rO, rS는 읽기 전용이다. PUT rG는 사양대로 32 <= 값 <= 255, 값 >= L만 허용한다.
 // SAVE의 $X는 글로벌이어야 한다.
 comb SpecialAccess {
     pub get: In<bit,1>
@@ -26,13 +26,7 @@ wire SpecialAccess {
     alias value_high = or(value[8..WORD_SIZE])
     alias value_at_least_32 = or(value[5..8])
     alias value_at_least_l = value_vs_l.c_out
-    alias ring_changes = or(xor(value[7], g[7]), xor(or(value[7], value[6]), or(g[7], g[6])))
-    alias put_g_ok = and(
-        not(value_high),
-        value_at_least_32,
-        value_at_least_l,
-        or(not(ring_changes), not(or(l[0..8]))),
-    )
+    alias put_g_ok = and(not(value_high), value_at_least_32, value_at_least_l)
     value_vs_l.a <- [ value[0..8] ]
     value_vs_l.b <- not(l)
     value_vs_l.c_in <- 1

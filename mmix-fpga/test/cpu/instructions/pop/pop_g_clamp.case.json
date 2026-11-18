@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "pop.pop_g_clamp",
+  "target": {
+    "mnemonic": "POP",
+    "opcode": "0xf8",
+    "pc": "0xc",
+    "word": "0xf8050000",
+    "executions": 1
+  },
+  "tags": [
+    "stack",
+    "pop_g_clamp"
+  ],
+  "initial": {
+    "entry": "0x0",
+    "explicit_stack": true,
+    "registers": {},
+    "special": {
+      "rO": "0x0000000000000800",
+      "rS": "0x0000000000000800",
+      "rG": "0x0000000000000020",
+      "rL": "0x000000000000001f"
+    },
+    "memory": {}
+  },
+  "expect": {
+    "stop": "halt",
+    "reason": 0,
+    "pc": "0x0000000000000004",
+    "registers": {
+      "l[30]": "0x0000000000000001",
+      "l[35]": "0x0000000000000001"
+    },
+    "special": {
+      "rJ": "0x0000000000000004",
+      "rL": "0x0000000000000020"
+    },
+    "memory": {},
+    "unchanged_other_state": true,
+    "subject_effects": {
+      "register_writes": 1,
+      "memory_writes": 0
+    }
+  },
+  "coverage": [
+    "pop_g_clamp"
+  ],
+  "profiles": [
+    "no_stall",
+    "backpressure"
+  ],
+  "limits": {
+    "cycles": 60000,
+    "wall_seconds": 1200
+  }
+}

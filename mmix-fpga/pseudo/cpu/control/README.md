@@ -65,18 +65,18 @@ POP_READ, POP_HOLE, UNSAVE_HOLE, 글로벌·특수 레지스터 SAVE, TRAP의 $Y
 
 | StackControl 단계 | 동작 |
 |---|---|
-| GROW, CHECK | `l[α+L]←0`, L+1. `(미저장 칸 수 + L) mod R = 0`이면 SPILL. 끝나면 EXECUTE 재실행 |
+| GROW, CHECK | `l[α+L]←0`, L+1. `(미저장 칸 수 + L) mod 256 = 0`이면 SPILL. 끝나면 EXECUTE 재실행 |
 | SPILL_GATHER, SPILL_REQUEST, SPILL_WAIT | n = min(미저장 칸 수, 4 − (rS/8 mod 4))칸을 한 클록에 하나씩 모아 `M8[rS..rS+8n)←l[γ..γ+n)`을 라인 쓰기 1회로, rS+8n |
 | PUSH_COMMIT | `l[α+n]←n`, rJ←PC+4, L−(n+1), rO+8(n+1), PC←목표 |
 | POP_READ, POP_BASE, POP_HOLE | y 읽기, 빈 ring이면 FILL, hole에서 k 읽기, 미저장 칸 수 <= k이면 FILL |
 | FILL_ADDRESS, FILL_REQUEST, FILL_WAIT | m칸: rS−8m, 라인 읽기 1회 뒤 한 클록에 하나씩 `l[γ..γ+m)←M8[rS..rS+8m)`. POP은 m = min(rS 앞 라인 칸 수(rS 정렬이면 4), ring 빈칸), UNSAVE는 1 |
 | POP_COMMIT | `L←min(k+X',G)`, L>k이면 `l[α-1]←y`, PC←rJ+4YZ, rO−8(k+1) |
-| G_FLUSH, G_CLEAR, G_COMMIT | R이 바뀌면 전부 SPILL, 새로 글로벌이 된 칸을 0으로, G 갱신 |
+| G_CLEAR, G_COMMIT | 새로 글로벌이 된 칸을 0으로, G 갱신 |
 
 | SAVE_HOLE, SAVE_FLUSH | hole을 쓰고 L←0, 미저장 칸을 모두 SPILL |
 | SAVE_REQUEST, SAVE_WAIT, SAVE_COMMIT | 글로벌, 특수 레지스터 12개, (rG,rA) 저장. rO←rS, $X←rS−8 |
 | UNSAVE_BASE, UNSAVE_ADDRESS, UNSAVE_REQUEST, UNSAVE_WAIT | rS←($Z 정렬)+8, (rG,rA), 특수 레지스터, 글로벌 순서로 복원 |
-| UNSAVE_HOLE, UNSAVE_LOCALS, UNSAVE_COMMIT | FILL로 hole과 로컬 k개를 읽고 rO←rS, L←k |
+| UNSAVE_HOLE, UNSAVE_LOCALS, UNSAVE_COMMIT | FILL로 hole과 로컬 k개를 읽고 rO←rS, L←min(k,G) |
 
 특수 레지스터는 GET/PUT 버스로 옮기고 rG만 직접 경로를 쓴다. SAVE의 $X 쓰기는 GETA와 같은
 `address_write_en` 경로라 명령의 레지스터 쓰기로 관찰된다.
@@ -84,7 +84,7 @@ POP_READ, POP_HOLE, UNSAVE_HOLE, 글로벌·특수 레지스터 SAVE, TRAP의 $Y
 X<G인 PUSH는 일반 목적지와 같이 marginal이면 GROW를 거친다. X>=G인 PUSH는 GROW를 한 번
 거쳐 n=L-1로 hole을 쓴다. `$X`가 목적지인 명령은 조건이 거짓인 CS*여도 먼저 L을 늘린다.
 spill/fill은 MemoryAccess의 라인 경로(32바이트 라인 안 octa 여러 개)를 사용하며 접근 오류는 fault_reason bit 0이다.
-L이 R에 닿는 경우와 hole 값 k가 R 이상인 경우는 fault_reason bit 1이다.
+ring이 256칸이고 L<=G<=255라서 레지스터 스택에는 범위 fault가 없다.
 
 ## 메모리·정지·오류
 

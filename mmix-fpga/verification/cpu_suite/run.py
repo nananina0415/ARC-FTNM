@@ -11,7 +11,7 @@ import time
 import xml.etree.ElementTree as ET
 
 from .assembler import assemble
-from .catalog import RAM_BYTES, SPECIAL, integer, ram_index
+from .catalog import RAM_BYTES, SLOTS, SPECIAL, integer, ram_index, register_slot, slot_name
 from .rtl import bench
 from .validate import validate
 
@@ -30,14 +30,16 @@ def prepare(path, output, mmixal, profiles):
     image,provenance=assemble(mmixal,source,directory)
     if image.entry!=integer(case['initial']['entry']) or image.entry!=0:
         raise ValueError('CPU currently resets at address zero; unsupported MMO entry')
-    mem=[0xa5]*RAM_BYTES;regs=[0]*256;spec=[0]*32
+    mem=[0xa5]*RAM_BYTES;regs=[0]*SLOTS;spec=[0]*32
+    explicit=case['initial'].get('explicit_stack',False)
     spec[SPECIAL.index('rG')]=image.global_threshold
     for addr,byte in image.memory.items(): mem[ram_index(addr)]=byte
-    for index,value in image.registers.items(): regs[index]=value
-    for key,value in case['initial']['registers'].items():regs[int(key[1:])]=integer(value)
+    # MMO register values are globals $G..$255.
+    for index,value in image.registers.items(): regs[register_slot(f'g[{index}]' if explicit else f'${index}',explicit)]=value
+    for key,value in case['initial']['registers'].items():regs[register_slot(key,explicit)]=integer(value)
     for key,value in case['initial']['special'].items():spec[SPECIAL.index(key)]=integer(value)
-    if not case['initial'].get('explicit_stack'):
-        # With O=0 this keeps $k in slot k: $0..$126 local, $128..$255 global.
+    if not explicit:
+        # With O=0: $0..$126 are ring slots 0..126, $128..$255 are global slots 384..511.
         spec[SPECIAL.index('rG')]=128;spec[SPECIAL.index('rL')]=127
     for key,value in case['initial']['memory'].items():
         addr=integer(key);byte=int(value,16)
@@ -49,7 +51,7 @@ def prepare(path, output, mmixal, profiles):
         raise ValueError('MMIXAL encoding does not match target word')
     if integer(case['target']['word'])>>24!=integer(case['target']['opcode']):raise ValueError('Target opcode mismatch')
     expected=(regs.copy(),spec.copy(),mem.copy())
-    for key,value in case['expect']['registers'].items():expected[0][int(key[1:])]=integer(value)
+    for key,value in case['expect']['registers'].items():expected[0][register_slot(key,explicit)]=integer(value)
     for key,value in case['expect']['special'].items():expected[1][SPECIAL.index(key)]=integer(value)
     for key,value in case['expect']['memory'].items():expected[2][ram_index(integer(key))]=int(value,16)
     runs=[]
@@ -72,7 +74,7 @@ def compare(run):
     if len(header) not in (9,10):raise ValueError('Malformed state dump header')
     done,fault,reason,cycles,attempts,writes,stores,reads,acks=map(int,header[:9])
     pc=int(header[9],16) if len(header)==10 else None
-    if len(lines)!=1+256+32+RAM_BYTES:raise ValueError('Incomplete state dump')
+    if len(lines)!=1+SLOTS+32+RAM_BYTES:raise ValueError('Incomplete state dump')
     values=[int(x,16) for x in lines[1:]]
     errors=[];case=run['case'];expect=case['expect']
     if (done,fault,reason)!=(int(expect['stop']=='halt'),int(expect['stop']=='fault'),expect['reason']):
@@ -85,7 +87,8 @@ def compare(run):
     offset=0
     for label,expected in zip(('register','special','memory'),run['expected']):
         for i,(a,b) in enumerate(zip(values[offset:offset+len(expected)],expected)):
-            if a!=b:errors.append(f'{label}[{i}]: actual=0x{a:x}, expected=0x{b:x}')
+            name=f'register {slot_name(i)}' if label=='register' else f'{label}[{i}]'
+            if a!=b:errors.append(f'{name}: actual=0x{a:x}, expected=0x{b:x}')
         offset+=len(expected)
     if errors:raise AssertionError('; '.join(errors[:12]))
     return {'cycles':cycles,'axi_reads':reads,'stores':stores,'final_pc':None if pc is None else f'0x{pc:016x}'}

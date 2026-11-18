@@ -1,11 +1,12 @@
 """RTL-specific observation/fixture adapter; never implements instruction semantics."""
 import json
 
-from .catalog import SPECIAL, RAM_BYTES
+from .catalog import SLOTS, SPECIAL, RAM_BYTES
 
 # Flip-flop special registers; the others live in the special block RAM.
 DIRECT = ('rA','rD','rH','rM','rR','rJ','rO','rS','rG','rL','rT')
-# General registers are three identical block RAM copies (read ports r1/r2/x).
+# General registers are three identical block RAM copies (read ports r1/r2/x) of 512 slots:
+# ring l[0..255] in 0..255, global g[k] in 256+k.
 GENERAL_RAMS = ('ram_r1','ram_r2','ram_x')
 
 
@@ -24,8 +25,8 @@ def bench(rtl):
     for port in top['ports']:
         lines.append(f"{'reg' if port['direction']=='in' else 'wire'} [{port['width']-1}:0] {port['name']};")
     lines.append(top['module'] + ' dut (' + ','.join(f".{v['name']}({v['name']})" for v in top['ports']) + ');')
-    lines += ['wire [63:0] g[0:255];wire [63:0] s[0:31];', 'task fixture;begin']
-    for i in range(256):
+    lines += [f'wire [63:0] g[0:{SLOTS-1}];wire [63:0] s[0:31];', 'task fixture;begin']
+    for i in range(SLOTS):
         for ram in GENERAL_RAMS:
             lines.append(f'{reg}{inst(ram)}.mem[{i}]=initial_g[{i}];')
     for i, name in enumerate(SPECIAL):
@@ -40,7 +41,7 @@ def bench(rtl):
         else: rhs = f'initial_s[{i}]'
         lines.append(f'{{{qs}}}={rhs};')
     lines += ['end endtask']
-    for i in range(256):
+    for i in range(SLOTS):
         lines.append(f'assign g[{i}]={reg}{inst("ram_r1")}.mem[{i}];')
     for i, name in enumerate(SPECIAL):
         if name not in DIRECT:
@@ -61,7 +62,7 @@ def bench(rtl):
                          ('write','awvalid awready awaddr awlen awsize awid awburst wvalid wready wdata wstrb wlast bvalid bready bid bresp')]:
         for field in fields.split(): aliases[field] = p('axi',side,field)
     template = r'''
-reg [7:0] memory[0:4127];reg [63:0] initial_g[0:255],initial_s[0:31];reg [63:0] settings[0:3];
+reg [7:0] memory[0:4127];reg [63:0] initial_g[0:511],initial_s[0:31];reg [63:0] settings[0:3];
 integer cycles=0,j,k,profile=0,rpending=0,rdelay=0,raddress=0,aw_seen=0,w_seen=0,applied=0,bdelay=0,waddress=0;
 integer writes=0,stores=0,attempts=0,reads=0,acks=0,quiet=0,fd,queue,n,scan,case_no,limit;
 integer arst=0,awst=0,wst=0;reg [29:0] oldar,oldaw;reg [255:0] oldw,saved_data;reg [31:0] oldstrb,saved_strb;
@@ -111,7 +112,7 @@ always @(posedge @clk@) begin
 task dump;begin
  fd=$fopen({directory,"/actual.txt"},"w");
  $fwrite(fd,"%0d %0d %0d %0d %0d %0d %0d %0d %0d %016h\n",@done@,@fault@,@reason@,cycles,attempts,writes,stores,reads,acks,@pc@);
- for(j=0;j<256;j=j+1) $fwrite(fd,"%016h\n",g[j]);
+ for(j=0;j<512;j=j+1) $fwrite(fd,"%016h\n",g[j]);
  for(j=0;j<32;j=j+1) $fwrite(fd,"%016h\n",s[j]);
  for(j=0;j<4128;j=j+1) $fwrite(fd,"%02h\n",memory[j]);
  $fclose(fd);end endtask

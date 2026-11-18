@@ -1,6 +1,6 @@
 % pushj.spill_fill_unaligned
         LOC 0
-Main    SETL $255,#0018
+Main    SETL $255,#0048
         PUSHJ $3,Rec
         TRAP 0,Halt,0
 Rec     GET $2,rJ

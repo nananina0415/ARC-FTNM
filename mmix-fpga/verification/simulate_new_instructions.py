@@ -251,12 +251,14 @@ def judge(frames, memory_image):
     last = frames[-1]
     if int(last["pc"], 16) != 0xCC:
         errors.append(f"final PC={last['pc']}")
-    registers = [0] * 256
+    # Slots: ring l[0..255], global g[k] at 256+k. With rO=0 and G=255, local $k is slot k.
+    registers = [0] * 512
     for _, dest, value in WRITES:
-        registers[dest] = value
+        registers[256 + dest if dest >= FINAL_SPECIAL["rG"] else dest] = value
     for index, value in enumerate(last["registers"]):
         if not all(c in "0123456789abcdef" for c in value) or int(value, 16) != registers[index]:
-            errors.append(f"final ${index}={value}, expected {registers[index]:016x}")
+            name = f"l[{index}]" if index < 256 else f"g[{index - 256}]"
+            errors.append(f"final {name}={value}, expected {registers[index]:016x}")
     for index, value in enumerate(last["special"]):
         expected = FINAL_SPECIAL.get(SPECIAL_NAMES[index], 0)
         if not all(c in "0123456789abcdef" for c in value) or int(value, 16) != expected:

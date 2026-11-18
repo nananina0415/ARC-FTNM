@@ -17,6 +17,8 @@
   3. I-cache, D-cache를 SyncRam으로, 각각 16KB(32바이트 라인 512개). I-cache는 store한 주소의 라인만 무효화 — 구현함, 시뮬레이션 미실행
      valid는 tag RAM에 두고 reset 뒤 512클록 동안 지운다. 설명: pseudo/cpu/cache/README.md
   4. 중간 합성으로 LUT 확인 (CPU 목표 30,000~35,000 LUT)
+     범용 슬롯 512개(로컬 ring 256 + 글로벌 256, 레지스터 RAM 타일 수 그대로) — 구현함, 시뮬레이션 미실행
+     L은 사양대로 G까지, PUT rG 재배치와 레지스터 스택 범위 fault 없음. 설명: pseudo/cpu/reg/README.md
   5. 5단계 IF -> ID -> RF -> EX -> WB, 파이프라인 제어 유닛(진행/멈춤/비움)
      분기 예측: PB*는 taken, B*는 not-taken. 목표는 ID에서 계산
   6. 검증 하네스 조정 (executions = 비워지지 않고 EX를 지난 횟수)

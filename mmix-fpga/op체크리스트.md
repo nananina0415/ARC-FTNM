@@ -274,5 +274,5 @@ STB/STW/STT는 미구현이다.
 유지하며 RESUME은 미구현이다.
 
 레지스터 스택 #BE/#BF/#F2/#F3/#F8/#FA/#FB와 rG/rL/rO/rS 접근을 유닛 구현 및 생성 RTL에 반영했다.
-물리 슬롯 256개를 공유하며 L은 ring 크기-1까지 지원한다. 구조는
+물리 슬롯 512개(로컬 ring 256 + 글로벌 256)이며 L은 사양대로 G까지 쓸 수 있다. 구조는
 [pseudo/cpu/reg/README.md](pseudo/cpu/reg/README.md)를 따른다. 테스트·시뮬레이션은 실행하지 않았다.
