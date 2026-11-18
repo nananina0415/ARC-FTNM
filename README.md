@@ -88,7 +88,8 @@ ARC-FTNM/
 │   └── third_party/
 │       ├── gtaylormb_opl3_fpga/   — OPL3 FM 합성기 RTL (LGPL v3)
 │       ├── hdl-util_hdmi/         — HDMI 인코더 RTL (MIT / Apache-2.0)
-│       └── m1nl_usb_hid_host/     — USB HID 호스트 RTL, FS+LS (Apache-2.0)
+│       ├── m1nl_usb_hid_host/     — USB HID 호스트 RTL, FS+LS (Apache-2.0)
+│       └── T-head-Semi_openc906/  — 정수 나눗셈기 RTL aq_iu_div (Apache-2.0)
 └── nnix-os/
     ├── link.ld                    — 로우 바이너리 링커 스크립트
     ├── notice-map.json            — 라이선스 고지 매핑
@@ -168,7 +169,8 @@ MMIX CPU 구현부터 주변장치, 시스템 소프트웨어, UI 디자인, 앱
   │   └── third_party/
   │       ├── gtaylormb_opl3_fpga/      — LGPL v3  (외부 라이브러리)
   │       ├── hdl-util_hdmi/            — MIT / Apache-2.0  (외부 라이브러리)
-  │       └── m1nl_usb_hid_host/        — Apache-2.0  (외부 라이브러리)
+  │       ├── m1nl_usb_hid_host/        — Apache-2.0  (외부 라이브러리)
+  │       └── T-head-Semi_openc906/     — Apache-2.0  (외부 라이브러리)
   └── nnix-os/
       ├── res/
       │   └── unifont-17.0.05.bdf       — SIL OFL v1.1  (외부 리소스)

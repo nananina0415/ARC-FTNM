@@ -21,6 +21,13 @@
       "license"     : "Apache-2.0",
       "license_file": "mmix-fpga/third_party/m1nl_usb_hid_host/LICENSE",
       "source"      : "https://github.com/nand2mario/usb_hid_host"
+    },
+    {
+      "name"        : "openc906 (aq_iu_div)",
+      "copyright"   : "Copyright 2020-2021 T-Head Semiconductor Co., Ltd.",
+      "license"     : "Apache-2.0",
+      "license_file": "mmix-fpga/third_party/T-head-Semi_openc906/LICENSE",
+      "source"      : "https://github.com/T-head-Semi/openc906"
     }
   ]
 }

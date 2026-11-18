@@ -7,3 +7,6 @@
 [submodule "mmix-fpga/third_party/m1nl_usb_hid_host"]
 	path = mmix-fpga/third_party/m1nl_usb_hid_host
 	url = https://github.com/m1nl/usb_hid_host
+[submodule "mmix-fpga/third_party/T-head-Semi_openc906"]
+	path = mmix-fpga/third_party/T-head-Semi_openc906
+	url = https://github.com/T-head-Semi/openc906
