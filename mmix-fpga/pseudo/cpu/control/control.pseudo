@@ -1,8 +1,11 @@
-// 6단계 파이프라인 제어: IF -> ID -> RF -> EX -> POST -> WB. 단계마다 진행/멈춤/비움을 정한다.
+// 7단계 파이프라인 제어: IF -> ID -> RF -> PRE -> EX -> POST -> WB. 단계마다 진행/멈춤/비움을 정한다.
 // IF: Fetch가 PC로 I-cache를 읽는다. ID: 페치 응답을 해독해 레지스터 읽기 번호를 낸다(CPU의 ID 해독기).
-// RF: 레지스터 블록 RAM 값이 나온다. EX: 연산·주소·분기 조건 계산과 단독 실행·load-use 판정(CPU의 EX 해독기).
+// RF: 레지스터 블록 RAM 값이 나온다.
+// PRE(연산 전처리): 해독(CPU의 PRE 해독기), 단독 실행·load-use·미지원 판정, 피연산자 수집과 즉치 선택,
+// EX 피연산자의 전달 경로 선택. 결과는 모두 레지스터에 담아 EX로 넘긴다.
+// EX: 연산만 한다. ALU, 유효 주소, 분기 조건과 목표, PC+4. 상태를 쓰거나 판정하지 않는다.
 // POST(연산 후처리): rA·rH·rR·rJ·특수 레지스터 쓰기, 레지스터 스택 명령, load/store 요청,
-// 예측 실패·trip·미지원 판정, fault·HALT·방향 전환 처리(CPU의 POST 해독기).
+// 예측 실패·trip 판정, fault·HALT·방향 전환 처리(CPU의 POST 해독기).
 // WB: 레지스터 쓰기. load·store는 이 단계에서 메모리 응답을 받는다.
 // 분기 예측: ID에서 PB*와 JMP는 taken으로 목표를 바로 요청하고 B*는 다음 명령을 요청한다.
 // 틀린 예측은 그 분기가 POST를 떠나는 클록에 비운다.
@@ -30,14 +33,14 @@ seq Control {
     pub r2_data: WordIn
     pub x_data: WordIn
 
-    // EX 단계 명령. CPU의 EX 해독기가 해독한다.
-    pub ex_instruction: Out<bit,32>
-    pub ex_valid: Out<bit,1>  // EX에 페치 오류 없는 명령이 있으면 1
-    pub operand_r1: WordOut  // POST·WB에서 전달한 값까지 반영한 EX 피연산자
-    pub operand_r2: WordOut
-    pub operand_x: WordOut
+    // PRE 단계 명령. CPU의 PRE 해독기가 해독한다.
+    pub pre_instruction: Out<bit,32>
+    pub pre_valid: Out<bit,1>  // PRE에 페치 오류 없는 명령이 있으면 1
+    pub pre_value_r1: WordOut  // POST·WB에서 전달한 값까지 반영한 PRE 레지스터 값($r1, $r2, $X)
+    pub pre_value_r2: WordOut
+    pub pre_value_x: WordOut
 
-    // EX 해독 결과
+    // PRE 해독 결과
     pub decoded_valid: In<bit,1>
     pub decoded_halt: In<bit,1>
     pub decoded_memory: In<bit,1>
@@ -60,15 +63,27 @@ seq Control {
     pub decoded_trap: In<bit,1>
     pub decoded_swym: In<bit,1>
     pub decoded_x: In<bit,8>
+    pub decoded_alu_sel: In<bit,3>
+    pub decoded_op: In<bit,4>
+    pub decoded_arg1_reg: In<bit,1>  // 첫 피연산자가 $r1이다(즉치·0이 아님)
+    pub decoded_arg2_reg: In<bit,1>  // 둘째 피연산자가 $r2다
 
-    // EX 연산 결과
-    pub effective_address: WordIn  // operand_r1 + operand_r2(또는 즉치)
-    pub store_data: WordIn
-    pub special_value: WordIn  // PUT 값($Z 또는 Z), UNSAVE의 $Z
-    pub alu_go: Out<bit,1>      // EX 명령의 피연산자가 유효한 클록
+    // CPU가 즉치를 반영해 고른 PRE 피연산자
+    pub pre_arg1: WordIn
+    pub pre_arg2: WordIn
+    pub pre_store: WordIn  // store 데이터($X 또는 X)
+    pub pre_special: WordIn  // PUT 값($Z 또는 Z), UNSAVE의 $Z
+    pub rD: WordIn  // DIVU 피제수 상위 64비트. 0이 아니면 미지원 명령이다
+
+    // EX 단계. 모든 입력은 PRE가 담아 둔 레지스터 값이다.
+    pub ex_alu_sel: Out<bit,3>
+    pub ex_op: Out<bit,4>
+    pub arg1: WordOut  // 바로 앞 명령의 POST 값을 반영한 EX 피연산자
+    pub arg2: WordOut
+    pub effective_address: WordIn  // arg1 + arg2
+    pub alu_go: Out<bit,1>      // EX의 ALU 명령을 실행하는 클록
     pub alu_new: Out<bit,1>     // EX에 새 명령이 들어온 첫 클록
     pub alu_ready: In<bit,1>    // ALU 결과 유효(MUL·DIV는 여러 클록 뒤)
-    pub alu_unsupported: In<bit,1>  // 실행 시점 미지원(DIVU의 rD != 0)
     pub alu_write: In<bit,1>    // ALU 결과를 $X에 쓴다(거짓 조건의 CS*는 0)
     pub alu_v: In<bit,1>        // 선택된 유닛의 V(오버플로) 이벤트
     pub alu_d: In<bit,1>        // 선택된 유닛의 D(0으로 나눔) 이벤트
@@ -160,18 +175,51 @@ seq Control {
     mut rf_r2: reg::ValueReg<8>
     mut rf_x: reg::ValueReg<8>
 
+    // PRE 단계
+    mut pre_full: reg::ValueReg<1>
+    mut pre_pc: reg::ValueReg<WORD_SIZE>
+    mut pre_instruction_q: reg::ValueReg<32>
+    mut pre_error: reg::ValueReg<1>
+    mut pre_r1: reg::ValueReg<8>
+    mut pre_r2: reg::ValueReg<8>
+    mut pre_x: reg::ValueReg<8>
+    mut pv_r1: reg::ValueReg<WORD_SIZE>  // 받아 둔 레지스터 값
+    mut pv_r2: reg::ValueReg<WORD_SIZE>
+    mut pv_x: reg::ValueReg<WORD_SIZE>
+
     // EX 단계
     mut ex_full: reg::ValueReg<1>
     mut ex_pc: reg::ValueReg<WORD_SIZE>
     mut ex_instruction_q: reg::ValueReg<32>
     mut ex_error: reg::ValueReg<1>
+    mut ex_invalid: reg::ValueReg<1>
+    mut ex_unsupported: reg::ValueReg<1>
+    mut ex_skip: reg::ValueReg<1>  // 페치 오류·무효·미지원: ALU를 돌리지 않고 POST에서 fault
     mut ex_r1: reg::ValueReg<8>
     mut ex_r2: reg::ValueReg<8>
     mut ex_x: reg::ValueReg<8>
     mut ex_new: reg::ValueReg<1>  // EX 명령이 들어온 첫 클록
-    mut op_r1: reg::ValueReg<WORD_SIZE>
-    mut op_r2: reg::ValueReg<WORD_SIZE>
-    mut op_x: reg::ValueReg<WORD_SIZE>
+    mut ex_serial: reg::ValueReg<1>
+    mut ex_required: reg::ValueReg<1>
+    mut ex_alu: reg::ValueReg<1>
+    mut ex_load: reg::ValueReg<1>
+    mut ex_geta: reg::ValueReg<1>
+    mut ex_go: reg::ValueReg<1>
+    mut ex_writes: reg::ValueReg<1>  // EX 결과를 $X에 쓸 수 있는 명령(ALU·GETA·GO)
+    mut ex_alu_sel_q: reg::ValueReg<3>
+    mut ex_op_q: reg::ValueReg<4>
+    mut ex_branch: reg::ValueReg<1>
+    mut ex_unconditional: reg::ValueReg<1>
+    mut ex_condition: reg::ValueReg<3>
+    mut ex_offset: reg::ValueReg<WORD_SIZE>
+    mut ex_base: reg::ValueReg<WORD_SIZE>  // 상대 목표의 기준: POP은 rJ, 그 외는 명령 PC
+    mut ex_arg1: reg::ValueReg<WORD_SIZE>
+    mut ex_arg2: reg::ValueReg<WORD_SIZE>
+    mut ex_store: reg::ValueReg<WORD_SIZE>
+    mut ex_special: reg::ValueReg<WORD_SIZE>
+    mut ex_fwd1: reg::ValueReg<1>  // arg1은 바로 앞 명령(POST)의 값이다
+    mut ex_fwd2: reg::ValueReg<1>
+    mut ex_fwdx: reg::ValueReg<1>
 
     // POST 단계
     mut post_full: reg::ValueReg<1>
@@ -179,7 +227,7 @@ seq Control {
     mut post_instruction_q: reg::ValueReg<32>
     mut post_error: reg::ValueReg<1>  // 페치 오류
     mut post_invalid: reg::ValueReg<1>  // 미지원·무효 형식
-    mut post_unsupported: reg::ValueReg<1>  // 실행 시점 미지원
+    mut post_unsupported: reg::ValueReg<1>  // DIVU의 rD != 0
     mut post_r1: reg::ValueReg<8>
     mut post_r2: reg::ValueReg<8>
     mut post_dest: reg::ValueReg<8>  // $X 번호
@@ -224,26 +272,33 @@ seq Control {
     read_r2: Mux<3,8>
     read_x: Mux<3,8>
 
+    // RF·PRE 번호와 뒤 단계 목적지 번호 비교
     match_rf_r1: RegisterMatch
     match_rf_r2: RegisterMatch
     match_rf_x: RegisterMatch
-    match_ex_r1: RegisterMatch
-    match_ex_r2: RegisterMatch
-    match_ex_x: RegisterMatch
+    match_wb_r1: RegisterMatch
+    match_wb_r2: RegisterMatch
+    match_wb_x: RegisterMatch
     match_post_r1: RegisterMatch
     match_post_r2: RegisterMatch
     match_post_x: RegisterMatch
-    op_r1_source: Mux<3,WORD_SIZE>  // 0: 레지스터 값, 1: 유지, 2: WB 값
-    op_r2_source: Mux<3,WORD_SIZE>
-    op_x_source: Mux<3,WORD_SIZE>
-    operand_r1_mux: Mux<3,WORD_SIZE>  // 0: 받아 둔 값, 1: WB 값, 2: POST 값
-    operand_r2_mux: Mux<3,WORD_SIZE>
-    operand_x_mux: Mux<3,WORD_SIZE>
+    match_ex_r1: RegisterMatch
+    match_ex_r2: RegisterMatch
+    match_ex_x: RegisterMatch
+    pv_r1_source: Mux<3,WORD_SIZE>  // 0: 레지스터 값, 1: 유지, 2: WB 값
+    pv_r2_source: Mux<3,WORD_SIZE>
+    pv_x_source: Mux<3,WORD_SIZE>
+    value_r1_mux: Mux<3,WORD_SIZE>  // 0: 받아 둔 값, 1: WB 값, 2: POST 값
+    value_r2_mux: Mux<3,WORD_SIZE>
+    value_x_mux: Mux<3,WORD_SIZE>
+    base_source: Mux<2,WORD_SIZE>  // POP은 rJ, 그 외는 PRE 명령 PC
     wb_data_mux: Mux<2,WORD_SIZE>
 
+    arg1_mux: Mux<2,WORD_SIZE>  // EX: 0 받아 둔 값, 1 POST 값
+    arg2_mux: Mux<2,WORD_SIZE>
+    store_mux: Mux<2,WORD_SIZE>
     pc_add: Adder<WORD_SIZE>  // EX 명령 PC + 4
     branch: Branch
-    branch_base: Mux<2,WORD_SIZE>  // POP은 rJ 기준, 그 외는 EX 명령 PC 기준
     address_source: Mux<2,WORD_SIZE>  // GETA 목표, GO의 복귀 주소
     aux_source: Mux<2,WORD_SIZE>  // rH 값, rR 값
     post_result: Mux<3,WORD_SIZE>  // POST가 WB로 넘기는 값: EX 값, GET 값, SAVE의 컨텍스트 주소
@@ -260,8 +315,13 @@ wire Control {
     clock => {
         pc.clock, reason.clock, halted.clock, failed.clock, fetch_pc.clock, fetch_sent.clock,
         rf_valid.clock, rf_pc.clock, rf_instruction.clock, rf_error.clock, rf_r1.clock, rf_r2.clock, rf_x.clock,
-        ex_full.clock, ex_pc.clock, ex_instruction_q.clock, ex_error.clock, ex_r1.clock, ex_r2.clock, ex_x.clock,
-        ex_new.clock, op_r1.clock, op_r2.clock, op_x.clock,
+        pre_full.clock, pre_pc.clock, pre_instruction_q.clock, pre_error.clock, pre_r1.clock, pre_r2.clock, pre_x.clock,
+        pv_r1.clock, pv_r2.clock, pv_x.clock,
+        ex_full.clock, ex_pc.clock, ex_instruction_q.clock, ex_error.clock, ex_invalid.clock, ex_unsupported.clock, ex_skip.clock,
+        ex_r1.clock, ex_r2.clock, ex_x.clock, ex_new.clock, ex_serial.clock, ex_required.clock, ex_alu.clock, ex_load.clock,
+        ex_geta.clock, ex_go.clock, ex_writes.clock, ex_alu_sel_q.clock, ex_op_q.clock, ex_branch.clock, ex_unconditional.clock,
+        ex_condition.clock, ex_offset.clock, ex_base.clock, ex_arg1.clock, ex_arg2.clock, ex_store.clock, ex_special.clock,
+        ex_fwd1.clock, ex_fwd2.clock, ex_fwdx.clock,
         post_full.clock, post_pc.clock, post_instruction_q.clock, post_error.clock, post_invalid.clock, post_unsupported.clock,
         post_r1.clock, post_r2.clock, post_dest.clock, post_serial.clock, post_required.clock, post_alu.clock, post_load.clock,
         post_write.clock, post_value.clock, post_aux.clock, post_rh.clock, post_rr.clock, post_v.clock, post_d.clock,
@@ -273,8 +333,13 @@ wire Control {
     reset => {
         pc.reset, reason.reset, halted.reset, failed.reset, fetch_pc.reset, fetch_sent.reset,
         rf_valid.reset, rf_pc.reset, rf_instruction.reset, rf_error.reset, rf_r1.reset, rf_r2.reset, rf_x.reset,
-        ex_full.reset, ex_pc.reset, ex_instruction_q.reset, ex_error.reset, ex_r1.reset, ex_r2.reset, ex_x.reset,
-        ex_new.reset, op_r1.reset, op_r2.reset, op_x.reset,
+        pre_full.reset, pre_pc.reset, pre_instruction_q.reset, pre_error.reset, pre_r1.reset, pre_r2.reset, pre_x.reset,
+        pv_r1.reset, pv_r2.reset, pv_x.reset,
+        ex_full.reset, ex_pc.reset, ex_instruction_q.reset, ex_error.reset, ex_invalid.reset, ex_unsupported.reset, ex_skip.reset,
+        ex_r1.reset, ex_r2.reset, ex_x.reset, ex_new.reset, ex_serial.reset, ex_required.reset, ex_alu.reset, ex_load.reset,
+        ex_geta.reset, ex_go.reset, ex_writes.reset, ex_alu_sel_q.reset, ex_op_q.reset, ex_branch.reset, ex_unconditional.reset,
+        ex_condition.reset, ex_offset.reset, ex_base.reset, ex_arg1.reset, ex_arg2.reset, ex_store.reset, ex_special.reset,
+        ex_fwd1.reset, ex_fwd2.reset, ex_fwdx.reset,
         post_full.reset, post_pc.reset, post_instruction_q.reset, post_error.reset, post_invalid.reset, post_unsupported.reset,
         post_r1.reset, post_r2.reset, post_dest.reset, post_serial.reset, post_required.reset, post_alu.reset, post_load.reset,
         post_write.reset, post_value.reset, post_aux.reset, post_rh.reset, post_rr.reset, post_v.reset, post_d.reset,
@@ -327,7 +392,7 @@ wire Control {
     alias mispredict = and(normal_leave, post_branch, xor(post_taken.out, predicted_taken))
     alias go_exec = and(normal_leave, post_jump_go)
     alias redirect = or(mispredict, go_exec, getput_retire, stack_retire, stack_retry)
-    // 이 클록에 POST·WB가 뒤 명령을 버린다. EX·RF의 명령은 부수효과 없이 비운다.
+    // 이 클록에 POST·WB가 뒤 명령을 버린다. EX·PRE·RF의 명령은 부수효과 없이 비운다.
     alias kill = or(redirect, post_fault, halt_exec, mem_fault)
     // 페치 오류와 무효 명령은 실행으로 세지 않는다. retry 뒤 다시 실행하면 다시 센다.
     executed <- or(
@@ -355,27 +420,70 @@ wire Control {
     special_get_en <- and(getput_retire, post_get)
     special_put_en <- and(getput_retire, post_put)
 
-    // ---- EX 분류 ----
+    // ---- EX ----
+    // EX는 PRE가 담아 둔 값으로 연산만 한다. MUL·DIV는 결과가 나올 때까지(alu.ready) EX에 머문다.
+    alias post_accept = or(not(post_full.out), post_advance)
+    alias ex_advance = and(run, ex_full.out, post_accept, not(kill), or(not(ex_alu.out), ex_skip.out, alu_ready))
+    alu_go <- and(run, ex_full.out, ex_alu.out, not(ex_skip.out))
+    alu_new <- ex_new.out
+    ex_alu_sel_q.out -> ex_alu_sel
+    ex_op_q.out -> ex_op
+    // 바로 앞 명령은 EX를 떠나 POST에 있다. PRE가 정한 대로 그 결과를 쓴다(거짓 조건의 CS*면 받아 둔 값).
+    arg1_mux.select <- and(ex_fwd1.out, post_write.out)
+    arg1_mux.option[0] <- ex_arg1.out
+    arg1_mux.option[1] <- post_value.out
+    arg1_mux.selected -> arg1
+    arg2_mux.select <- and(ex_fwd2.out, post_write.out)
+    arg2_mux.option[0] <- ex_arg2.out
+    arg2_mux.option[1] <- post_value.out
+    arg2_mux.selected -> arg2
+    store_mux.select <- and(ex_fwdx.out, post_write.out)
+    store_mux.option[0] <- ex_store.out
+    store_mux.option[1] <- post_value.out
+
+    pc_add.a <- ex_pc.out
+    { pc_add.b[0,1,3..WORD_SIZE] } <= 0
+    pc_add.b[2] <- 1
+    pc_add.c_in <- 0
+    pc_add.c_out -> OPENED
+    ex_branch.out -> branch.enable
+    ex_unconditional.out -> branch.unconditional
+    ex_condition.out -> branch.condition_select
+    arg1_mux.selected -> branch.value
+    ex_base.out -> branch.pc
+    ex_offset.out -> branch.offset
+    // 0: GETA 목표, 1: GO의 $X = @+4
+    address_write_en <- or(ex_geta.out, ex_go.out)
+    address_source.select <- ex_go.out
+    address_source.option[0] <- branch.target
+    address_source.option[1] <- pc_add.sum
+    address_source.selected -> address_result
+
+    // ---- PRE 분류 ----
     alias non_alu = or(decoded_branch, decoded_geta, decoded_go, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
     alias serial = or(decoded_halt, decoded_get, decoded_put, required.required)
     alias alu_op = and(not(decoded_memory), not(decoded_halt), not(non_alu), not(serial))
-
-    // load 결과는 WB에서야 나오므로 POST·WB의 load가 쓰는 번호를 읽는 EX 명령은 기다린다
-    // (그동안 피연산자에 받아 둔다).
+    // DIVU(Div 유닛, op 1)의 128비트 피제수(rD != 0)는 지원하지 않는다.
+    // rD는 단독 실행 명령(PUT, UNSAVE)만 바꾸고 그 뒤 명령은 비우므로 PRE에서 읽은 값이 실행 시점의 값이다.
+    alias divu = and(not(decoded_alu_sel[0]), decoded_alu_sel[1], not(decoded_alu_sel[2]), decoded_op[0])
+    alias unsupported = and(alu_op, divu, or(rD[0..WORD_SIZE]))
+    alias invalid = not(decoded_valid)
     alias reads_x = and(decoded_store, not(decoded_store_constant))
+
+    // load 결과는 WB에서야 나오므로 EX·POST·WB의 load가 쓰는 번호를 읽는 PRE 명령은
+    // 그 값이 WB에 나올 때까지 기다린다(그동안 받아 둔다).
+    alias ex_load_use = and(ex_full.out, ex_load.out, or(match_ex_r1.same, match_ex_r2.same, and(reads_x, match_ex_x.same)))
     alias post_load_use = and(post_full.out, post_load.out, or(match_post_r1.same, match_post_r2.same, and(reads_x, match_post_x.same)))
-    alias wb_load_use = and(wb_valid.out, wb_load.out, or(match_ex_r1.same, match_ex_r2.same, and(reads_x, match_ex_x.same)))
-    alias load_use = or(post_load_use, wb_load_use)
-    // 단독 실행 명령은 앞 명령이 모두 끝난 뒤(POST·WB가 빈 뒤) POST로 넘어간다.
-    alias serial_wait = and(serial, or(post_full.out, wb_valid.out))
-    alias post_accept = or(not(post_full.out), post_advance)
-    alias ex_go = and(run, ex_full.out, post_accept, not(load_use), not(serial_wait), not(kill))
-    // MUL·DIV는 결과가 나올 때까지(alu.ready) EX에 머문다.
-    alias ex_advance = and(ex_go, or(not(alu_op), alu_ready))
+    alias wb_load_use = and(wb_valid.out, wb_load.out, not(wb_done), or(match_wb_r1.same, match_wb_r2.same, and(reads_x, match_wb_x.same)))
+    alias load_use = or(ex_load_use, post_load_use, wb_load_use)
+    // 단독 실행 명령은 앞 명령이 모두 끝난 뒤(EX·POST·WB가 빈 뒤) EX로 넘어간다.
+    alias serial_wait = and(serial, or(ex_full.out, post_full.out, wb_valid.out))
 
     // ---- 단계 진행 ----
-    alias ex_accept = or(not(ex_full.out), ex_advance, kill)
-    alias rf_advance = and(run, rf_valid.out, ex_accept, not(kill))
+    alias ex_accept = or(not(ex_full.out), ex_advance)
+    alias pre_advance = and(run, pre_full.out, ex_accept, not(load_use), not(serial_wait), not(kill))
+    alias pre_accept = or(not(pre_full.out), pre_advance)
+    alias rf_advance = and(run, rf_valid.out, pre_accept, not(kill))
     alias rf_stay = and(rf_valid.out, not(rf_advance), not(kill))
     alias rf_accept = or(not(rf_valid.out), rf_advance)
     alias id_consume = and(run, fetch.res_valid, rf_accept, not(kill))
@@ -390,21 +498,64 @@ wire Control {
     id_r2_sel -> rf_r2.in
     id_x_sel -> rf_x.in
 
+    pre_full.w_en <- 1
+    pre_full.in <- or(rf_advance, and(pre_full.out, not(pre_advance), not(kill)))
+    { pre_pc.w_en, pre_instruction_q.w_en, pre_error.w_en, pre_r1.w_en, pre_r2.w_en, pre_x.w_en } <= rf_advance
+    rf_pc.out -> pre_pc.in
+    rf_instruction.out -> pre_instruction_q.in
+    rf_error.out -> pre_error.in
+    rf_r1.out -> pre_r1.in
+    rf_r2.out -> pre_r2.in
+    rf_x.out -> pre_x.in
+    pre_instruction_q.out -> pre_instruction
+    pre_valid <- and(pre_full.out, not(pre_error.out))
+
     ex_full.w_en <- 1
-    ex_full.in <- or(rf_advance, and(ex_full.out, not(ex_advance), not(kill)))
-    { ex_pc.w_en, ex_instruction_q.w_en, ex_error.w_en, ex_r1.w_en, ex_r2.w_en, ex_x.w_en } <= rf_advance
-    rf_pc.out -> ex_pc.in
-    rf_instruction.out -> ex_instruction_q.in
-    rf_error.out -> ex_error.in
-    rf_r1.out -> ex_r1.in
-    rf_r2.out -> ex_r2.in
-    rf_x.out -> ex_x.in
-    ex_instruction_q.out -> ex_instruction
-    ex_valid <- and(ex_full.out, not(ex_error.out))
+    ex_full.in <- or(pre_advance, and(ex_full.out, not(ex_advance), not(kill)))
+    {
+        ex_pc.w_en, ex_instruction_q.w_en, ex_error.w_en, ex_invalid.w_en, ex_unsupported.w_en, ex_skip.w_en,
+        ex_r1.w_en, ex_r2.w_en, ex_x.w_en, ex_serial.w_en, ex_required.w_en, ex_alu.w_en, ex_load.w_en,
+        ex_geta.w_en, ex_go.w_en, ex_writes.w_en, ex_alu_sel_q.w_en, ex_op_q.w_en, ex_branch.w_en, ex_unconditional.w_en,
+        ex_condition.w_en, ex_offset.w_en, ex_base.w_en, ex_arg1.w_en, ex_arg2.w_en, ex_store.w_en, ex_special.w_en,
+        ex_fwd1.w_en, ex_fwd2.w_en, ex_fwdx.w_en,
+    } <= pre_advance
+    pre_pc.out -> ex_pc.in
+    pre_instruction_q.out -> ex_instruction_q.in
+    pre_error.out -> ex_error.in
+    invalid -> ex_invalid.in
+    unsupported -> ex_unsupported.in
+    ex_skip.in <- or(pre_error.out, invalid, unsupported)
+    pre_r1.out -> ex_r1.in
+    pre_r2.out -> ex_r2.in
+    pre_x.out -> ex_x.in
+    serial -> ex_serial.in
+    required.required -> ex_required.in
+    alu_op -> ex_alu.in
+    ex_load.in <- and(decoded_memory, not(decoded_store))
+    decoded_geta -> ex_geta.in
+    decoded_go -> ex_go.in
+    ex_writes.in <- or(alu_op, decoded_geta, decoded_go)
+    decoded_alu_sel -> ex_alu_sel_q.in
+    decoded_op -> ex_op_q.in
+    decoded_branch -> ex_branch.in
+    branch_unconditional -> ex_unconditional.in
+    branch_condition -> ex_condition.in
+    branch_offset -> ex_offset.in
+    base_source.select <- decoded_pop
+    base_source.option[0] <- pre_pc.out
+    base_source.option[1] <- stack_regs.rJ_out
+    base_source.selected -> ex_base.in
+    pre_arg1 -> ex_arg1.in
+    pre_arg2 -> ex_arg2.in
+    pre_store -> ex_store.in
+    pre_special -> ex_special.in
+    // 바로 앞 명령이 EX에 있으면 그 결과는 다음 클록에 POST 값으로 나온다.
+    alias ex_writer = and(ex_full.out, ex_writes.out)
+    ex_fwd1.in <- and(ex_writer, match_ex_r1.same, decoded_arg1_reg)
+    ex_fwd2.in <- and(ex_writer, match_ex_r2.same, decoded_arg2_reg)
+    ex_fwdx.in <- and(ex_writer, match_ex_x.same, reads_x)
     ex_new.w_en <- 1
-    ex_new.in <- rf_advance
-    alu_go <- and(run, ex_full.out, not(load_use))
-    alu_new <- ex_new.out
+    ex_new.in <- pre_advance
 
     post_full.w_en <- 1
     post_full.in <- or(ex_advance, and(post_full.out, not(post_advance)))
@@ -417,31 +568,31 @@ wire Control {
     ex_pc.out -> post_pc.in
     ex_instruction_q.out -> post_instruction_q.in
     ex_error.out -> post_error.in
-    post_invalid.in <- not(decoded_valid)
-    post_unsupported.in <- and(alu_op, alu_unsupported)
+    ex_invalid.out -> post_invalid.in
+    ex_unsupported.out -> post_unsupported.in
     ex_r1.out -> post_r1.in
     ex_r2.out -> post_r2.in
     ex_x.out -> post_dest.in
-    post_serial.in <- serial
-    required.required -> post_required.in
-    post_alu.in <- alu_op
-    post_load.in <- and(decoded_memory, not(decoded_store))
-    post_write.in <- or(and(alu_op, alu_write), decoded_geta, decoded_go)
+    ex_serial.out -> post_serial.in
+    ex_required.out -> post_required.in
+    ex_alu.out -> post_alu.in
+    ex_load.out -> post_load.in
+    post_write.in <- or(and(ex_alu.out, alu_write), ex_geta.out, ex_go.out)
     ex_value -> post_value.in
     aux_source.select <- alu_rR_write
     aux_source.option[0] <- alu_rH
     aux_source.option[1] <- alu_rR
     aux_source.selected -> post_aux.in
-    post_rh.in <- and(alu_op, alu_rH_write)
-    post_rr.in <- and(alu_op, alu_rR_write)
+    post_rh.in <- and(ex_alu.out, alu_rH_write)
+    post_rr.in <- and(ex_alu.out, alu_rR_write)
     alu_v -> post_v.in
     alu_d -> post_d.in
     branch.taken -> post_taken.in
     branch.target -> post_target.in
     effective_address -> post_address.in
-    store_data -> post_store_data.in
+    store_mux.selected -> post_store_data.in
     pc_add.sum -> post_next.in
-    special_value -> post_special.in
+    ex_special.out -> post_special.in
     post_read.w_en <- 1
     post_read.in <- and(not(ex_advance), post_full.out, not(post_advance), or(post_read.out, and(post_run, p_serial)))
     post_stack.w_en <- 1
@@ -492,68 +643,71 @@ wire Control {
     read_x.selected -> read_x_sel
 
     // ---- 전달 ----
-    // RF -> EX로 넘어갈 때는 레지스터 값을, EX에 머무는 동안은 받아 둔 값을 저장한다.
+    // RF -> PRE로 넘어갈 때는 레지스터 값을, PRE에 머무는 동안은 받아 둔 값을 저장한다.
     // 어느 쪽이든 WB가 같은 번호를 쓰고 있으면 WB 값(load 포함)을 저장한다.
-    wb_dest.out => { match_rf_r1.a, match_rf_r2.a, match_rf_x.a, match_ex_r1.a, match_ex_r2.a, match_ex_x.a }
+    wb_dest.out => { match_rf_r1.a, match_rf_r2.a, match_rf_x.a, match_wb_r1.a, match_wb_r2.a, match_wb_x.a }
     rf_r1.out -> match_rf_r1.b
     rf_r2.out -> match_rf_r2.b
     rf_x.out -> match_rf_x.b
-    ex_r1.out -> match_ex_r1.b
-    ex_r2.out -> match_ex_r2.b
-    ex_x.out -> match_ex_x.b
+    pre_r1.out -> match_wb_r1.b
+    pre_r2.out -> match_wb_r2.b
+    pre_x.out -> match_wb_x.b
     post_dest.out => { match_post_r1.a, match_post_r2.a, match_post_x.a }
-    ex_r1.out -> match_post_r1.b
-    ex_r2.out -> match_post_r2.b
-    ex_x.out -> match_post_x.b
-    alias fwd_r1 = and(wb_forward, or(and(rf_advance, match_rf_r1.same), and(not(rf_advance), match_ex_r1.same)))
-    alias fwd_r2 = and(wb_forward, or(and(rf_advance, match_rf_r2.same), and(not(rf_advance), match_ex_r2.same)))
-    alias fwd_x = and(wb_forward, or(and(rf_advance, match_rf_x.same), and(not(rf_advance), match_ex_x.same)))
-    op_r1_source.select[0] <- and(not(rf_advance), not(fwd_r1))
-    op_r1_source.select[1] <- fwd_r1
-    op_r1_source.option[0] <- r1_data
-    op_r1_source.option[1] <- op_r1.out
-    op_r1_source.option[2] <- wb_data_mux.selected
-    op_r1.w_en <- 1
-    op_r1_source.selected -> op_r1.in
-    op_r2_source.select[0] <- and(not(rf_advance), not(fwd_r2))
-    op_r2_source.select[1] <- fwd_r2
-    op_r2_source.option[0] <- r2_data
-    op_r2_source.option[1] <- op_r2.out
-    op_r2_source.option[2] <- wb_data_mux.selected
-    op_r2.w_en <- 1
-    op_r2_source.selected -> op_r2.in
-    op_x_source.select[0] <- and(not(rf_advance), not(fwd_x))
-    op_x_source.select[1] <- fwd_x
-    op_x_source.option[0] <- x_data
-    op_x_source.option[1] <- op_x.out
-    op_x_source.option[2] <- wb_data_mux.selected
-    op_x.w_en <- 1
-    op_x_source.selected -> op_x.in
-    // EX 사용 값: 바로 앞 명령(POST)과 그 앞 명령(WB)의 EX 결과는 그대로 전달한다(가까운 쪽 우선).
-    // load 결과는 load_use로 기다린다.
+    pre_r1.out -> match_post_r1.b
+    pre_r2.out -> match_post_r2.b
+    pre_x.out -> match_post_x.b
+    ex_x.out => { match_ex_r1.a, match_ex_r2.a, match_ex_x.a }
+    pre_r1.out -> match_ex_r1.b
+    pre_r2.out -> match_ex_r2.b
+    pre_x.out -> match_ex_x.b
+    alias fwd_r1 = and(wb_forward, or(and(rf_advance, match_rf_r1.same), and(not(rf_advance), match_wb_r1.same)))
+    alias fwd_r2 = and(wb_forward, or(and(rf_advance, match_rf_r2.same), and(not(rf_advance), match_wb_r2.same)))
+    alias fwd_x = and(wb_forward, or(and(rf_advance, match_rf_x.same), and(not(rf_advance), match_wb_x.same)))
+    pv_r1_source.select[0] <- and(not(rf_advance), not(fwd_r1))
+    pv_r1_source.select[1] <- fwd_r1
+    pv_r1_source.option[0] <- r1_data
+    pv_r1_source.option[1] <- pv_r1.out
+    pv_r1_source.option[2] <- wb_data_mux.selected
+    pv_r1.w_en <- 1
+    pv_r1_source.selected -> pv_r1.in
+    pv_r2_source.select[0] <- and(not(rf_advance), not(fwd_r2))
+    pv_r2_source.select[1] <- fwd_r2
+    pv_r2_source.option[0] <- r2_data
+    pv_r2_source.option[1] <- pv_r2.out
+    pv_r2_source.option[2] <- wb_data_mux.selected
+    pv_r2.w_en <- 1
+    pv_r2_source.selected -> pv_r2.in
+    pv_x_source.select[0] <- and(not(rf_advance), not(fwd_x))
+    pv_x_source.select[1] <- fwd_x
+    pv_x_source.option[0] <- x_data
+    pv_x_source.option[1] <- pv_x.out
+    pv_x_source.option[2] <- wb_data_mux.selected
+    pv_x.w_en <- 1
+    pv_x_source.selected -> pv_x.in
+    // PRE -> EX로 넘길 값: POST(두 명령 앞)와 WB(세 명령 앞)의 결과를 반영한다(가까운 쪽 우선).
+    // POST의 load는 load_use로 기다리고, WB의 load는 응답이 온 클록에 그 값을 쓴다.
     alias post_forward = and(post_full.out, post_write.out)
-    alias wb_alu_forward = and(wb_forward, not(wb_load.out))
     alias post_r1_hit = and(post_forward, match_post_r1.same)
     alias post_r2_hit = and(post_forward, match_post_r2.same)
     alias post_x_hit = and(post_forward, match_post_x.same)
-    operand_r1_mux.select[0] <- and(wb_alu_forward, match_ex_r1.same, not(post_r1_hit))
-    operand_r1_mux.select[1] <- post_r1_hit
-    operand_r1_mux.option[0] <- op_r1.out
-    operand_r1_mux.option[1] <- wb_value.out
-    operand_r1_mux.option[2] <- post_value.out
-    operand_r1_mux.selected -> operand_r1
-    operand_r2_mux.select[0] <- and(wb_alu_forward, match_ex_r2.same, not(post_r2_hit))
-    operand_r2_mux.select[1] <- post_r2_hit
-    operand_r2_mux.option[0] <- op_r2.out
-    operand_r2_mux.option[1] <- wb_value.out
-    operand_r2_mux.option[2] <- post_value.out
-    operand_r2_mux.selected -> operand_r2
-    operand_x_mux.select[0] <- and(wb_alu_forward, match_ex_x.same, not(post_x_hit))
-    operand_x_mux.select[1] <- post_x_hit
-    operand_x_mux.option[0] <- op_x.out
-    operand_x_mux.option[1] <- wb_value.out
-    operand_x_mux.option[2] <- post_value.out
-    operand_x_mux.selected -> operand_x
+    value_r1_mux.select[0] <- and(wb_forward, match_wb_r1.same, not(post_r1_hit))
+    value_r1_mux.select[1] <- post_r1_hit
+    value_r1_mux.option[0] <- pv_r1.out
+    value_r1_mux.option[1] <- wb_data_mux.selected
+    value_r1_mux.option[2] <- post_value.out
+    value_r1_mux.selected -> pre_value_r1
+    value_r2_mux.select[0] <- and(wb_forward, match_wb_r2.same, not(post_r2_hit))
+    value_r2_mux.select[1] <- post_r2_hit
+    value_r2_mux.option[0] <- pv_r2.out
+    value_r2_mux.option[1] <- wb_data_mux.selected
+    value_r2_mux.option[2] <- post_value.out
+    value_r2_mux.selected -> pre_value_r2
+    value_x_mux.select[0] <- and(wb_forward, match_wb_x.same, not(post_x_hit))
+    value_x_mux.select[1] <- post_x_hit
+    value_x_mux.option[0] <- pv_x.out
+    value_x_mux.option[1] <- wb_data_mux.selected
+    value_x_mux.option[2] <- post_value.out
+    value_x_mux.selected -> pre_value_x
 
     // ---- IF: 요청 주소 ----
     // ID 명령을 RF로 넘기는 클록에 그 다음 주소(예측)를 요청한다. 방향 전환이 우선이다.
@@ -585,29 +739,7 @@ wire Control {
     fetch_sent.w_en <- 1
     fetch_sent.in <- or(fetch_accept, and(fetch_sent.out, not(redirect), not(id_follow)))
 
-    // ---- EX: 분기 조건, 목표와 주소 결과 ----
-    pc_add.a <- ex_pc.out
-    { pc_add.b[0,1,3..WORD_SIZE] } <= 0
-    pc_add.b[2] <- 1
-    pc_add.c_in <- 0
-    pc_add.c_out -> OPENED
-    decoded_branch -> branch.enable
-    branch_unconditional -> branch.unconditional
-    branch_condition -> branch.condition_select
-    operand_r1_mux.selected -> branch.value
-    branch_base.select <- decoded_pop
-    branch_base.option[0] <- ex_pc.out
-    branch_base.option[1] <- stack_regs.rJ_out
-    branch_base.selected -> branch.pc
-    branch_offset -> branch.offset
-    // 0: GETA 목표, 1: GO의 $X = @+4
-    address_write_en <- or(decoded_geta, decoded_go)
-    address_source.select <- decoded_go
-    address_source.option[0] <- branch.target
-    address_source.option[1] <- pc_add.sum
-    address_source.selected -> address_result
-
-    // ---- EX: 단독 실행 판정 ----
+    // ---- PRE: 단독 실행 판정 ----
     decoded_writes_x -> required.writes_x
     decoded_push -> required.push
     decoded_pop -> required.pop

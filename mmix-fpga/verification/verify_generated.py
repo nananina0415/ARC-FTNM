@@ -120,10 +120,8 @@ class Checks:
             vectors = [(a, b) for a in edge for b in edge]
             vectors += [(rng.getrandbits(64), rng.getrandbits(64)) for _ in range(64)]
             for a, b in vectors:
-                rd, mask = rng.getrandbits(64), rng.getrandbits(64)
-                if unit == 2 and op == 1 and cases % 2:
-                    rd = 0  # 128-bit DIVU (rD != 0) is unsupported; half the DIVU vectors use rD = 0
-                unsupported = unit == 2 and op == 1 and rd != 0
+                # DIVU's 128-bit dividend (rD != 0) is rejected by Control's PRE stage; the ALU divides 64 bits.
+                mask = rng.getrandbits(64)
                 result, overflow, divide_zero, write, high, rem = 0, False, False, True, 0, 0
                 sa, sb = signed(a), signed(b)
                 if unit == 0:
@@ -161,14 +159,10 @@ class Checks:
                     result, write = b if condition else 0, bool(condition or op & 8)
                 lines += [f"@(negedge {clock});",
                           assign(("alu_sel",), unit, 3), assign(("op",), op, 4), assign(("arg1",), a), assign(("arg2",), b),
-                          assign(("rD",), rd), assign(("rM",), mask),
+                          assign(("rM",), mask),
                           f"{new}=1; {go}=1; #1; wait_limit=0;",
                           f"while ({ready} !== 1'b1) begin @(posedge {clock}); #1; {new}=0; wait_limit=wait_limit+1;"
-                          f" if (wait_limit > 200) $fatal(1, \"ALU case {cases}: no ready\"); end",
-                          check(("unsupported",), int(unsupported), 1)]
-                if unsupported:
-                    cases += 1
-                    continue
+                          f" if (wait_limit > 200) $fatal(1, \"ALU case {cases}: no ready\"); end"]
                 # V·D events only; rA updates and trips are decided by Control's POST stage.
                 lines += [check(("res",), result & MASK), check(("res_w_en",), int(write), 1),
                           check(("v",), int(overflow), 1), check(("d",), int(divide_zero), 1),

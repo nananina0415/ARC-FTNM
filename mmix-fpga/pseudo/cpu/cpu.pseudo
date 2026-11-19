@@ -14,7 +14,7 @@ seq Cpu {
     pub init_calib_complete: In<bit,1>  // MIG 출력. 1일 때만 새 페치 요청 수락
     pub axi: AxiMaster   // FPGA RAM controller의 AXI slave에 연결
 
-    pub decoded: DecodeControl  // EX 단계 명령의 해독 결과
+    pub decoded: DecodeControl  // PRE 단계 명령의 해독 결과
     pub done: Out<bit,1>  // HALT 명령으로 정지
     pub fault: Out<bit,1>  // 오류로 정지
     pub fault_reason: Out<bit,3>  // [0] 페치/데이터 접근, [1] 미지원, [2] trip
@@ -36,10 +36,10 @@ seq Cpu {
     special_access: ::reg::SpecialAccess
     special_driver: TriState
     id_decode: InstructionDecode  // ID 단계: 페치 응답
-    ex_decode: InstructionDecode  // EX 단계 명령
+    pre_decode: InstructionDecode  // PRE 단계 명령
     post_decode: InstructionDecode  // POST 단계 명령
-    arg1_mux: Mux<3,WORD_SIZE>  // $r1 / unsigned Y / 0
-    arg2_mux: Mux<3,WORD_SIZE>  // $Z / unsigned Z / shifted YZ
+    arg1_mux: Mux<3,WORD_SIZE>  // PRE: $r1 / unsigned Y / 0
+    arg2_mux: Mux<3,WORD_SIZE>  // PRE: $Z / unsigned Z / shifted YZ
 }
 
 wire Cpu {
@@ -52,23 +52,26 @@ wire Cpu {
     control.fault -> fault
     control.fault_reason -> fault_reason
     control.executed -> OPENED  // 검증 하네스가 관찰한다
-    ex_decode.control.valid -> control.decoded_valid
-    ex_decode.control.halt -> control.decoded_halt
-    ex_decode.control.memory -> control.decoded_memory
-    ex_decode.control.store -> control.decoded_store
-    ex_decode.control.store_constant -> control.decoded_store_constant
-    ex_decode.control.address_get -> control.decoded_geta
-    ex_decode.control.special_get -> control.decoded_get
-    ex_decode.control.special_put -> control.decoded_put
-    ex_decode.control.branch -> control.decoded_branch
-    ex_decode.control.branch_unconditional -> control.branch_unconditional
-    ex_decode.control.branch_condition -> control.branch_condition
-    ex_decode.control.branch_offset -> control.branch_offset
+    pre_decode.control.valid -> control.decoded_valid
+    pre_decode.control.halt -> control.decoded_halt
+    pre_decode.control.memory -> control.decoded_memory
+    pre_decode.control.store -> control.decoded_store
+    pre_decode.control.store_constant -> control.decoded_store_constant
+    pre_decode.control.address_get -> control.decoded_geta
+    pre_decode.control.special_get -> control.decoded_get
+    pre_decode.control.special_put -> control.decoded_put
+    pre_decode.control.branch -> control.decoded_branch
+    pre_decode.control.branch_unconditional -> control.branch_unconditional
+    pre_decode.control.branch_condition -> control.branch_condition
+    pre_decode.control.branch_offset -> control.branch_offset
+    pre_decode.control.alu_sel -> control.decoded_alu_sel
+    pre_decode.control.op -> control.decoded_op
+    control.decoded_arg1_reg <- and(not(pre_decode.control.arg1_imm), not(pre_decode.control.arg1_zero))
+    control.decoded_arg2_reg <- and(not(pre_decode.control.arg2_imm), not(pre_decode.control.arg2_wyde))
     control.trip -> trip_req
     control.alu_go -> alu.go
     control.alu_new -> alu.new
     alu.ready -> control.alu_ready
-    alu.unsupported -> control.alu_unsupported
     alu.res_w_en -> control.alu_write
     alu.v -> control.alu_v
     alu.d -> control.alu_d
@@ -77,17 +80,17 @@ wire Cpu {
     alu.rR -> control.alu_rR
     alu.rR_w_en -> control.alu_rR_write
 
-    ex_decode.control.writes_x -> control.decoded_writes_x
-    ex_decode.control.push -> control.decoded_push
-    ex_decode.control.go -> control.decoded_go
-    ex_decode.control.pop -> control.decoded_pop
-    ex_decode.control.put_g -> control.decoded_put_g
-    ex_decode.control.save -> control.decoded_save
-    ex_decode.control.unsave -> control.decoded_unsave
-    ex_decode.control.trap -> control.decoded_trap
-    ex_decode.control.swym -> control.decoded_swym
-    ex_decode.control.w_sel -> control.decoded_x
-    special_source.selected -> control.special_value
+    pre_decode.control.writes_x -> control.decoded_writes_x
+    pre_decode.control.push -> control.decoded_push
+    pre_decode.control.go -> control.decoded_go
+    pre_decode.control.pop -> control.decoded_pop
+    pre_decode.control.put_g -> control.decoded_put_g
+    pre_decode.control.save -> control.decoded_save
+    pre_decode.control.unsave -> control.decoded_unsave
+    pre_decode.control.trap -> control.decoded_trap
+    pre_decode.control.swym -> control.decoded_swym
+    pre_decode.control.w_sel -> control.decoded_x
+    special_source.selected -> control.pre_special
 
     // POST 해독기는 상태 쓰기, 레지스터 스택, 메모리 요청, 정지·방향 전환에 쓴다.
     control.post_instruction -> post_decode.instruction
@@ -167,10 +170,10 @@ wire Cpu {
     post_decode.control.special_put -> special_access.put
     post_decode.control.special_index -> special_access.index
     control.post_special_value -> special_access.value
-    // PUT 값은 EX에서 고르고 POST가 받아 둔다.
-    special_source.select <- ex_decode.control.special_immediate
-    special_source.option[0] <- control.operand_r2
-    special_source.option[1] <- ex_decode.control.imm_z
+    // PUT 값은 PRE에서 고르고 EX·POST로 넘긴다.
+    special_source.select <- pre_decode.control.special_immediate
+    special_source.option[0] <- control.pre_value_r2
+    special_source.option[1] <- pre_decode.control.imm_z
     // 특수 레지스터 버스는 POST가 쓴다.
     reg.special.enable <- or(control.special_get_en, control.special_put_en, control.stack_special_en)
     special_select.select <- control.stack_special_en
@@ -185,7 +188,7 @@ wire Cpu {
     special_drive.selected -> special_driver.in
     special_driver.out -> reg.special.data
 
-    // ID 해독기는 레지스터 읽기 번호와 분기 예측에, EX 해독기는 연산과 판정에 쓴다.
+    // ID 해독기는 레지스터 읽기 번호와 분기 예측에, PRE 해독기는 EX 제어와 판정에 쓴다.
     fetch.control.instruction -> id_decode.instruction
     id_decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
     id_decode.control.r1_sel -> control.id_r1_sel
@@ -229,52 +232,55 @@ wire Cpu {
     id_decode.control.imm_z -> OPENED
     id_decode.control.imm_yz -> OPENED
     id_decode.control.imm_x -> OPENED
-    control.ex_instruction -> ex_decode.instruction
-    ex_decode.instruction_valid <- and(control.ex_valid, not(reset))
-    ex_decode.control.valid -> decoded.valid
-    ex_decode.control.unsupported -> decoded.unsupported
-    ex_decode.control.halt -> decoded.halt
-    ex_decode.control.memory -> decoded.memory
-    ex_decode.control.store -> decoded.store
-    ex_decode.control.memory_size -> decoded.memory_size
-    ex_decode.control.load_unsigned -> decoded.load_unsigned
-    ex_decode.control.store_constant -> decoded.store_constant
-    ex_decode.control.address_get -> decoded.address_get
-    ex_decode.control.special_get -> decoded.special_get
-    ex_decode.control.special_put -> decoded.special_put
-    ex_decode.control.special_immediate -> decoded.special_immediate
-    ex_decode.control.special_index -> decoded.special_index
-    ex_decode.control.branch -> decoded.branch
-    ex_decode.control.branch_unconditional -> decoded.branch_unconditional
-    ex_decode.control.branch_condition -> decoded.branch_condition
-    ex_decode.control.branch_offset -> decoded.branch_offset
-    ex_decode.control.writes_x -> decoded.writes_x
-    ex_decode.control.push -> decoded.push
-    ex_decode.control.push_go -> decoded.push_go
-    ex_decode.control.go -> decoded.go
-    ex_decode.control.pop -> decoded.pop
-    ex_decode.control.put_g -> decoded.put_g
-    ex_decode.control.put_l -> decoded.put_l
-    ex_decode.control.save -> decoded.save
-    ex_decode.control.unsave -> decoded.unsave
-    ex_decode.control.trap -> decoded.trap
-    ex_decode.control.swym -> decoded.swym
-    ex_decode.control.alu_sel -> decoded.alu_sel
-    ex_decode.control.op -> decoded.op
-    ex_decode.control.r1_sel -> decoded.r1_sel
-    ex_decode.control.r2_sel -> decoded.r2_sel
-    ex_decode.control.w_sel -> decoded.w_sel
-    ex_decode.control.arg1_imm -> decoded.arg1_imm
-    ex_decode.control.arg2_imm -> decoded.arg2_imm
-    ex_decode.control.arg1_zero -> decoded.arg1_zero
-    ex_decode.control.arg2_wyde -> decoded.arg2_wyde
-    ex_decode.control.imm_y -> decoded.imm_y
-    ex_decode.control.imm_z -> decoded.imm_z
-    ex_decode.control.imm_yz -> decoded.imm_yz
-    ex_decode.control.imm_x -> decoded.imm_x
+    control.pre_instruction -> pre_decode.instruction
+    pre_decode.instruction_valid <- and(control.pre_valid, not(reset))
+    pre_decode.control.valid -> decoded.valid
+    pre_decode.control.unsupported -> decoded.unsupported
+    pre_decode.control.halt -> decoded.halt
+    pre_decode.control.memory -> decoded.memory
+    pre_decode.control.store -> decoded.store
+    pre_decode.control.memory_size -> decoded.memory_size
+    pre_decode.control.load_unsigned -> decoded.load_unsigned
+    pre_decode.control.store_constant -> decoded.store_constant
+    pre_decode.control.address_get -> decoded.address_get
+    pre_decode.control.special_get -> decoded.special_get
+    pre_decode.control.special_put -> decoded.special_put
+    pre_decode.control.special_immediate -> decoded.special_immediate
+    pre_decode.control.special_index -> decoded.special_index
+    pre_decode.control.branch -> decoded.branch
+    pre_decode.control.branch_unconditional -> decoded.branch_unconditional
+    pre_decode.control.branch_condition -> decoded.branch_condition
+    pre_decode.control.branch_offset -> decoded.branch_offset
+    pre_decode.control.writes_x -> decoded.writes_x
+    pre_decode.control.push -> decoded.push
+    pre_decode.control.push_go -> decoded.push_go
+    pre_decode.control.go -> decoded.go
+    pre_decode.control.pop -> decoded.pop
+    pre_decode.control.put_g -> decoded.put_g
+    pre_decode.control.put_l -> decoded.put_l
+    pre_decode.control.save -> decoded.save
+    pre_decode.control.unsave -> decoded.unsave
+    pre_decode.control.trap -> decoded.trap
+    pre_decode.control.swym -> decoded.swym
+    pre_decode.control.alu_sel -> decoded.alu_sel
+    pre_decode.control.op -> decoded.op
+    pre_decode.control.r1_sel -> decoded.r1_sel
+    pre_decode.control.r2_sel -> decoded.r2_sel
+    pre_decode.control.w_sel -> decoded.w_sel
+    pre_decode.control.arg1_imm -> decoded.arg1_imm
+    pre_decode.control.arg2_imm -> decoded.arg2_imm
+    pre_decode.control.arg1_zero -> decoded.arg1_zero
+    pre_decode.control.arg2_wyde -> decoded.arg2_wyde
+    pre_decode.control.imm_y -> decoded.imm_y
+    pre_decode.control.imm_z -> decoded.imm_z
+    pre_decode.control.imm_yz -> decoded.imm_yz
+    pre_decode.control.imm_x -> decoded.imm_x
 
-    ex_decode.control.alu_sel -> alu.alu_sel
-    ex_decode.control.op -> alu.op
+    // EX: PRE가 담아 둔 연산 선택과 피연산자로 연산한다.
+    control.ex_alu_sel -> alu.alu_sel
+    control.ex_op -> alu.op
+    control.arg1 -> alu.arg1
+    control.arg2 -> alu.arg2
     read1_slot.select <- control.stack_r1_physical
     read1_slot.option[0][0..8] <- control.read_r1_sel
     read1_slot.option[0][8] <- 0
@@ -286,30 +292,31 @@ wire Cpu {
     reg.general.x_data -> control.x_data
     reg.general.r1_data -> control.r1_data
 
-    // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
-    // 레지스터 피연산자는 Control이 POST·WB 값 전달까지 반영한 EX 단계 값이다.
-    arg1_mux.select[0] <- ex_decode.control.arg1_imm
-    arg1_mux.select[1] <- ex_decode.control.arg1_zero
-    arg1_mux.option[0] <- control.operand_r1
-    arg1_mux.option[1] <- ex_decode.control.imm_y
+    // PRE 피연산자: NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
+    // 레지스터 피연산자는 Control이 POST·WB 값 전달까지 반영한 PRE 단계 값이다.
+    arg1_mux.select[0] <- pre_decode.control.arg1_imm
+    arg1_mux.select[1] <- pre_decode.control.arg1_zero
+    arg1_mux.option[0] <- control.pre_value_r1
+    arg1_mux.option[1] <- pre_decode.control.imm_y
     arg1_mux.option[2] <- 0
-    arg1_mux.selected -> alu.arg1
-    arg2_mux.select[0] <- ex_decode.control.arg2_imm
-    arg2_mux.select[1] <- ex_decode.control.arg2_wyde
-    arg2_mux.option[0] <- control.operand_r2
-    arg2_mux.option[1] <- ex_decode.control.imm_z
-    arg2_mux.option[2] <- ex_decode.control.imm_yz
-    arg2_mux.selected -> alu.arg2
+    arg1_mux.selected -> control.pre_arg1
+    arg2_mux.select[0] <- pre_decode.control.arg2_imm
+    arg2_mux.select[1] <- pre_decode.control.arg2_wyde
+    arg2_mux.option[0] <- control.pre_value_r2
+    arg2_mux.option[1] <- pre_decode.control.imm_z
+    arg2_mux.option[2] <- pre_decode.control.imm_yz
+    arg2_mux.selected -> control.pre_arg2
+    store_data_mux.select <- pre_decode.control.store_constant
+    store_data_mux.option[0] <- control.pre_value_x
+    store_data_mux.option[1] <- pre_decode.control.imm_x
+    store_data_mux.selected -> control.pre_store
 
-    address_add.a <- arg1_mux.selected
-    address_add.b <- arg2_mux.selected
+    // EX 유효 주소
+    address_add.a <- control.arg1
+    address_add.b <- control.arg2
     address_add.c_in <- 0
     address_add.c_out -> OPENED
     address_add.sum -> control.effective_address
-    store_data_mux.select <- ex_decode.control.store_constant
-    store_data_mux.option[0] <- control.operand_x
-    store_data_mux.option[1] <- ex_decode.control.imm_x
-    store_data_mux.selected -> control.store_data
     // EX 결과는 Control이 POST를 거쳐 WB 단계로 넘겨 쓴다. load 값은 WB에서 메모리 응답을 쓴다.
     ex_value_mux.select <- control.address_write_en
     ex_value_mux.option[0] <- alu.res
@@ -319,8 +326,8 @@ wire Cpu {
     control.wb_data -> reg.general.w_data
     control.wb_en -> reg.general.w_en
 
-    // rD·rM은 EX의 ALU가 읽고, rA·rH·rR은 POST가 쓴다.
-    reg.alu_direct.rD_in -> alu.rD
+    // rD는 PRE가 DIVU 미지원 판정에 읽고, rM은 EX의 ALU가 읽는다. rA·rH·rR은 POST가 쓴다.
+    reg.alu_direct.rD_in -> control.rD
     reg.alu_direct.rM_in -> alu.rM
     reg.alu_direct.rA_in -> control.ra_in
     control.ra_out -> reg.alu_direct.rA_out
@@ -341,7 +348,7 @@ wire Cpu {
     control.fetch.flush -> fetch.control.flush
     fetch.control.busy -> control.fetch.busy
 
-    // 데이터 메모리 접근. store 데이터 $X는 읽기 포트 x로 읽어 Control이 전달한 EX 피연산자다.
+    // 데이터 메모리 접근은 POST가 요청한다. store 데이터 $X는 읽기 포트 x로 읽어 Control이 전달한 값이다.
     control.memory.req_valid -> memory.control.req_valid
     control.memory.address -> memory.control.address
     control.memory.store -> memory.control.store

@@ -7,8 +7,8 @@ bundle AluSelect: In<bit,3>
 // [0]: V event, [1]: D event, [2]: V enable, [3]: D enable
 bundle RaBits: In<bit,4>
 
-// Registers의 alu_direct가 *AluDirectIO로 가진다. rD·rM은 EX의 ALU가 읽고,
-// rA·rH·rR은 연산 후처리(Control의 POST)가 쓴다.
+// Registers의 alu_direct가 *AluDirectIO로 가진다. rD는 연산 전처리(Control의 PRE)가 DIVU 판정에,
+// rM은 EX의 ALU가 읽고, rA·rH·rR은 연산 후처리(Control의 POST)가 쓴다.
 bundle AluDirectIO {  // 레지스터를 읽고 쓰는 쪽 입장
     rA_in:   RaBits
     rA_out:  *RaBits
@@ -33,7 +33,6 @@ seq Alu {
     pub go: In<bit,1>     // EX 명령의 피연산자가 유효한 클록
     pub new: In<bit,1>    // EX에 새 명령이 들어온 첫 클록
     pub ready: Out<bit,1>  // 선택된 유닛의 결과가 유효. MUL·DIV 외에는 항상 1
-    pub unsupported: Out<bit,1>  // 실행 시점에 판정한 미지원(DIVU의 rD != 0)
     pub alu_sel: AluSelect
     pub op: In<bit,4>  // 선택된 하위 유닛 안의 연산
     pub arg1: WordIn
@@ -41,7 +40,6 @@ seq Alu {
     pub res:  WordOut
     pub res_w_en: Out<bit,1>  // res를 $X에 쓰는 연산이면 1(거짓 조건의 CS*는 0)
 
-    pub rD: WordIn  // DIVU 피제수 상위 64비트
     pub rM: WordIn  // MUX 마스크
     pub v: Out<bit,1>  // 선택된 유닛의 V(오버플로) 이벤트. ready일 때만 의미가 있다
     pub d: Out<bit,1>  // 선택된 유닛의 D(0으로 나눔) 이벤트
@@ -129,10 +127,7 @@ wire Alu {
         and(sel_alu_op.out[DIV], div.ready),
         not(or(sel_alu_op.out[MUL], sel_alu_op.out[DIV])),
     )
-    unsupported <- and(sel_alu_op.out[DIV], div.unsupported)
-
     // 특수 레지스터
-    rD -> div.rD
     rM -> bitwise.rM
 
     mul.rH -> rH
