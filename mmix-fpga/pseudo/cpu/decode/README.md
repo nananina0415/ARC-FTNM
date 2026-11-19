@@ -84,19 +84,15 @@ PB*는 B*와 같은 조건과 목표 주소를 사용한다. 현재는 예측기
 예측 힌트에 따른 선행 페치나 시간 차이는 없다. GO 및 레지스터 스택 호출은
 아직 해독하지 않는다.
 
-CPU에서는 페치 응답을 디코더에 연결하고 피연산자 선택, 레지스터 읽기/쓰기,
-ALU 및 특수 레지스터 직접 배선을 연결했다. `Cpu.decoded`는 제어유닛용 출력이다.
-내부 `Control.execute_en`은 제어유닛이 저장 단계에만 활성화하며, 디코더의
-valid와 AND해 ALU의 write_en으로 보낸다. `Cpu.trip_req`도 valid로 한정한다.
-
-현재 명령어는 페치 응답 버퍼가 유지한다. 제어유닛은 저장 단계가 끝날 때까지
-`Fetch.control.res_ready=0`으로 명령어를 유지하고, 저장하는 에지에서 응답을
-소비할 수 있다. execute_en을 여러 클록 동안 올려 두면 매 클록 쓰기가 발생하므로
-저장 단계에서만 1로 만들어야 한다.
+CPU는 같은 디코더를 세 단계에 둔다. ID 해독기는 페치 응답에서 레지스터 읽기 번호와
+분기 예측을, PRE 해독기는 PRE 명령에서 피연산자·즉치 선택과 EX 제어·판정을,
+POST 해독기는 POST 명령에서 상태 쓰기·레지스터 스택·메모리 요청·정지를 정한다.
+EX는 디코더를 쓰지 않고 PRE가 담아 둔 값으로 연산한다. `Cpu.decoded`는 PRE 해독 결과다.
+`Cpu.trip_req`는 POST의 유효한 ALU 명령으로 한정한다.
 
 PC 저장은 Control이 담당한다. 내부 Control이 순차/분기 PC 갱신과
-HALT/미지원 명령/페치 오류/trip의 정지를 담당한다. HALT와 분기에서는 ALU
-execute_en을 활성화하지 않는다. 실제 예외 처리기 진입은 아직 구현하지 않았다.
+HALT/미지원 명령/페치 오류/trip의 정지를 담당한다. rA·rH·rR과 ALU 결과 쓰기는
+POST가 ALU 명령에만 한다. 실제 예외 처리기 진입은 아직 구현하지 않았다.
 
 메모리 크기는 `memory_size`의 log2(bytes), signed/unsigned 선택은 `load_unsigned`로
 전달한다. `store_constant`는 STCO에서 $X 대신 0 확장한 X 바이트를 선택한다.

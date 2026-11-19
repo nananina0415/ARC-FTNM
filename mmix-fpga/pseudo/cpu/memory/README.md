@@ -38,7 +38,7 @@ AW와 W는 독립적으로 수락될 때까지 VALID와 payload를 유지하고 
 WSTRB로 활성화하고 캐시도 같은 마스크로 갱신한다. 읽기는 라인 전체를 같은 형식으로
 `line_read_data`에 돌려준다. 일반 load/store 경로는 바뀌지 않는다.
 
-Control은 파이프라인 EX 단계에서 요청하고 WB 단계에서 응답을 받는다. 일반 store 데이터 $X는
+Control은 파이프라인 POST 단계에서 요청하고 WB 단계에서 응답을 받는다. 일반 store 데이터 $X는
 레지스터 읽기 포트 x에서 오고, STCO는 별도 상수 입력을 선택한다. load 결과만 WB에서
 GPR에 쓰며, store는 GPR을 쓰지 않는다. 데이터 오류는 fault_reason bit 0이다.
 
