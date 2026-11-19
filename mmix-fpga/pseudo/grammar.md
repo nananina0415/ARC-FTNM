@@ -125,7 +125,7 @@ seq  Registers { ... }  // 순차회로
 
 원시 내장 `D_FlipFlop`은 `mut` 없이 선언한다. 이 예외가 조합회로 안에 DFF를
 둘 수 있다는 뜻은 아니다. DFF를 직접·간접 포함하면 `seq`여야 한다.
-내장 `SyncRam`은 순차 소자라 다른 순차회로처럼 `mut`로 선언한다.
+내장 `SyncRam`, `PipeMultiplier`, `IterDivider`는 순차 소자라 다른 순차회로처럼 `mut`로 선언한다.
 
 ## 6. 제네릭
 
@@ -225,7 +225,9 @@ sel_alu_op.out[6,7] -> OPENED   // 쓰지 않는 디코더 출력
 | `TriState<N>` | `enable`, `in`, `out` | `TriState` = `TriState<64>` (글로벌 alias) |
 | `Adder<N>` | `a`, `b`, `c_in`, `sum`, `c_out` | N비트 덧셈 |
 | `Multiplier<N>` | `a`, `b`, `signed`, `lo`, `hi` | N비트 × N비트 → 2N비트 곱. `signed`=1이면 signed |
+| `PipeMultiplier<N,S>` | `clock`, `a`, `b`, `signed`, `lo`, `hi` | 순차 소자. 입력 레지스터 1단 + 곱 뒤 레지스터 S단. 지연 1+S클록, 매 클록 새 입력 |
 | `Divider<N>` | `dividend`, `divisor`, `quotient`, `remainder` | unsigned. `dividend`는 2N비트 |
+| `IterDivider<64>` | `clock`, `reset`, `start`, `signed`, `remainder`, `dividend`, `divisor`, `idle`, `done`, `result` | 순차 소자. 반복 나눗셈(OpenC906 `aq_iu_div`). 아래 참고 |
 | `SyncRam<d,w,l>` | `clock`, `w_en`, `w_addr`, `w_data`, `r_en`, `r_addr`, `r_data` | 깊이 d(2의 거듭제곱), 폭 w, 쓰기 레인 l개. 동기 읽기 1개 + 쓰기 1개. FPGA 블록 RAM으로 출력 |
 
 ## 9. 명명 규칙

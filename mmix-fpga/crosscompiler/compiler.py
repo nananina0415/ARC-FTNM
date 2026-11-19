@@ -16,7 +16,7 @@ class Compiler:
         self.source = source.resolve()
         self.grammar_path = grammar.resolve()
 
-    def build(self, top_name, single_file=False):
+    def build(self, top_name, single_file=False, out_dir=None):
         if not self.source.is_dir():
             raise CompileError(f"Source directory does not exist: {self.source}")
         grammar_bytes = self.grammar_path.read_bytes()
@@ -46,7 +46,7 @@ class Compiler:
             raise CompileError("Top must be a concrete, non-generic circuit; instantiate a generic in a wrapper", declaration.loc)
         elaborator = Elaborator(symbols)
         top = elaborator.compile(Spec(key))
-        generated = artifacts(list(elaborator.modules.values()), top, single_file)
+        generated = artifacts(list(elaborator.modules.values()), top, single_file, out_dir)
         metadata = {"schema": 1, "compiler": "0.1.0", "top": top_name,
                     "single_file": single_file,
                     "grammar_sha256": hashlib.sha256(grammar_bytes).hexdigest(), "sources": fingerprints}

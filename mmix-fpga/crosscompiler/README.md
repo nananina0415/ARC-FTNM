@@ -44,7 +44,7 @@ python -m crosscompiler pseudo --top cpu::Cpu --out build/rtl --single-file
 | typesys.py | 폴더 이름 공간, alias, 상수, 타입과 번들 해석 |
 | elaborator.py | 제네릭 특수화, 배열/번들 전개, 회로 연결과 정적 검사 |
 | ir.py | 모듈/인스턴스/핀/게이트와 union-find net 자료구조 |
-| builtins.py | DFF/Mux/Decoder/TriState/Adder/Multiplier/Divider/SyncRam 계약과 RTL |
+| builtins.py | DFF/Mux/Decoder/TriState/Adder/Multiplier/PipeMultiplier/Divider/IterDivider/SyncRam 계약과 RTL, 서드파티 Verilog 목록 |
 | verilog.py | 모듈별 Verilog 출력, 펼친 포트, 파일 목록과 소스 맵 |
 | compiler.py | 소스 수집부터 결과 생성까지의 API |
 | output.py | 생성 파일 소유권, staging, 이전 생성물 교체와 I/O 실패 복원 |
@@ -68,11 +68,13 @@ PEG 엔진은 명세를 읽으므로 문장 구분을 줄 단위 치환으로 �
 구체 파라미터 조합당 모듈 하나를 생성하며 같은 조합은 재사용한다.
 문법에서 지원하는 일반 구조를 구체화하는 것이며 CPU별 예외 규칙은 없다.
 조합 소자를 자동으로 다중 사이클 IP로 바꾸거나 reset/파이프라인을 삽입하지 않는다.
+여러 클록 연산은 소스가 PipeMultiplier·IterDivider를 명시해 쓴다.
 
 ## 출력
 
 - 원본 이름 공간 폴더별 `.v` 모듈. 내장 소자는 builtin/ 아래에 생성.
-- sources.f: Verilog 파일 목록. 경로는 출력 폴더 기준.
+- sources.f: Verilog 파일 목록. 경로는 출력 폴더 기준. 서드파티 Verilog를 인스턴스화하는
+  내장 소자(IterDivider)를 쓰면 그 원본 파일을 목록 끝에 넣는다(`third_party/` 서브모듈이 있어야 한다).
 - top.txt: 생성한 최상위 모듈 이름.
 - source-map.json: 모듈·포트·인스턴스·게이트·net과 원본 파일 위치의 대응.
 - .crosscompiler-manifest.json: 버전·소스/문법 해시·옵션·생성 파일 목록.

@@ -116,7 +116,9 @@
 | TriState<N> | N비트. enable=1이면 in, 0이면 Z. unknown enable은 4상태 RTL 의미 유지 |
 | Adder<N> | a,b,sum N비트, c_in/c_out 1비트. N+1비트 합의 하위/최상위 분리 |
 | Multiplier<N> | a,b N비트. signed=0 unsigned, 1이면 2의 보수 signed 곱. 2N비트 hi/lo |
+| PipeMultiplier<N,S> | seq. Multiplier와 같은 곱을 1+S클록 뒤 hi/lo로 낸다. S >= 1. 아래 참고 |
 | Divider<N> | dividend 2N비트, divisor N비트 unsigned. quotient/remainder N비트 |
+| IterDivider<64> | seq. 64비트 반복 나눗셈. 아래 참고 |
 | SyncRam<d,w,l> | d는 2 이상 2의 거듭제곱, w는 l의 배수. 주소 폭 ceil(log2(d)). 아래 참고 |
 
 Divider의 몫이 N비트를 넘으면 하위 N비트로 내보낸다. divisor=0이면 결과는 X다.
@@ -136,6 +138,22 @@ SyncRam<d,w,l>은 d개 칸의 w비트 메모리이며 seq 소자다(mut로 선�
 - 주소나 `r_en`이 unknown이면 읽기 결과는 X이고, unknown 주소 쓰기는 어느 칸이 바뀌었는지 보장하지 않는다.
 - 변환기는 Vivado 블록 RAM 추론 형태(메모리 배열 + 레인별 쓰기 + 등록 읽기, `ram_style = "block"`)로
   출력한다. 조합 읽기 포트나 두 번째 쓰기 포트는 이 소자에 없다.
+
+PipeMultiplier<N,S>는 매 상승 에지에 a, b, signed를 입력 레지스터에 담고, 그 곱을 S단 레지스터로 넘긴다.
+k번째 에지에 넣은 입력의 곱은 k+1+S번째 에지 뒤 hi/lo에 보인다. reset은 없으며 지연 동안의 출력은
+이전 입력의 곱이다. 입력·곱·레지스터를 한 모듈에 출력해 Vivado가 DSP48 파이프라인 레지스터로 흡수할 수 있게 한다.
+
+IterDivider<64>는 서드파티 OpenC906 `aq_iu_div`(Apache-2.0, `third_party/T-head-Semi_openc906`)를
+수정 없이 인스턴스화한다. 변환기는 이 소자를 쓰면 원본 Verilog 3개를 sources.f에 넣는다.
+
+- `idle`=1일 때 `start`=1인 에지에서 `dividend`, `divisor`, `signed`, `remainder`를 받는다.
+  `idle`=0일 때의 `start`는 받지 않는다.
+- 결과가 나오는 클록에 `done`=1이 되고 `result`가 유효하다. 다음 에지에서 결과를 내보내고 `idle`로 돌아간다.
+- `remainder`=0이면 몫, 1이면 나머지를 낸다. 부호 있는 연산은 몫을 0 쪽으로 자르고 나머지 부호는 피제수를 따른다.
+- divisor=0이면 몫은 모든 비트 1, 나머지는 피제수다. signed에서 −2^63 ÷ −1은 몫 −2^63, 나머지 0이다.
+- 반복 한 번에 몫 2비트를 내며 앞자리 0만큼 건너뛴다. 최대 약 35클록이다.
+  직전 연산과 피연산자·부호가 같으면 1클록에 끝난다(몫 다음 같은 피연산자의 나머지 요청).
+- `reset`=1 동안 내부 상태와 직전 피연산자 저장을 지운다.
 
 ## 7. OPENED와 미정의
 

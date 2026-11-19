@@ -2,6 +2,16 @@
 from .model import CompileError
 from .typesys import Array, Port, Record
 
+# Primitives whose RTL instantiates third-party Verilog. Paths are relative to the
+# mmix-fpga root (the crosscompiler's parent folder) and are listed in sources.f.
+EXTERNAL_SOURCES = {
+    "IterDivider": (
+        "third_party/T-head-Semi_openc906/C906_RTL_FACTORY/gen_rtl/iu/rtl/aq_iu_div.v",
+        "third_party/T-head-Semi_openc906/C906_RTL_FACTORY/gen_rtl/iu/rtl/aq_iu_div_shift2_kernel.v",
+        "third_party/T-head-Semi_openc906/C906_RTL_FACTORY/gen_rtl/clk/rtl/gated_clk_cell.v",
+    ),
+}
+
 
 def identifier(parts):
     # Length-prefixed components are unambiguous, including underscores/digits.
@@ -36,10 +46,24 @@ def interface(spec):
         width, = args
         port("a", "in", width); port("b", "in", width); port("signed", "in")
         port("lo", "out", width); port("hi", "out", width)
+    elif name == "PipeMultiplier":
+        width, stages = args
+        if stages < 1:
+            raise CompileError("PipeMultiplier needs at least one stage after the product")
+        port("clock", "in"); port("a", "in", width); port("b", "in", width); port("signed", "in")
+        port("lo", "out", width); port("hi", "out", width)
     elif name == "Divider":
         width, = args
         port("dividend", "in", 2 * width); port("divisor", "in", width)
         port("quotient", "out", width); port("remainder", "out", width)
+    elif name == "IterDivider":
+        width, = args
+        if width != 64:
+            raise CompileError("IterDivider (OpenC906 aq_iu_div) is 64 bits wide")
+        port("clock", "in"); port("reset", "in"); port("start", "in")
+        port("signed", "in"); port("remainder", "in")
+        port("dividend", "in", width); port("divisor", "in", width)
+        port("idle", "out"); port("done", "out"); port("result", "out", width)
     elif name == "SyncRam":
         depth, width, lanes = args
         if depth < 2 or depth & (depth - 1):
@@ -83,6 +107,40 @@ def body(spec):
                 f"wire signed [{2 * width - 1}:0] sb = $signed({sign_b});",
                 f"wire [{2 * width - 1}:0] product = {p('signed')} ? $unsigned(sa * sb) : ({{{width}'b0, {p('a')}}} * {{{width}'b0, {p('b')}}});",
                 f"assign {{{p('hi')}, {p('lo')}}} = product;"]
+    if name == "PipeMultiplier":
+        # Input registers, the product, then `stages` registers in one module so that
+        # Vivado can absorb them into the DSP48 pipeline (AREG/BREG, MREG, PREG).
+        width, stages = args
+        sign_a = "{{%d{s_r & a_r[%d]}}, a_r}" % (width, width - 1)
+        sign_b = "{{%d{s_r & b_r[%d]}}, b_r}" % (width, width - 1)
+        return [f"reg [{width - 1}:0] a_r, b_r;", "reg s_r;",
+                f"always @(posedge {p('clock')}) begin a_r <= {p('a')}; b_r <= {p('b')}; s_r <= {p('signed')}; end",
+                f"wire signed [{2 * width - 1}:0] sa = $signed({sign_a});",
+                f"wire signed [{2 * width - 1}:0] sb = $signed({sign_b});",
+                f"wire [{2 * width - 1}:0] product = $unsigned(sa * sb);",
+                f"reg [{2 * width - 1}:0] pipe [0:{stages - 1}];",
+                "integer k;",
+                f"always @(posedge {p('clock')}) begin",
+                "  pipe[0] <= product;",
+                f"  for (k = 1; k < {stages}; k = k + 1) pipe[k] <= pipe[k-1];",
+                "end",
+                f"assign {{{p('hi')}, {p('lo')}}} = pipe[{stages - 1}];"]
+    if name == "IterDivider":
+        # OpenC906 aq_iu_div, unmodified (Apache-2.0). start is accepted only while idle.
+        # done is high for one clock with result; the C906 write-back grant is always given.
+        # The IP keeps the last operands: asking for the remainder right after the quotient
+        # of the same operands finishes in one clock.
+        return ["wire [2:0] dbginfo; wire full, wb_dp, ex1_cmplt, ex1_cmplt_dp; wire [5:0] preg;",
+                "aq_iu_div ip (",
+                "  .cp0_iu_icg_en(1'b1), .cp0_yy_clk_en(1'b1), .pad_yy_icg_scan_en(1'b0),",
+                f"  .cpurst_b(~{p('reset')}), .ifu_iu_warm_up({p('reset')}), .forever_cpuclk({p('clock')}),",
+                f"  .idu_div_ex1_gateclk_sel({p('start')}), .idu_iu_ex1_div_dp_sel({p('start')}), .idu_iu_ex1_div_sel({p('start')}),",
+                f"  .idu_iu_ex1_dst_preg(6'd0), .idu_iu_ex1_func({{17'd0, {p('signed')}, ~{p('remainder')}, 1'b0}}),",
+                f"  .idu_iu_ex1_src0({p('dividend')}), .idu_iu_ex1_src1({p('divisor')}),",
+                "  .rtu_iu_div_wb_grant(1'b1), .rtu_iu_div_wb_grant_for_full(1'b1),",
+                f"  .div_ctrl_no_op({p('idle')}), .div_dbginfo(dbginfo), .iu_idu_div_full(full),",
+                f"  .iu_rtu_div_data({p('result')}), .iu_rtu_div_preg(preg), .iu_rtu_div_wb_dp(wb_dp),",
+                f"  .iu_rtu_div_wb_vld({p('done')}), .iu_rtu_ex1_div_cmplt(ex1_cmplt), .iu_rtu_ex1_div_cmplt_dp(ex1_cmplt_dp));"]
     if name == "Divider":
         width, = args
         return [f"wire [{2 * width - 1}:0] divisor_ext = {{{width}'b0, {p('divisor')}}};",

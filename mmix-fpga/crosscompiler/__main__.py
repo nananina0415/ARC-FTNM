@@ -22,7 +22,7 @@ def main(argv=None):
     if not args.check and args.out is None:
         parser.error("--out is required unless --check is supplied")
     try:
-        generated, metadata, warnings = Compiler(args.source, args.grammar).build(args.top, args.single_file)
+        generated, metadata, warnings = Compiler(args.source, args.grammar).build(args.top, args.single_file, args.out)
         for warning in warnings:
             print(f"warning: {warning}", file=sys.stderr)
         if args.check:

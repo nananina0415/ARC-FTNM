@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from pathlib import Path
 
 from . import builtins
+from .model import CompileError
 from .typesys import leaves
 
 
@@ -109,13 +112,29 @@ def source_map(module):
     }
 
 
-def artifacts(modules, top, single_file=False):
+def external_sources(modules, out_dir):
+    """Third-party Verilog that builtin primitives instantiate, as paths relative to out_dir."""
+    root = Path(__file__).resolve().parent.parent
+    found = []
+    for module in modules:
+        if module.spec.builtin:
+            for relative in builtins.EXTERNAL_SOURCES.get(module.spec.name[-1], ()):
+                path = root / relative
+                if not path.is_file():
+                    raise CompileError(f"{module.spec.name[-1]} needs {relative}; initialize the git submodule")
+                entry = relative if out_dir is None else os.path.relpath(path, Path(out_dir).resolve())
+                found.append(entry.replace("\\", "/"))
+    return sorted(set(found))
+
+
+def artifacts(modules, top, single_file=False, out_dir=None):
     ordered = sorted(modules, key=lambda module: module_path(module.spec))
     generated = {module_path(module.spec): generate(module) for module in ordered}
     if single_file:
         generated = {"design.v": "\n".join(generated.values())}
     files = sorted(generated)
-    generated["sources.f"] = "\n".join(files) + "\n"
+    # Third-party files come last: generated modules restore `default_nettype wire`.
+    generated["sources.f"] = "\n".join(files + external_sources(ordered, out_dir)) + "\n"
     generated["top.txt"] = module_name(top.spec) + "\n"
     mapping = {"format": 1, "top": module_name(top.spec), "single_file": single_file,
                "modules": [source_map(module) for module in ordered]}
