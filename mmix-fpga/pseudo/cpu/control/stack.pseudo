@@ -80,6 +80,8 @@ seq StackControl {
     mut gather: reg::ValueReg<3>  // spill에서 모은 칸 수, fill에서 ring에 쓴 칸 수
     mut fill_count: reg::ValueReg<3>  // 이번 fill이 가져오는 칸 수
     mut words: [reg::ValueReg<WORD_SIZE>; 4]  // spill로 내보낼 라인의 octa
+    mut save_word: reg::ValueReg<WORD_SIZE>  // SAVE가 저장할 값. 받아 둔 다음 클록에 요청한다
+    mut save_armed: reg::ValueReg<1>  // save_word에 이번 칸의 값이 있다
     sel: Decoder<5,32>
 
     x_vs_g: Adder<8>
@@ -254,8 +256,8 @@ wire StackControl {
     alias unsave_done = and(unsave_wait, res_ok)
     alias slot_is_index = and(phase_global, or(save_request, unsave_wait))
 
-    clock => { state.clock, y.clock, k.clock, index.clock, phase.clock, gather.clock, fill_count.clock, words[0..4].clock }
-    reset => { state.reset, y.reset, k.reset, index.reset, phase.reset, gather.reset, fill_count.reset, words[0..4].reset }
+    clock => { state.clock, y.clock, k.clock, index.clock, phase.clock, gather.clock, fill_count.clock, words[0..4].clock, save_word.clock, save_armed.clock }
+    reset => { state.reset, y.reset, k.reset, index.reset, phase.reset, gather.reset, fill_count.reset, words[0..4].reset, save_word.reset, save_armed.reset }
 
     required <- or(need_grow, push, pop, put_g, save, unsave, trap)
 
@@ -450,10 +452,10 @@ wire StackControl {
     alias save_ready = or(and(phase_global, r1_valid), and(phase_special, special_valid), phase_pack)
     alias next_save_request = or(
         and(save_flush, pending_zero),
-        and(save_request, or(not(save_ready), not(mem_ready))),
+        and(save_request, not(and(save_armed.out, mem_ready))),
         and(save_done, not(phase_pack)),
     )
-    alias next_save_wait = or(and(save_request, save_ready, mem_ready), and(save_wait, not(mem_res_valid)))
+    alias next_save_wait = or(and(save_request, save_armed.out, mem_ready), and(save_wait, not(mem_res_valid)))
     alias next_save_commit = and(save_done, phase_pack)
     alias next_unsave_base = and(enter, unsave)
     alias next_unsave_address = or(unsave_base, and(unsave_done, not(and(phase_global, index_at_g))))
@@ -630,7 +632,14 @@ wire StackControl {
     store_source.option[1] <- special_data
     store_source.option[2][0..56] <- special_data[0..56]
     store_source.option[2][56..WORD_SIZE] <- rG
-    store_source.selected -> mem_write_data
+    // 값이 최신인 클록에 save_word에 받아 두고, 메모리 요청은 그 다음 클록부터 save_word로 한다.
+    // 레지스터·특수 레지스터 읽기의 valid가 같은 클록의 메모리 요청으로 이어지지 않는다.
+    alias save_arm = and(save_request, save_ready, not(save_armed.out))
+    save_word.w_en <- save_arm
+    store_source.selected -> save_word.in
+    save_word.out -> mem_write_data
+    save_armed.w_en <- 1
+    save_armed.in <- and(save_request, or(save_armed.out, save_ready), not(and(save_armed.out, mem_ready)))
 
     special_index.select[0] <- and(phase_pack, not(trap_step))
     special_index.select[1] <- trap_step
@@ -727,7 +736,7 @@ wire StackControl {
     s_add.sum -> save_address
     rS_w_en <- or(and(spill_wait, res_ok), fill_address, save_done, unsave_base, unsave_address)
 
-    mem_valid <- or(spill_request, fill_request, and(save_request, save_ready), unsave_request)
+    mem_valid <- or(spill_request, fill_request, and(save_request, save_armed.out), unsave_request)
     mem_store <- or(spill_request, save_request)
     mem_line <- or(spill_request, fill_request)
     // fill은 마지막 칸을 쓸 때까지 응답 라인을 붙잡아 둔다.

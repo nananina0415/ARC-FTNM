@@ -28,7 +28,8 @@
      병목: EX 연산 결과가 같은 클록 안에 진행/멈춤 판단 → 레지스터 읽기 번호 → StackControl → 메모리 요청으로 이어짐
   8. 나눗셈기를 OpenC906 aq_iu_div(IterDivider)로, 곱셈기를 PipeMultiplier(지연 4클록)로 — 구현함, 시뮬레이션 미실행
      DIVU의 rD != 0(128비트 피제수)은 미지원 명령 fault. 단독 평가: 나눗셈기 2,365 LUT WNS +1.7 ns, 곱셈기 WNS +2.4 ns
-  9. Control 재구성: EX는 연산·판정만, 정지/비우기/방향 전환은 WB에서
+  9. Control 재구성: EX는 연산·판정만, 정지/비우기/방향 전환은 WB에서 — 구현함, 시뮬레이션·합성 미실행
+     예측 실패·GO 4클록, StackControl의 SAVE 메모리 요청은 save_word 레지스터에서. 설명: pseudo/cpu/control/README.md
 
   최적화 여지: marginal 쓰기로 L이 늘어나는 명령은 지금 설계에서 직렬화(앞 명령을 모두 끝낸 뒤 단독 실행)한다.
   ID 단계에서 L을 미리 갱신하고, 분기 예측 실패로 비울 때 되돌리면 멈추지 않고 처리할 수 있다.
