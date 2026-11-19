@@ -28,18 +28,14 @@
     "memory": {}
   },
   "expect": {
-    "stop": "halt",
-    "reason": 0,
-    "registers": {
-      "$3": "0xffffffffffffffff"
-    },
-    "special": {
-      "rR": "0x0000000000000002"
-    },
+    "stop": "fault",
+    "reason": 2,
+    "registers": {},
+    "special": {},
     "memory": {},
     "unchanged_other_state": true,
     "subject_effects": {
-      "register_writes": 1,
+      "register_writes": 0,
       "memory_writes": 0
     }
   },

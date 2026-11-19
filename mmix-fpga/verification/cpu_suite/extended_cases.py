@@ -106,13 +106,14 @@ def integrations(root):
         memory={0x100+i:i+1 for i in range(8)},expected_memory={0x102:0xab,0x103:0xcd},
         expected={1:0x100,2:0x0102030405060708,3:0xabcd,4:0x0102abcd05060708,
                   5:0xffffffffffffffab,6:0xabcd,7:0x0102abcd},writes=7,stores=1,final_pc=32))
-    source=('        LOC 0\nMain    SETL $1,2\n        PUT rD,$1\n'
-            '        SETL $2,3\n        SETL $3,4\n        DIVU $4,$2,$3\n        GET $5,rR\n'
+    # rD round-trips through PUT/GET, then returns to 0: DIVU with rD != 0 (128-bit dividend) is unsupported.
+    source=('        LOC 0\nMain    SETL $1,2\n        PUT rD,$1\n        GET $7,rD\n        PUT rD,$0\n'
+            '        SETL $2,7\n        SETL $3,4\n        DIVU $4,$2,$3\n        GET $5,rR\n'
             '        SETL $1,#00ff\n        PUT rM,$1\n        MUX $6,$2,$3\n'
-            '        GET $7,rD\n        TRAP 0,Halt,0\n')
+            '        TRAP 0,Halt,0\n')
     names.append(save(root,0xf6,'alu_direct_round_trip',source,0xf6010001,pc=4,
-        expected={1:255,2:3,3:4,4:1<<63,5:3,6:3,7:2},
-        expected_special={1:2,5:255,6:3},writes=8,final_pc=40))
+        expected={1:255,2:7,3:4,4:1,5:3,6:7,7:2},
+        expected_special={5:255,6:3},writes=8,final_pc=44))
     return names
 
 

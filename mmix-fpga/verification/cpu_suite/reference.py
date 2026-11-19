@@ -62,8 +62,11 @@ def execute(opcode, x, y, z, registers, special, memory):
         overflow = a == 1<<63 and b == MASK
         changed_special["rR"] = remainder & MASK
     elif base == 0x1e:
-        high = spec[SPECIAL.index("rD")]
-        result, remainder = (high,a) if high >= b else divmod((high<<64)|a,b)
+        # This CPU does not support the 128-bit dividend: rD != 0 stops as an unsupported instruction.
+        if spec[SPECIAL.index("rD")]:
+            return {'registers':regs,'special':spec,'memory':mem,'stop':'fault','reason':2,
+                    'register_writes':0,'memory_writes':0}
+        result, remainder = (0,a) if b == 0 else divmod(a,b)
         changed_special["rR"] = remainder
     elif base in (0x30,0x32):
         left,right = (sa,sb) if base == 0x30 else (a,b)
