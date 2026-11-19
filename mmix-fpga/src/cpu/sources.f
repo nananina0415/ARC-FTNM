@@ -69,6 +69,7 @@ cpu/cache/s_3_cpu_5_cache_9_LineCache.v
 cpu/condition/s_3_cpu_9_condition_9_Condition.v
 cpu/control/s_3_cpu_7_control_12_StackControl.v
 cpu/control/s_3_cpu_7_control_13_RegisterMatch.v
+cpu/control/s_3_cpu_7_control_13_StackRequired.v
 cpu/control/s_3_cpu_7_control_15_RelativeAddress.v
 cpu/control/s_3_cpu_7_control_6_Branch.v
 cpu/control/s_3_cpu_7_control_7_Control.v
