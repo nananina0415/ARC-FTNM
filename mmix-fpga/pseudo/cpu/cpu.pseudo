@@ -18,7 +18,7 @@ seq Cpu {
     pub done: Out<bit,1>  // HALT 명령으로 정지
     pub fault: Out<bit,1>  // 오류로 정지
     pub fault_reason: Out<bit,3>  // [0] 페치/데이터 접근, [1] 미지원, [2] trip
-    pub trip_req: Out<bit,1>    // 유효한 지원 명령의 ALU 예외. 제어유닛이 처리
+    pub trip_req: Out<bit,1>    // POST의 유효한 ALU 명령이 trip을 일으킨다. 제어유닛이 처리
 
     mut alu: Alu
     mut reg: Registers
@@ -28,7 +28,7 @@ seq Cpu {
     mut read_select: ReadSelect
     address_add: Adder<WORD_SIZE>
     read1_slot: Mux<2,9>  // 레지스터 스택 내부 읽기는 9비트 슬롯을 직접 지정
-    ex_value_mux: Mux<3,WORD_SIZE>  // EX 결과: ALU / 주소 / GET 값
+    ex_value_mux: Mux<2,WORD_SIZE>  // EX 결과: ALU / 주소
     store_data_mux: Mux<2,WORD_SIZE>
     special_source: Mux<2,WORD_SIZE>
     special_select: Mux<2,5>  // SAVE/UNSAVE는 StackControl이 번호를 지정
@@ -37,6 +37,7 @@ seq Cpu {
     special_driver: TriState
     id_decode: InstructionDecode  // ID 단계: 페치 응답
     ex_decode: InstructionDecode  // EX 단계 명령
+    post_decode: InstructionDecode  // POST 단계 명령
     arg1_mux: Mux<3,WORD_SIZE>  // $r1 / unsigned Y / 0
     arg2_mux: Mux<3,WORD_SIZE>  // $Z / unsigned Z / shifted YZ
 }
@@ -51,13 +52,11 @@ wire Cpu {
     control.fault -> fault
     control.fault_reason -> fault_reason
     control.executed -> OPENED  // 검증 하네스가 관찰한다
-    control.decoded_valid <- and(ex_decode.control.valid, special_access.allowed)
+    ex_decode.control.valid -> control.decoded_valid
     ex_decode.control.halt -> control.decoded_halt
     ex_decode.control.memory -> control.decoded_memory
     ex_decode.control.store -> control.decoded_store
     ex_decode.control.store_constant -> control.decoded_store_constant
-    ex_decode.control.memory_size -> control.decoded_memory_size
-    ex_decode.control.load_unsigned -> control.decoded_load_unsigned
     ex_decode.control.address_get -> control.decoded_geta
     ex_decode.control.special_get -> control.decoded_get
     ex_decode.control.special_put -> control.decoded_put
@@ -65,27 +64,77 @@ wire Cpu {
     ex_decode.control.branch_unconditional -> control.branch_unconditional
     ex_decode.control.branch_condition -> control.branch_condition
     ex_decode.control.branch_offset -> control.branch_offset
-    alu.trip_req -> control.trip_req
+    control.trip -> trip_req
     control.alu_go -> alu.go
     control.alu_new -> alu.new
     alu.ready -> control.alu_ready
     alu.unsupported -> control.alu_unsupported
+    alu.res_w_en -> control.alu_write
+    alu.v -> control.alu_v
+    alu.d -> control.alu_d
+    alu.rH -> control.alu_rH
+    alu.rH_w_en -> control.alu_rH_write
+    alu.rR -> control.alu_rR
+    alu.rR_w_en -> control.alu_rR_write
 
     ex_decode.control.writes_x -> control.decoded_writes_x
     ex_decode.control.push -> control.decoded_push
-    ex_decode.control.push_go -> control.decoded_push_go
     ex_decode.control.go -> control.decoded_go
     ex_decode.control.pop -> control.decoded_pop
     ex_decode.control.put_g -> control.decoded_put_g
-    ex_decode.control.put_l -> control.decoded_put_l
     ex_decode.control.save -> control.decoded_save
     ex_decode.control.unsave -> control.decoded_unsave
     ex_decode.control.trap -> control.decoded_trap
     ex_decode.control.swym -> control.decoded_swym
-    reg.stack.rT_out -> control.stack_regs.rT_out
     ex_decode.control.w_sel -> control.decoded_x
-    reg.special.data -> control.stack_special_data
     special_source.selected -> control.special_value
+
+    // POST 해독기는 상태 쓰기, 레지스터 스택, 메모리 요청, 정지·방향 전환에 쓴다.
+    control.post_instruction -> post_decode.instruction
+    post_decode.instruction_valid <- and(control.post_valid, not(reset))
+    post_decode.control.halt -> control.post_halt
+    post_decode.control.memory -> control.post_memory
+    post_decode.control.store -> control.post_store
+    post_decode.control.memory_size -> control.post_memory_size
+    post_decode.control.load_unsigned -> control.post_load_unsigned
+    post_decode.control.special_get -> control.post_get
+    post_decode.control.special_put -> control.post_put
+    post_decode.control.put_l -> control.post_put_l
+    post_decode.control.branch -> control.post_branch
+    post_decode.control.branch_unconditional -> control.post_branch_unconditional
+    post_decode.control.go -> control.post_jump_go
+    post_decode.control.writes_x -> control.post_writes_x
+    post_decode.control.push -> control.post_push
+    post_decode.control.push_go -> control.post_push_go
+    post_decode.control.pop -> control.post_pop
+    post_decode.control.put_g -> control.post_put_g
+    post_decode.control.save -> control.post_save
+    post_decode.control.unsave -> control.post_unsave
+    post_decode.control.trap -> control.post_trap
+    special_access.allowed -> control.post_allowed
+    post_decode.control.valid -> OPENED
+    post_decode.control.unsupported -> OPENED
+    post_decode.control.store_constant -> OPENED
+    post_decode.control.address_get -> OPENED
+    post_decode.control.special_immediate -> OPENED
+    post_decode.control.branch_condition -> OPENED
+    post_decode.control.branch_offset -> OPENED
+    post_decode.control.swym -> OPENED
+    post_decode.control.alu_sel -> OPENED
+    post_decode.control.op -> OPENED
+    post_decode.control.r1_sel -> OPENED
+    post_decode.control.r2_sel -> OPENED
+    post_decode.control.arg1_imm -> OPENED
+    post_decode.control.arg2_imm -> OPENED
+    post_decode.control.arg1_zero -> OPENED
+    post_decode.control.arg2_wyde -> OPENED
+    post_decode.control.imm_y -> OPENED
+    post_decode.control.imm_z -> OPENED
+    post_decode.control.imm_yz -> OPENED
+    post_decode.control.imm_x -> OPENED
+
+    reg.stack.rT_out -> control.stack_regs.rT_out
+    reg.special.data -> control.stack_special_data
     reg.general.r1_data -> control.stack_r1_data
     reg.general.r1_valid -> control.stack_r1_valid
     reg.special.valid -> control.stack_special_valid
@@ -109,31 +158,34 @@ wire Cpu {
     control.stack_w_slot -> reg.general.stack_w_sel
     control.stack_w_data -> reg.general.stack_w_data
 
+    // GET/PUT/SAVE의 허용 범위는 POST 명령의 번호와 값으로 판정한다.
     reg.stack.rG_out -> special_access.g
     reg.stack.rL_out -> special_access.l
-    ex_decode.control.save -> special_access.save
-    ex_decode.control.w_sel -> special_access.x
+    post_decode.control.save -> special_access.save
+    post_decode.control.w_sel -> special_access.x
+    post_decode.control.special_get -> special_access.get
+    post_decode.control.special_put -> special_access.put
+    post_decode.control.special_index -> special_access.index
+    control.post_special_value -> special_access.value
+    // PUT 값은 EX에서 고르고 POST가 받아 둔다.
     special_source.select <- ex_decode.control.special_immediate
     special_source.option[0] <- control.operand_r2
     special_source.option[1] <- ex_decode.control.imm_z
-    ex_decode.control.special_get -> special_access.get
-    ex_decode.control.special_put -> special_access.put
-    ex_decode.control.special_index -> special_access.index
-    special_source.selected -> special_access.value
+    // 특수 레지스터 버스는 POST가 쓴다.
     reg.special.enable <- or(control.special_get_en, control.special_put_en, control.stack_special_en)
     special_select.select <- control.stack_special_en
-    special_select.option[0] <- ex_decode.control.special_index
+    special_select.option[0] <- post_decode.control.special_index
     special_select.option[1] <- control.stack_special_sel
     special_select.selected -> reg.special.sel
-    reg.special.rw <- and(not(ex_decode.control.special_put), not(control.stack_special_write))
+    reg.special.rw <- and(not(post_decode.control.special_put), not(control.stack_special_write))
     special_driver.enable <- or(control.special_put_en, control.stack_special_write)
     special_drive.select <- control.stack_special_write
-    special_drive.option[0] <- special_source.selected
+    special_drive.option[0] <- control.post_special_value
     special_drive.option[1] <- control.stack_special_value
     special_drive.selected -> special_driver.in
     special_driver.out -> reg.special.data
 
-    // ID 해독기는 레지스터 읽기 번호와 분기 예측에, EX 해독기는 실행에 쓴다.
+    // ID 해독기는 레지스터 읽기 번호와 분기 예측에, EX 해독기는 연산과 판정에 쓴다.
     fetch.control.instruction -> id_decode.instruction
     id_decode.instruction_valid <- and(fetch.control.res_valid, not(fetch.control.error), not(reset))
     id_decode.control.r1_sel -> control.id_r1_sel
@@ -179,8 +231,8 @@ wire Cpu {
     id_decode.control.imm_x -> OPENED
     control.ex_instruction -> ex_decode.instruction
     ex_decode.instruction_valid <- and(control.ex_valid, not(reset))
-    decoded.valid <- and(ex_decode.control.valid, special_access.allowed)
-    decoded.unsupported <- or(ex_decode.control.unsupported, and(ex_decode.control.valid, not(special_access.allowed)))
+    ex_decode.control.valid -> decoded.valid
+    ex_decode.control.unsupported -> decoded.unsupported
     ex_decode.control.halt -> decoded.halt
     ex_decode.control.memory -> decoded.memory
     ex_decode.control.store -> decoded.store
@@ -235,7 +287,7 @@ wire Cpu {
     reg.general.r1_data -> control.r1_data
 
     // NEG 계열의 Y와 즉치형의 Z는 unsigned byte를 64비트로 0 확장한 값.
-    // 레지스터 피연산자는 Control이 WB 값 전달까지 반영한 EX 단계 값이다.
+    // 레지스터 피연산자는 Control이 POST·WB 값 전달까지 반영한 EX 단계 값이다.
     arg1_mux.select[0] <- ex_decode.control.arg1_imm
     arg1_mux.select[1] <- ex_decode.control.arg1_zero
     arg1_mux.option[0] <- control.operand_r1
@@ -249,9 +301,6 @@ wire Cpu {
     arg2_mux.option[2] <- ex_decode.control.imm_yz
     arg2_mux.selected -> alu.arg2
 
-    // 명령 없음/페치 오류/미지원 명령/reset에서는 저장하지 않음.
-    alu.write_en <- and(control.execute_en, ex_decode.control.valid)
-    trip_req <- and(ex_decode.control.valid, alu.trip_req)
     address_add.a <- arg1_mux.selected
     address_add.b <- arg2_mux.selected
     address_add.c_in <- 0
@@ -261,27 +310,25 @@ wire Cpu {
     store_data_mux.option[0] <- control.operand_x
     store_data_mux.option[1] <- ex_decode.control.imm_x
     store_data_mux.selected -> control.store_data
-    // EX 결과는 Control이 WB 단계로 넘겨 쓴다. load 값은 WB에서 메모리 응답을 쓴다.
-    ex_value_mux.select[0] <- control.address_write_en
-    ex_value_mux.select[1] <- control.special_get_en
+    // EX 결과는 Control이 POST를 거쳐 WB 단계로 넘겨 쓴다. load 값은 WB에서 메모리 응답을 쓴다.
+    ex_value_mux.select <- control.address_write_en
     ex_value_mux.option[0] <- alu.res
     ex_value_mux.option[1] <- control.address_result
-    ex_value_mux.option[2] <- reg.special.data
     ex_value_mux.selected -> control.ex_value
-    control.ex_write <- or(alu.res_w_en, control.address_write_en, control.special_get_en)
     control.wb_sel -> reg.general.w_sel
     control.wb_data -> reg.general.w_data
     control.wb_en -> reg.general.w_en
 
-    reg.alu_direct.rA_in -> alu.spec_direct.rA_in
-    reg.alu_direct.rD_in -> alu.spec_direct.rD_in
-    reg.alu_direct.rM_in -> alu.spec_direct.rM_in
-    alu.spec_direct.rA_out -> reg.alu_direct.rA_out
-    alu.spec_direct.rA_w_en -> reg.alu_direct.rA_w_en
-    alu.spec_direct.rH_out -> reg.alu_direct.rH_out
-    alu.spec_direct.rH_w_en -> reg.alu_direct.rH_w_en
-    alu.spec_direct.rR_out -> reg.alu_direct.rR_out
-    alu.spec_direct.rR_w_en -> reg.alu_direct.rR_w_en
+    // rD·rM은 EX의 ALU가 읽고, rA·rH·rR은 POST가 쓴다.
+    reg.alu_direct.rD_in -> alu.rD
+    reg.alu_direct.rM_in -> alu.rM
+    reg.alu_direct.rA_in -> control.ra_in
+    control.ra_out -> reg.alu_direct.rA_out
+    control.ra_w_en -> reg.alu_direct.rA_w_en
+    control.rh_out -> reg.alu_direct.rH_out
+    control.rh_w_en -> reg.alu_direct.rH_w_en
+    control.rr_out -> reg.alu_direct.rR_out
+    control.rr_w_en -> reg.alu_direct.rR_w_en
 
     control.fetch.req_valid -> fetch.control.req_valid
     control.fetch.req_pc -> fetch.control.req_pc

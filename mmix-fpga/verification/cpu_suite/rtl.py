@@ -53,10 +53,10 @@ def bench(rtl):
         lines.append(f'assign s[{i}]={path};')
     aliases = {'clk':p('clock'), 'rst':p('reset'), 'calib':p('init_calib_complete'),
                'done':p('done'), 'fault':p('fault'), 'reason':p('fault_reason'),
-               # pc: PC of the instruction that stopped (HALT or fault). executed/expc: an EX
+               # pc: PC of the instruction that stopped (HALT or fault). executed/expc: a POST
                # instruction ran this clock (not flushed) and its PC.
                'pc':ctl+inst('pc')+'.'+p('out'), 'executed':ctl+p('executed'),
-               'expc':ctl+inst('ex_pc')+'.'+p('out'),
+               'expc':ctl+inst('post_pc')+'.'+p('out'),
                'wen':reg+p('general','w_en'),
                # Both caches clear their valid bits for 512 clocks after reset.
                'cache_ready':'(dut.'+inst('fetch')+'.'+inst('cache')+'.'+p('ready')+' && dut.'

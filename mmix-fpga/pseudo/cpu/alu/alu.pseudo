@@ -7,7 +7,9 @@ bundle AluSelect: In<bit,3>
 // [0]: V event, [1]: D event, [2]: V enable, [3]: D enable
 bundle RaBits: In<bit,4>
 
-bundle AluDirectIO {  // Alu 입장
+// Registers의 alu_direct가 *AluDirectIO로 가진다. rD·rM은 EX의 ALU가 읽고,
+// rA·rH·rR은 연산 후처리(Control의 POST)가 쓴다.
+bundle AluDirectIO {  // 레지스터를 읽고 쓰는 쪽 입장
     rA_in:   RaBits
     rA_out:  *RaBits
     rA_w_en: Out<bit,1>
@@ -22,6 +24,7 @@ bundle AluDirectIO {  // Alu 입장
 }
 
 // MUL·DIV는 여러 클록 걸리는 순차 유닛이라 Alu도 seq다. 나머지 유닛은 같은 클록에 결과를 낸다.
+// Alu는 연산만 한다. 결과와 V·D 이벤트, rH·rR 값을 내고, 상태 쓰기와 trip 판정은 Control의 POST가 한다.
 // 내부에 번들 삽입시 pub 붙이기
 
 seq Alu {
@@ -33,14 +36,19 @@ seq Alu {
     pub unsupported: Out<bit,1>  // 실행 시점에 판정한 미지원(DIVU의 rD != 0)
     pub alu_sel: AluSelect
     pub op: In<bit,4>  // 선택된 하위 유닛 안의 연산
-    pub write_en: In<bit,1>  // 제어유닛이 결과 저장 사이클에만 1
     pub arg1: WordIn
     pub arg2: WordIn
     pub res:  WordOut
-    pub res_w_en: Out<bit,1>  // res를 레지스터에 쓸지. 제어유닛이 사용
+    pub res_w_en: Out<bit,1>  // res를 $X에 쓰는 연산이면 1(거짓 조건의 CS*는 0)
 
-    pub spec_direct: AluDirectIO
-    pub trip_req: Out<bit,1>  // 트립 발생은 제어가 처리. ready일 때만 의미가 있다
+    pub rD: WordIn  // DIVU 피제수 상위 64비트
+    pub rM: WordIn  // MUX 마스크
+    pub v: Out<bit,1>  // 선택된 유닛의 V(오버플로) 이벤트. ready일 때만 의미가 있다
+    pub d: Out<bit,1>  // 선택된 유닛의 D(0으로 나눔) 이벤트
+    pub rH: WordOut  // MULU 곱 상위 64비트
+    pub rH_w_en: Out<bit,1>  // MULU면 1
+    pub rR: WordOut  // DIV/DIVU 나머지
+    pub rR_w_en: Out<bit,1>  // DIV/DIVU면 1
 
     addsub: AddSub
     mut mul: Mul
@@ -49,8 +57,6 @@ seq Alu {
     bitwise: Bitwise
     shift: Shift
     cond: Cond
-
-    exc: ExcCheck
 
     alu_res_mux: Mux<7,WORD_SIZE>
     alu_w_en_mux: Mux<7,1>
@@ -88,7 +94,7 @@ wire Alu {
     alu_sel[0,1,2] -> alu_w_en_mux.select[0,1,2]
     { alu_w_en_mux.option[ADD_SUB, MUL, DIV, COMP, BITWISE, SHIFT] } <= 1
     alu_w_en_mux.option[COND] <- cond.res_w_en
-    res_w_en <- and(write_en, alu_w_en_mux.selected)
+    alu_w_en_mux.selected -> res_w_en
 
     arg1[0..WORD_SIZE] => { // 각각배선
         addsub.arg1,
@@ -126,30 +132,26 @@ wire Alu {
     unsupported <- and(sel_alu_op.out[DIV], div.unsupported)
 
     // 특수 레지스터
-    spec_direct.rD_in -> div.rD
-    spec_direct.rM_in -> bitwise.rM
+    rD -> div.rD
+    rM -> bitwise.rM
 
-    mul.rH              -> spec_direct.rH_out
-    spec_direct.rH_w_en <- and(write_en, mul.rH_w_en, sel_alu_op.out[MUL])
-    div.rR              -> spec_direct.rR_out
-    spec_direct.rR_w_en <- and(write_en, div.rR_w_en, sel_alu_op.out[DIV])
+    mul.rH -> rH
+    rH_w_en <- and(mul.rH_w_en, sel_alu_op.out[MUL])
+    div.rR -> rR
+    rR_w_en <- and(div.rR_w_en, sel_alu_op.out[DIV])
 
-    // 예외: 유닛들이 동시에 계산하므로 선택된 유닛의 이벤트만 반영
-    exc.v <- or(
+    // 예외 이벤트: 유닛들이 동시에 계산하므로 선택된 유닛의 이벤트만 낸다
+    v <- or(
         and(addsub.v, sel_alu_op.out[ADD_SUB]),
         and(mul.v,    sel_alu_op.out[MUL]),
         and(div.v,    sel_alu_op.out[DIV]),
         and(shift.v,  sel_alu_op.out[SHIFT]),
     )
-    exc.d <- and(div.d, sel_alu_op.out[DIV])
-
-    exc.ra_in    <- spec_direct.rA_in
-    exc.ra_out   -> spec_direct.rA_out
-    spec_direct.rA_w_en <- and(write_en, exc.ra_w_en)
-    exc.trip_req -> trip_req
+    d <- and(div.d, sel_alu_op.out[DIV])
 }
 
-// D/V 예외 발생 시 enable=0이면 event 비트 설정, enable=1이면 trip_req
+// D/V 예외 발생 시 enable=0이면 event 비트 설정, enable=1이면 trip_req.
+// Control의 POST가 ALU 명령의 이벤트와 현재 rA로 판정한다.
 comb ExcCheck {
     pub d: In<bit,1>
     pub v: In<bit,1>

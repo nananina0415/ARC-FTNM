@@ -1,6 +1,6 @@
-// 레지스터 스택과 TRAP의 여러 클록 동작을 수행한다. EXECUTE에서 required=1이면 Control이
-// STACK 상태로 넘어오고, start=1인 에지부터 이 FSM이 진행한다.
-// retry: EXECUTE를 다시 수행, retire: 명령 완료, access_fault: 정지.
+// 레지스터 스택과 TRAP의 여러 클록 동작을 수행한다. StackRequired가 판정한 명령이 POST에서
+// 단독 실행될 때 start=1인 에지부터 이 FSM이 진행한다.
+// retry: 같은 명령을 다시 실행, retire: 명령 완료, access_fault: 정지.
 // 로컬 ring은 슬롯 0..255(크기 256), 글로벌 $k는 슬롯 256+k다(reg/stack.pseudo).
 // alpha = rO[3..11], gamma = rS[3..11]이며 8비트 덧셈이 그대로 mod 256이다.
 seq StackControl {
@@ -37,7 +37,6 @@ seq StackControl {
     pub rS_in: WordOut
     pub rS_w_en: Out<bit,1>
 
-    pub required: Out<bit,1>
     pub retry: Out<bit,1>
     pub retire: Out<bit,1>
     pub push_retire: Out<bit,1>
@@ -258,8 +257,6 @@ wire StackControl {
 
     clock => { state.clock, y.clock, k.clock, index.clock, phase.clock, gather.clock, fill_count.clock, words[0..4].clock, save_word.clock, save_armed.clock }
     reset => { state.reset, y.reset, k.reset, index.reset, phase.reset, gather.reset, fill_count.reset, words[0..4].reset, save_word.reset, save_armed.reset }
-
-    required <- or(need_grow, push, pop, put_g, save, unsave, trap)
 
     // 번호 비교
     x -> x_vs_g.a

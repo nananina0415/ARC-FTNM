@@ -120,7 +120,7 @@ class Checks:
             vectors = [(a, b) for a in edge for b in edge]
             vectors += [(rng.getrandbits(64), rng.getrandbits(64)) for _ in range(64)]
             for a, b in vectors:
-                rd, mask, ra, enable = rng.getrandbits(64), rng.getrandbits(64), rng.randrange(16), rng.randrange(2)
+                rd, mask = rng.getrandbits(64), rng.getrandbits(64)
                 if unit == 2 and op == 1 and cases % 2:
                     rd = 0  # 128-bit DIVU (rD != 0) is unsupported; half the DIVU vectors use rD = 0
                 unsupported = unit == 2 and op == 1 and rd != 0
@@ -159,13 +159,9 @@ class Checks:
                 else:
                     condition = [sa < 0, a == 0, sa > 0, bool(a & 1), sa >= 0, a != 0, sa <= 0, not(a & 1)][op & 7]
                     result, write = b if condition else 0, bool(condition or op & 8)
-                trip = (overflow and bool(ra & 4)) or (divide_zero and bool(ra & 8))
-                ra_write = (overflow and not(ra & 4)) or (divide_zero and not(ra & 8))
-                ra_out = ra | (1 if overflow and not(ra & 4) else 0) | (2 if divide_zero and not(ra & 8) else 0)
                 lines += [f"@(negedge {clock});",
                           assign(("alu_sel",), unit, 3), assign(("op",), op, 4), assign(("arg1",), a), assign(("arg2",), b),
-                          assign(("write_en",), enable, 1), assign(("spec_direct", "rA_in"), ra, 4),
-                          assign(("spec_direct", "rD_in"), rd), assign(("spec_direct", "rM_in"), mask),
+                          assign(("rD",), rd), assign(("rM",), mask),
                           f"{new}=1; {go}=1; #1; wait_limit=0;",
                           f"while ({ready} !== 1'b1) begin @(posedge {clock}); #1; {new}=0; wait_limit=wait_limit+1;"
                           f" if (wait_limit > 200) $fatal(1, \"ALU case {cases}: no ready\"); end",
@@ -173,15 +169,15 @@ class Checks:
                 if unsupported:
                     cases += 1
                     continue
-                lines += [check(("res",), result & MASK), check(("res_w_en",), int(write and enable), 1),
-                          check(("trip_req",), int(trip), 1), check(("spec_direct", "rA_out"), ra_out, 4),
-                          check(("spec_direct", "rA_w_en"), int(ra_write and enable), 1),
-                          check(("spec_direct", "rH_w_en"), int(unit == 1 and op == 1 and enable), 1),
-                          check(("spec_direct", "rR_w_en"), int(unit == 2 and enable), 1)]
+                # V·D events only; rA updates and trips are decided by Control's POST stage.
+                lines += [check(("res",), result & MASK), check(("res_w_en",), int(write), 1),
+                          check(("v",), int(overflow), 1), check(("d",), int(divide_zero), 1),
+                          check(("rH_w_en",), int(unit == 1 and op == 1), 1),
+                          check(("rR_w_en",), int(unit == 2), 1)]
                 if unit == 1:
-                    lines.append(check(("spec_direct", "rH_out"), high))
+                    lines.append(check(("rH",), high))
                 if unit == 2:
-                    lines.append(check(("spec_direct", "rR_out"), rem & MASK))
+                    lines.append(check(("rR",), rem & MASK))
                 cases += 1
         lines += [f"{go}=0;", f'$display("PASS ALU: {cases} independent vectors");', "$finish; end endmodule"]
         self.simulate("alu", "\n".join(lines))
