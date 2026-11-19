@@ -86,8 +86,9 @@ class Checks:
         sys.path.insert(0, str(ROOT))
         from crosscompiler.compiler import Compiler
         compiler = Compiler(ROOT / "pseudo", ROOT / "pseudo/grammar.peg")
-        first, _, warnings = compiler.build("cpu::Cpu")
-        second, _, _ = compiler.build("cpu::Cpu")
+        # sources.f lists third-party files relative to the output folder, so build for self.rtl.
+        first, _, warnings = compiler.build("cpu::Cpu", out_dir=self.rtl)
+        second, _, _ = compiler.build("cpu::Cpu", out_dir=self.rtl)
         if warnings or first != second:
             raise RuntimeError("Compiler output is non-deterministic or has warnings")
         for name, contents in first.items():
@@ -102,7 +103,10 @@ class Checks:
         module = next(m for m in self.modules if any(p["path"] == ["arg1"] for p in m["ports"])
                       and m["source"] and m["source"]["file"] == "cpu/alu/alu.pseudo")
         lines = ["`timescale 1ns/1ps", "module tb;"] + self.declaration(module)
-        lines += ["integer count=0;", "initial begin"]
+        clock, reset, go, new, ready = (enc('port', x) for x in ('clock', 'reset', 'go', 'new', 'ready'))
+        # MUL/DIV take several clocks: each vector starts with new=go=1 and is checked once ready=1.
+        lines += ["integer count=0, wait_limit=0;", f"initial {clock}=0; always #5 {clock}=~{clock};", "initial begin",
+                  f"{reset}=1; {go}=0; {new}=0; repeat(3) @(negedge {clock}); {reset}=0;"]
         rng = random.Random(20261102)
         operations = [(0, op) for op in range(10)] + [(unit, op) for unit in (1, 2, 3) for op in range(2)]
         operations += [(4, op) for op in (0, 1, 2, 3, 4, 5, 6, 7, 12)] + [(5, op) for op in range(4)] + [(6, op) for op in range(16)]
@@ -118,7 +122,8 @@ class Checks:
             for a, b in vectors:
                 rd, mask, ra, enable = rng.getrandbits(64), rng.getrandbits(64), rng.randrange(16), rng.randrange(2)
                 if unit == 2 and op == 1 and cases % 2:
-                    rd = rng.randrange(b) if b else 0
+                    rd = 0  # 128-bit DIVU (rD != 0) is unsupported; half the DIVU vectors use rD = 0
+                unsupported = unit == 2 and op == 1 and rd != 0
                 result, overflow, divide_zero, write, high, rem = 0, False, False, True, 0, 0
                 sa, sb = signed(a), signed(b)
                 if unit == 0:
@@ -134,10 +139,10 @@ class Checks:
                         result, rem = (sa // sb, sa % sb) if b else (0, a)
                         divide_zero = b == 0
                         overflow = a == 1 << 63 and b == MASK
-                    elif rd >= b:
-                        result, rem = rd, a
+                    elif b == 0:
+                        result, rem = 0, a
                     else:
-                        result, rem = divmod((rd << 64) | a, b)
+                        result, rem = divmod(a, b)
                 elif unit == 3:
                     x, y = (sa, sb) if op == 0 else (a, b)
                     result = (x > y) - (x < y)
@@ -157,10 +162,18 @@ class Checks:
                 trip = (overflow and bool(ra & 4)) or (divide_zero and bool(ra & 8))
                 ra_write = (overflow and not(ra & 4)) or (divide_zero and not(ra & 8))
                 ra_out = ra | (1 if overflow and not(ra & 4) else 0) | (2 if divide_zero and not(ra & 8) else 0)
-                lines += [assign(("alu_sel",), unit, 3), assign(("op",), op, 4), assign(("arg1",), a), assign(("arg2",), b),
+                lines += [f"@(negedge {clock});",
+                          assign(("alu_sel",), unit, 3), assign(("op",), op, 4), assign(("arg1",), a), assign(("arg2",), b),
                           assign(("write_en",), enable, 1), assign(("spec_direct", "rA_in"), ra, 4),
-                          assign(("spec_direct", "rD_in"), rd), assign(("spec_direct", "rM_in"), mask), "#1;",
-                          check(("res",), result & MASK), check(("res_w_en",), int(write and enable), 1),
+                          assign(("spec_direct", "rD_in"), rd), assign(("spec_direct", "rM_in"), mask),
+                          f"{new}=1; {go}=1; #1; wait_limit=0;",
+                          f"while ({ready} !== 1'b1) begin @(posedge {clock}); #1; {new}=0; wait_limit=wait_limit+1;"
+                          f" if (wait_limit > 200) $fatal(1, \"ALU case {cases}: no ready\"); end",
+                          check(("unsupported",), int(unsupported), 1)]
+                if unsupported:
+                    cases += 1
+                    continue
+                lines += [check(("res",), result & MASK), check(("res_w_en",), int(write and enable), 1),
                           check(("trip_req",), int(trip), 1), check(("spec_direct", "rA_out"), ra_out, 4),
                           check(("spec_direct", "rA_w_en"), int(ra_write and enable), 1),
                           check(("spec_direct", "rH_w_en"), int(unit == 1 and op == 1 and enable), 1),
@@ -170,7 +183,7 @@ class Checks:
                 if unit == 2:
                     lines.append(check(("spec_direct", "rR_out"), rem & MASK))
                 cases += 1
-        lines += [f'$display("PASS ALU: {cases} independent vectors");', "$finish; end endmodule"]
+        lines += [f"{go}=0;", f'$display("PASS ALU: {cases} independent vectors");', "$finish; end endmodule"]
         self.simulate("alu", "\n".join(lines))
 
     def cpu(self):

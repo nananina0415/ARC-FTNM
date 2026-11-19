@@ -20,7 +20,7 @@ seq Cpu {
     pub fault_reason: Out<bit,3>  // [0] 페치/데이터 접근, [1] 미지원, [2] trip
     pub trip_req: Out<bit,1>    // 유효한 지원 명령의 ALU 예외. 제어유닛이 처리
 
-    alu: Alu
+    mut alu: Alu
     mut reg: Registers
     mut fetch: Fetch
     mut control: Control
@@ -42,8 +42,8 @@ seq Cpu {
 }
 
 wire Cpu {
-    clock => { reg.clock, fetch.clock, control.clock, memory.clock, read_select.clock }
-    reset => { reg.reset, fetch.reset, control.reset, memory.reset, read_select.reset }
+    clock => { reg.clock, fetch.clock, control.clock, memory.clock, read_select.clock, alu.clock }
+    reset => { reg.reset, fetch.reset, control.reset, memory.reset, read_select.reset, alu.reset }
     init_calib_complete => { fetch.ram_ready, memory.ram_ready }
     memory.instruction_invalidate -> fetch.invalidate
     memory.instruction_invalidate_address -> fetch.invalidate_address
@@ -66,6 +66,10 @@ wire Cpu {
     ex_decode.control.branch_condition -> control.branch_condition
     ex_decode.control.branch_offset -> control.branch_offset
     alu.trip_req -> control.trip_req
+    control.alu_go -> alu.go
+    control.alu_new -> alu.new
+    alu.ready -> control.alu_ready
+    alu.unsupported -> control.alu_unsupported
 
     ex_decode.control.writes_x -> control.decoded_writes_x
     ex_decode.control.push -> control.decoded_push

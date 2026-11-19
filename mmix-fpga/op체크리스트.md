@@ -36,7 +36,7 @@
 | [ ] | [x] | #1B | MULUI | MULU 즉치 |
 | [ ] | [x] | #1C | DIV | 몫 $X, 나머지 rR (signed, 0나눗셈 D, 오버플로 V) |
 | [ ] | [x] | #1D | DIVI | DIV 즉치 |
-| [ ] | [x] | #1E | DIVU | (rD:$Y) ÷ $Z. 몫 $X, 나머지 rR (예외 없음) |
+| [ ] | [x] | #1E | DIVU | (rD:$Y) ÷ $Z. 몫 $X, 나머지 rR (예외 없음). rD ≠ 0(128비트 피제수)은 미지원 명령 fault |
 | [ ] | [x] | #1F | DIVUI | DIVU 즉치 |
 | [ ] | [x] | #20 | ADD | $X = $Y + $Z (signed, 오버플로 시 V) |
 | [ ] | [x] | #21 | ADDI | ADD 즉치 |

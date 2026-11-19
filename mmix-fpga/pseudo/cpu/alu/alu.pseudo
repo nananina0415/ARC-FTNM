@@ -21,10 +21,16 @@ bundle AluDirectIO {  // Alu 입장
     rR_w_en: Out<bit,1>
 }
 
-// 조합회로
+// MUL·DIV는 여러 클록 걸리는 순차 유닛이라 Alu도 seq다. 나머지 유닛은 같은 클록에 결과를 낸다.
 // 내부에 번들 삽입시 pub 붙이기
 
-comb Alu {
+seq Alu {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub go: In<bit,1>     // EX 명령의 피연산자가 유효한 클록
+    pub new: In<bit,1>    // EX에 새 명령이 들어온 첫 클록
+    pub ready: Out<bit,1>  // 선택된 유닛의 결과가 유효. MUL·DIV 외에는 항상 1
+    pub unsupported: Out<bit,1>  // 실행 시점에 판정한 미지원(DIVU의 rD != 0)
     pub alu_sel: AluSelect
     pub op: In<bit,4>  // 선택된 하위 유닛 안의 연산
     pub write_en: In<bit,1>  // 제어유닛이 결과 저장 사이클에만 1
@@ -34,11 +40,11 @@ comb Alu {
     pub res_w_en: Out<bit,1>  // res를 레지스터에 쓸지. 제어유닛이 사용
 
     pub spec_direct: AluDirectIO
-    pub trip_req: Out<bit,1>  // 트립 발생은 제어가 처리
+    pub trip_req: Out<bit,1>  // 트립 발생은 제어가 처리. ready일 때만 의미가 있다
 
     addsub: AddSub
-    mul: Mul
-    div: Div
+    mut mul: Mul
+    mut div: Div
     comp: Compare
     bitwise: Bitwise
     shift: Shift
@@ -105,6 +111,19 @@ wire Alu {
 
     alu_sel[0,1,2] -> sel_alu_op.in[0,1,2]
     sel_alu_op.out[COMP,BITWISE,COND,7] -> OPENED
+
+    // 여러 클록 유닛
+    clock => { mul.clock, div.clock }
+    reset => { mul.reset, div.reset }
+    new => { mul.new, div.new }
+    mul.go <- and(go, sel_alu_op.out[MUL])
+    div.go <- and(go, sel_alu_op.out[DIV])
+    ready <- or(
+        and(sel_alu_op.out[MUL], mul.ready),
+        and(sel_alu_op.out[DIV], div.ready),
+        not(or(sel_alu_op.out[MUL], sel_alu_op.out[DIV])),
+    )
+    unsupported <- and(sel_alu_op.out[DIV], div.unsupported)
 
     // 특수 레지스터
     spec_direct.rD_in -> div.rD

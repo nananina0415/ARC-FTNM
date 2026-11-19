@@ -78,6 +78,10 @@ seq Control {
     pub effective_address: WordIn  // operand_r1 + operand_r2(또는 즉치)
     pub store_data: WordIn
     pub trip_req: In<bit,1>
+    pub alu_go: Out<bit,1>      // EX 명령의 피연산자가 유효한 클록
+    pub alu_new: Out<bit,1>     // EX에 새 명령이 들어온 첫 클록
+    pub alu_ready: In<bit,1>    // ALU 결과 유효(MUL·DIV는 여러 클록 뒤)
+    pub alu_unsupported: In<bit,1>  // 실행 시점 미지원(DIVU의 rD != 0)
 
     // EX 결과. ex_value/ex_write는 CPU가 아래 enable로 고른 값이다.
     pub execute_en: Out<bit,1>  // ALU 명령이 EX를 지나는 클록
@@ -126,6 +130,7 @@ seq Control {
     mut ex_r2: reg::ValueReg<8>
     mut ex_x: reg::ValueReg<8>
     mut ex_read: reg::ValueReg<1>  // 단독 실행 명령이 EX에서 레지스터·특수 레지스터를 읽는 한 클록을 지났다
+    mut ex_new: reg::ValueReg<1>  // EX 명령이 들어온 첫 클록
     mut ex_stack: reg::ValueReg<1>  // StackControl 실행 중
     mut op_r1: reg::ValueReg<WORD_SIZE>
     mut op_r2: reg::ValueReg<WORD_SIZE>
@@ -182,7 +187,7 @@ wire Control {
         pc.clock, reason.clock, halted.clock, failed.clock, fetch_pc.clock, fetch_sent.clock,
         rf_valid.clock, rf_pc.clock, rf_instruction.clock, rf_error.clock, rf_r1.clock, rf_r2.clock, rf_x.clock,
         ex_full.clock, ex_pc.clock, ex_instruction_q.clock, ex_error.clock, ex_r1.clock, ex_r2.clock, ex_x.clock,
-        ex_read.clock, ex_stack.clock, op_r1.clock, op_r2.clock, op_x.clock,
+        ex_read.clock, ex_new.clock, ex_stack.clock, op_r1.clock, op_r2.clock, op_x.clock,
         wb_valid.clock, wb_pc.clock, wb_dest.clock, wb_write.clock, wb_value.clock, wb_mem.clock, wb_load.clock,
         stack.clock,
     }
@@ -190,7 +195,7 @@ wire Control {
         pc.reset, reason.reset, halted.reset, failed.reset, fetch_pc.reset, fetch_sent.reset,
         rf_valid.reset, rf_pc.reset, rf_instruction.reset, rf_error.reset, rf_r1.reset, rf_r2.reset, rf_x.reset,
         ex_full.reset, ex_pc.reset, ex_instruction_q.reset, ex_error.reset, ex_r1.reset, ex_r2.reset, ex_x.reset,
-        ex_read.reset, ex_stack.reset, op_r1.reset, op_r2.reset, op_x.reset,
+        ex_read.reset, ex_new.reset, ex_stack.reset, op_r1.reset, op_r2.reset, op_x.reset,
         wb_valid.reset, wb_pc.reset, wb_dest.reset, wb_write.reset, wb_value.reset, wb_mem.reset, wb_load.reset,
         stack.reset,
     }
@@ -210,8 +215,11 @@ wire Control {
     // ---- EX 분류 ----
     alias non_alu = or(decoded_branch, decoded_geta, decoded_go, decoded_get, decoded_put, decoded_push, decoded_pop, decoded_save, decoded_unsave, decoded_trap, decoded_swym)
     alias serial = or(decoded_halt, decoded_get, decoded_put, stack.required)
-    alias trip = and(not(decoded_memory), not(decoded_halt), not(non_alu), trip_req)
-    alias bad = or(ex_error.out, not(decoded_valid), trip)
+    // ALU 예외와 실행 시점 미지원은 ALU 결과가 유효한 클록에만 판정한다.
+    alias alu_op = and(not(decoded_memory), not(decoded_halt), not(non_alu))
+    alias trip = and(alu_op, alu_ready, trip_req)
+    alias unsupported_now = and(alu_op, alu_ready, alu_unsupported)
+    alias bad = or(ex_error.out, not(decoded_valid), trip, unsupported_now)
     alias s_mode = and(ex_full.out, serial)
 
     // load 결과는 WB에서야 나오므로 그 값을 읽는 EX 명령은 한 클록 기다린다(그동안 피연산자에 받아 둔다).
@@ -220,7 +228,8 @@ wire Control {
     alias ex_go = and(run, ex_full.out, wb_free, not(load_use), not(ex_stack.out))
     alias fault_ex = and(ex_go, bad)
     alias normal = and(ex_go, not(bad), not(serial))
-    alias normal_exec = and(normal, not(decoded_memory))
+    // MUL·DIV는 ALU 결과가 나올 때까지 EX에 머문다.
+    alias normal_exec = and(normal, not(decoded_memory), or(not(alu_op), alu_ready))
     alias mem_issue = and(normal, decoded_memory)
     alias mem_advance = and(mem_issue, memory.req_ready)
     // 단독 실행: 첫 클록에 EX가 자기 번호로 레지스터·특수 레지스터를 읽고 다음 클록부터 실행한다.
@@ -270,6 +279,10 @@ wire Control {
     ex_valid <- and(ex_full.out, not(ex_error.out))
     ex_read.w_en <- 1
     ex_read.in <- and(not(rf_advance), ex_full.out, not(ex_advance), not(stack_retry), or(ex_read.out, and(ex_go, serial)))
+    ex_new.w_en <- 1
+    ex_new.in <- rf_advance
+    alu_go <- ex_go
+    alu_new <- ex_new.out
     ex_stack.w_en <- 1
     ex_stack.in <- or(stack_start, and(ex_stack.out, not(or(stack.retire, stack.retry, stack.access_fault))))
 
@@ -506,7 +519,7 @@ wire Control {
     pc.out -> OPENED  // 회로에서는 쓰지 않고 검증 하네스가 관찰한다
     reason.w_en <- fault_any
     reason.in[0] <- or(and(fault_ex, ex_error.out), wb_fault, stack_fault)
-    reason.in[1] <- and(fault_ex, not(ex_error.out), not(decoded_valid))
+    reason.in[1] <- and(fault_ex, not(ex_error.out), or(not(decoded_valid), unsupported_now))
     reason.in[2] <- and(fault_ex, not(ex_error.out), decoded_valid, trip)
     reason.out -> fault_reason
     // 진행 중인 페치 AXI 읽기가 끝난 뒤 정지를 알린다.

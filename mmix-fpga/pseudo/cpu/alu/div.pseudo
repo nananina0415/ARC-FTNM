@@ -1,9 +1,22 @@
 // 나눗셈 유닛. 즉치는 제어유닛이 arg로 주입
 // DIV:  y = arg1, z = arg2. 몫 ⌊y/z⌋, 나머지는 0이거나 z와 부호가 같음
-// DIVU: (rD:arg1) / arg2. rD >= arg2 이면 몫 = rD, 나머지 = arg1
-// unsigned Divider 하나를 공유하고, DIV는 절댓값으로 나눈 뒤 부호를 보정
+// DIVU: (rD:arg1) / arg2. 128비트 피제수는 지원하지 않는다: rD != 0이면 unsupported=1(미지원 명령)
+//
+// IterDivider(OpenC906 aq_iu_div)로 몫을 구한 뒤 같은 피연산자로 나머지를 요청한다(IP 버퍼 적중, 1클록).
+// IP는 몫을 0 쪽으로 자르고 0으로 나누면 몫을 모든 비트 1로 낸다. MMIX 규칙으로 보정한다.
+// - z = 0: 몫 0, 나머지 y (DIV는 D 이벤트)
+// - DIV: 나머지 != 0 이고 나머지와 z의 부호가 다르면 몫 - 1, 나머지 + z (내림)
+// - DIV: -2^63 / -1은 IP 몫 -2^63, 나머지 0 그대로이며 V 이벤트
+// go인 클록에 시작하고 몫·나머지를 모두 받은 다음 클록부터 ready=1이다.
+// 그동안 arg는 바뀌지 않아야 한다(EX가 멈춰 유지한다). new는 진행 상태를 지운다.
 
-comb Div {
+seq Div {
+    pub clock: In<bit,1>
+    pub reset: In<bit,1>
+    pub go:   In<bit,1>   // 피연산자가 유효하고 이 유닛이 선택된 클록
+    pub new:  In<bit,1>   // 새 명령의 첫 클록
+    pub ready: Out<bit,1>
+    pub unsupported: Out<bit,1>  // DIVU에서 rD != 0
     pub op:   In<bit,1>
     pub arg1: WordIn
     pub arg2: WordIn
@@ -16,31 +29,16 @@ comb Div {
     pub rR_w_en: Out<bit,1>
 
     sel_op:  Decoder<1,2>
-    divider: Divider<WORD_SIZE>
+    mut divider: IterDivider<WORD_SIZE>
+    mut state: reg::ValueReg<3>
+    mut quotient: reg::ValueReg<WORD_SIZE>
+    mut remainder: reg::ValueReg<WORD_SIZE>
 
-    // DIV 절댓값: 음수면 반전 + 1
-    y_inv_mux: Mux<2,WORD_SIZE>
-    abs_y:     Adder<WORD_SIZE>
-    z_inv_mux: Mux<2,WORD_SIZE>
-    abs_z:     Adder<WORD_SIZE>
-
-    dividend_mux: Mux<2,2*WORD_SIZE>
-    divisor_mux:  Mux<2,WORD_SIZE>
-
-    // DIV 몫 보정
-    q_inv_mux: Mux<2,WORD_SIZE>
-    q_adj:     Adder<WORD_SIZE>
-
-    // DIV 나머지 보정
-    zr_sub:    Adder<WORD_SIZE>  // |z| - r0
-    r_mag_mux: Mux<2,WORD_SIZE>
-    r_inv_mux: Mux<2,WORD_SIZE>
-    r_adj:     Adder<WORD_SIZE>
-
-    rd_cmp: Adder<WORD_SIZE>  // DIVU: rD - arg2, c_out = (rD >= arg2)
-
-    res_mux: Mux<4,WORD_SIZE>
-    rR_mux:  Mux<4,WORD_SIZE>
+    q_adj: Adder<WORD_SIZE>
+    r_add: Mux<2,WORD_SIZE>
+    r_adj: Adder<WORD_SIZE>
+    res_mux: Mux<2,WORD_SIZE>
+    rR_mux:  Mux<2,WORD_SIZE>
 }
 
 wire Div {
@@ -48,102 +46,85 @@ wire Div {
         DIV = 0
         DIVU = 1
     }
+    alias {
+        IDLE = 0
+        Q_WAIT = 1
+        R_ISSUE = 2
+        R_WAIT = 3
+        DONE = 4
+    }
     alias sy = arg1[WORD_MSB]  // y 부호
     alias sz = arg2[WORD_MSB]  // z 부호
-    alias diff = xor(sy, sz)
-    alias r_nz = or(divider.remainder[0..WORD_SIZE])
-
     alias z_zero = not(or(arg2[0..WORD_SIZE]))
     alias y_min  = and(sy, not(or(arg1[0..WORD_MSB])))  // y = -2^63
     alias z_m1   = and(arg2[0..WORD_SIZE])              // z = -1
 
+    clock => { divider.clock, state.clock, quotient.clock, remainder.clock }
+    reset => { divider.reset, state.reset, quotient.reset, remainder.reset }
     op -> sel_op.in
 
-    // |y|, |z|
-    y_inv_mux.select    <- sy
-    y_inv_mux.option[0] <- arg1
-    y_inv_mux.option[1] <- not(arg1)
-    abs_y.a     <- y_inv_mux.selected
-    abs_y.b     <- 0
-    abs_y.c_in  <- sy
-    abs_y.c_out -> OPENED
+    // 상태. new인 클록은 이전 명령의 상태를 IDLE로 본다.
+    alias s0 = state.out[0]
+    alias s1 = state.out[1]
+    alias s2 = state.out[2]
+    alias fsm_idle = or(new, and(not(s0), not(s1), not(s2)))
+    alias q_wait = and(not(new), s0, not(s1), not(s2))
+    alias r_issue = and(not(new), not(s0), s1, not(s2))
+    alias r_wait = and(not(new), s0, s1, not(s2))
+    alias done = and(not(new), not(s0), not(s1), s2)
 
-    z_inv_mux.select    <- sz
-    z_inv_mux.option[0] <- arg2
-    z_inv_mux.option[1] <- not(arg2)
-    abs_z.a     <- z_inv_mux.selected
-    abs_z.b     <- 0
-    abs_z.c_in  <- sz
-    abs_z.c_out -> OPENED
+    unsupported <- and(sel_op.out[DIVU], or(rD[0..WORD_SIZE]))
+    alias start_q = and(go, fsm_idle, divider.idle, not(unsupported))
+    alias start_r = and(r_issue, divider.idle)
+    alias got_q = and(q_wait, divider.done)
+    alias got_r = and(r_wait, divider.done)
 
-    // Divider 입력. 0: DIV, 1: DIVU
-    dividend_mux.select <- sel_op.out[DIVU]
-    dividend_mux.option[0][0..WORD_SIZE] <- abs_y.sum
-    { dividend_mux.option[0][WORD_SIZE..2*WORD_SIZE] } <= 0
-    dividend_mux.option[1][0..WORD_SIZE] <- arg1
-    dividend_mux.option[1][WORD_SIZE..2*WORD_SIZE] <- rD
-    dividend_mux.selected -> divider.dividend
+    divider.start <- or(start_q, start_r)
+    divider.remainder <- r_issue
+    divider.signed <- sel_op.out[DIV]
+    arg1 -> divider.dividend
+    arg2 -> divider.divisor
 
-    divisor_mux.select    <- sel_op.out[DIVU]
-    divisor_mux.option[0] <- abs_z.sum
-    divisor_mux.option[1] <- arg2
-    divisor_mux.selected  -> divider.divisor
+    // 다음 상태: IDLE -> Q_WAIT -> R_ISSUE -> R_WAIT -> DONE
+    alias next_q_wait = or(start_q, and(q_wait, not(got_q)))
+    alias next_r_issue = or(got_q, and(r_issue, not(start_r)))
+    alias next_r_wait = or(start_r, and(r_wait, not(got_r)))
+    alias next_done = or(got_r, done)
+    state.w_en <- 1
+    state.in[0] <- or(next_q_wait, next_r_wait)
+    state.in[1] <- or(next_r_issue, next_r_wait)
+    state.in[2] <- next_done
 
-    // 몫: 부호 같음 → q0, 부호 다름 & 나머지 0 → -q0, 부호 다름 & 나머지 ≠ 0 → ~q0 (= -(q0+1))
-    q_inv_mux.select    <- diff
-    q_inv_mux.option[0] <- divider.quotient
-    q_inv_mux.option[1] <- not(divider.quotient)
-    q_adj.a     <- q_inv_mux.selected
-    q_adj.b     <- 0
-    q_adj.c_in  <- and(diff, not(r_nz))
+    quotient.w_en <- got_q
+    divider.result -> quotient.in
+    remainder.w_en <- got_r
+    divider.result -> remainder.in
+    ready <- or(done, unsupported)
+
+    // DIV 내림 보정
+    alias r_nz = or(remainder.out[0..WORD_SIZE])
+    alias adjust = and(sel_op.out[DIV], r_nz, xor(remainder.out[WORD_MSB], sz))
+    quotient.out -> q_adj.a
+    { q_adj.b[0..WORD_SIZE] } <= adjust  // -1
+    q_adj.c_in <- 0
     q_adj.c_out -> OPENED
-
-    // 나머지 크기: 부호 다름 & 나머지 ≠ 0 → |z| - r0, 그 외 → r0
-    zr_sub.a     <- abs_z.sum
-    zr_sub.b     <- not(divider.remainder)
-    zr_sub.c_in  <- 1
-    zr_sub.c_out -> OPENED
-
-    r_mag_mux.select    <- and(diff, r_nz)
-    r_mag_mux.option[0] <- divider.remainder
-    r_mag_mux.option[1] <- zr_sub.sum
-
-    // 나머지 부호는 z를 따름
-    r_inv_mux.select    <- sz
-    r_inv_mux.option[0] <- r_mag_mux.selected
-    r_inv_mux.option[1] <- not(r_mag_mux.selected)
-    r_adj.a     <- r_inv_mux.selected
-    r_adj.b     <- 0
-    r_adj.c_in  <- sz
+    r_add.select <- adjust
+    r_add.option[0] <- 0
+    r_add.option[1] <- arg2
+    remainder.out -> r_adj.a
+    r_add.selected -> r_adj.b
+    r_adj.c_in <- 0
     r_adj.c_out -> OPENED
 
-    // DIVU: rD >= arg2 (arg2 = 0 포함)
-    rd_cmp.a   <- rD
-    rd_cmp.b   <- not(arg2)
-    rd_cmp.c_in <- 1
-    rd_cmp.sum -> OPENED
-
-    // 결과 선택
-    // 0: DIV 정상, 1: DIVU 정상, 2: DIV z = 0, 3: DIVU rD >= arg2
-    alias exc_case = or(
-        and(sel_op.out[DIV], z_zero),
-        and(sel_op.out[DIVU], rd_cmp.c_out),
-    )
-    res_mux.select[0] <- sel_op.out[DIVU]
-    res_mux.select[1] <- exc_case
+    // z = 0: 몫 0, 나머지 y
+    res_mux.select <- z_zero
     res_mux.option[0] <- q_adj.sum
-    res_mux.option[1] <- divider.quotient
-    res_mux.option[2] <- 0
-    res_mux.option[3] <- rD
-    res_mux.selected  -> res
-
-    rR_mux.select[0] <- sel_op.out[DIVU]
-    rR_mux.select[1] <- exc_case
+    res_mux.option[1] <- 0
+    res_mux.selected -> res
+    rR_mux.select <- z_zero
     rR_mux.option[0] <- r_adj.sum
-    rR_mux.option[1] <- divider.remainder
-    rR_mux.option[2] <- arg1
-    rR_mux.option[3] <- arg1
-    rR_mux.selected  -> rR
+    rR_mux.option[1] <- arg1
+    rR_mux.selected -> rR
 
     rR_w_en <- 1
 
